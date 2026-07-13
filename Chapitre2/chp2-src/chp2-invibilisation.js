@@ -26,6 +26,8 @@
 
 'use strict';
 
+import { CONFIG } from './chp2-config.js';
+
 /* =============================================================================
    ÉTAT DU MODULE
 ============================================================================= */
@@ -669,7 +671,7 @@ function getAudioEl() {
    synchroniser avec l'état média local (videoPlaying) et disparaître avec
    l'installation.
    ============================================================ */
-const _invCfg    = (window.CONFIG && window.CONFIG.CHAPITRE2 && window.CONFIG.CHAPITRE2.invibilisation) || {};
+const _invCfg    = (CONFIG && CONFIG.invibilisation) || {};
 const FLUTE_SRC  = 'Chapitre2/chp2-medias/flute.mp3';
 const FLUTE_VOL  = (_invCfg.fluteVol    != null) ? _invCfg.fluteVol    : 0.05;  // volume cible (config)
 const FLUTE_FADE = (_invCfg.fluteFadeMs != null) ? _invCfg.fluteFadeMs : 1500;  // durée des fondus (ms)

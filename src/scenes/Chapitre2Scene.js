@@ -4,6 +4,7 @@ import { ArrowChp2Opening, ArrowChp2Part } from '../ui/ArrowChapitre2.js';
 import { CloseCross }       from '../ui/CloseCross.js';
 import { runSkippableQuoteSequence } from '../sequences/QuoteSequence.js';
 import { SkipButton }       from '../ui/SkipButton.js';
+import { CONFIG as CHP2 }   from '../../Chapitre2/chp2-src/chp2-config.js';
 
 /**
  * Chapitre2Scene — v4.0 (harmonisation UI)
@@ -340,7 +341,7 @@ export class Chapitre2Scene extends Scene {
         transition: this.transition,
         text: this._outroQuoteText,
         charDelay: 54,
-        skipDelay: window.CONFIG.CHAPITRE2?.timing?.skip_btn_delay ?? 2000,
+        skipDelay: CHP2.timing?.skip_btn_delay ?? 2000,
         afterTypingDelay: 2800,
         showSkipButton: (onClick)        => this._skip.show(onClick),
         hideSkipButton: (immediate = false) => this._skip.hide(immediate),
@@ -428,7 +429,7 @@ export class Chapitre2Scene extends Scene {
   _showSubtitle() {
     const el = document.getElementById('chapitre-subtitle');
     if (!el) return;
-    el.innerHTML = window.CONFIG.CHAPITRE2?.subtitle ?? 'L\u2019héritage colonial du musée';
+    el.innerHTML = CHP2.subtitle ?? 'L\u2019héritage colonial du musée';
     this._applySubtitleFont(el);
     // Temporisation : ne pas chevaucher le fondu d'entrée de scène.
     setTimeout(() => { if (this.isActive) el.classList.add('visible'); }, 400);
@@ -449,7 +450,7 @@ export class Chapitre2Scene extends Scene {
   _showPartTitle(part) {
     const el = document.getElementById('chapitre-part-title');
     if (!el) return;
-    const label = window.CONFIG.CHAPITRE2?.parts?.[part] ?? '';
+    const label = CHP2.parts?.[part] ?? '';
     if (!label) return;
     el.innerHTML = label;
     this._applySubtitleFont(el);

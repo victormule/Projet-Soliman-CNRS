@@ -17,6 +17,7 @@
 "use strict";
 
 import { markVisited, computeUnlocked } from './chp2-progress.js';
+import { CONFIG } from './chp2-config.js';
 
 /* =============================================================================
    OSCILLATEURS
@@ -432,7 +433,7 @@ var SHAKE = {
   smoothing:   0.035
 };
 
-/* ── Paramètres lumière (configurables via CONFIG.CHAPITRE2.light) ─────────
+/* ── Paramètres lumière (configurables via chp2-config.js → CONFIG.light) ──
    craneFinalFrac : rayon d'un pool par crâne (fraction de min(viewport)).
    igniteMs/Delay : durée/temporisation de l'allumage initial.
    staggerMs      : décalage d'allumage entre crânes (cascade).
@@ -444,7 +445,7 @@ var LIGHT = Object.assign({
   igniteDelay:    2600,
   staggerMs:      260,
   returnMs:       3000
-}, (window.CONFIG && window.CONFIG.CHAPITRE2 && window.CONFIG.CHAPITRE2.light) || {});
+}, (CONFIG && CONFIG.light) || {});
 
 // Ordre de déblocage linéaire des crânes (136 → 137 → 138).
 var SKULL_ORDER = SKULLS.map(function(s) { return s.id; });
