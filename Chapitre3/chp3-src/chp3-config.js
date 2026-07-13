@@ -102,12 +102,14 @@ export const CONFIG = {
         balance:26, scintille:0.45, apparition:7, delai:1.5,
     },
     rayons: {
-        actif:true, nombre:7, angle:90, evasement:26, intensite:0.10,
+        actif:true, nombre:7, evasement:26, intensite:0.10,
+        angle:106,            // 90 = verticaux · >90 = obliques penchés vers la GAUCHE
+                              // (source perçue à DROITE, lumière de fenêtres hautes-droites)
         ecartSource:0.30,     // étalement des origines en haut (× largeur). ↓ = sommet plus resserré
-        decalSource:0.10,     // décalage horizontal de la source (× largeur). + = vers la DROITE
-        desordre:9,           // désordre d'orientation des rayons, en degrés (0 = éventail régulier)
+        decalSource:0.20,     // décalage horizontal de la source (× largeur). + = vers la DROITE
+        desordre:12,          // désordre d'orientation des rayons, en degrés (0 = éventail régulier)
         suiviSouris:0.30,     // suivi du pointeur par les rayons : 0 = fixes, 1 = autant que le halo
-        flou:30,              // ↑ flou = rayons plus diffus / réalistes, moins « nets »
+        flou:46,              // ↑ flou = rayons plus diffus / réalistes, moins « nets »
         balance:1.6,          // amplitude d'oscillation de CHAQUE rayon, en degrés
         vitesseBalance:0.10,  // vitesse de cette oscillation
         derive:0.03,          // vitesse de la dérive d'ensemble du faisceau
