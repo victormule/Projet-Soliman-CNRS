@@ -10,6 +10,8 @@
    ===================================================================== */
 
 import { CONFIG } from './chp3-config.js';
+import { $, clamp, smooth, easeInOutQuad, easeInOutSine, easeOutCubic,
+         damp, setResponsiveSrc } from './chp3-utils.js';
 
 /* ── Pont scène : injecté par Chapitre3Scene (src/scenes/Chapitre3Scene.js) ──
    PATTERN FACTORY (Phase 2) : aucun effet de bord au chargement du module.
@@ -63,29 +65,7 @@ function boot() {
     // même peu puissant → le rendu desktop reste strictement identique.
     const mobileLite    = coarsePointer;
 
-    // ── Utilitaires ───────────────────────────────────────────────────
-    const $      = id => document.getElementById(id);
-    const clamp  = (v,a,b) => v<a?a:(v>b?b:v);
-    const smooth = t => { t=clamp(t,0,1); return t*t*(3-2*t); };
-    const easeInOutQuad = t => t<0.5 ? 2*t*t : -1+(4-2*t)*t;
-    const easeInOutSine = t => -(Math.cos(Math.PI*clamp(t,0,1))-1)/2;
-    const easeOutCubic  = t => 1-Math.pow(1-t,3);
-    // Amortissement indépendant du framerate : rapproche `a` de `b`.
-    const damp = (a,b,lambda,dt) => a + (b-a)*(1-Math.exp(-lambda*dt));
-
-    // Charge une variante allégée sur petit écran / faible DPR via `srcset`
-    // natif : aucune logique de media-query à maintenir, le navigateur choisit
-    // seul le candidat (et réévalue de lui-même au resize/zoom, sans listener).
-    // `small` doit faire exactement la moitié de la largeur de `full` (convention
-    // du projet, cf. fichiers *-800.*) ; `sizes` approxime la largeur affichée
-    // du cadre (T.matVw = fraction de la largeur de fenêtre) — une légère
-    // sur-estimation est volontaire et sans risque (jamais plus flou que nécessaire).
-    const RV_SIZES = (CONFIG.tableau.matVw * 100) + 'vw';
-    function setResponsiveSrc(el, full, small) {
-        if (small) { el.sizes = RV_SIZES; el.srcset = `${small} 800w, ${full} 1600w`; }
-        else       { el.removeAttribute('sizes'); el.removeAttribute('srcset'); }
-        el.src = full;   // repli (UA sans support srcset) + valeur par défaut si `small` absent
-    }
+    // ── Utilitaires : extraits dans chp3-utils.js (imports en tête) ────
 
     // État partagé du halo (écrit par updateLight, lu par la poussière).
     const lightState = { px:0, py:0, rpx:1, litR:1, followX:0, followY:0 };
