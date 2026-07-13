@@ -1,5 +1,5 @@
 /**
- * chp2-openning.js — Logique du travelling panoramique.
+ * chp2-opening.js — Logique du travelling panoramique.
  *
  * ADAPTATION SPA (v2) — intégration dans Soliman-1.0 :
  *   - Les getElementById() utilisent des IDs préfixés "chp2-" pour éviter
@@ -359,13 +359,13 @@ var imgEl   = null;
 var bar     = null;
 // curseur géré par le projet principal — pas de #chp2-cursor dans le DOM intégré
 var cursor  = null;
-// Référence au curseur custom global (#cursor) : l'openning pilote directement
+// Référence au curseur custom global (#cursor) : l'opening pilote directement
 // son état .hotspot au survol d'un crâne. Aucun conflit avec app.js car tout le
 // travelling est en pointer-events:none (aucune frontière DOM survolée ici).
 var hotCursor = null;
 // État de survol d'un crâne. setSkullHot est DÉCLENCHÉ SUR TRANSITION : il ne
 // modifie #cursor.hotspot que lorsqu'on entre/sort réellement d'un crâne. Ainsi,
-// quand le curseur n'est PAS sur un crâne (sur la flèche d'openning, par ex.),
+// quand le curseur n'est PAS sur un crâne (sur la flèche d'opening, par ex.),
 // l'appel répété setSkullHot(false) est un no-op et ne retire pas le hotspot
 // qu'app.js vient de poser sur la flèche / le bouton plein écran.
 var _skullHot = false;
@@ -391,7 +391,7 @@ var SKULLS = [
     num:    "136",
     label:  "Taire le passé",
     url:    null,
-    action: "invibilisation",
+    action: "invisibilisation",
     active: false,
     el:     null   // résolu dans init() : chp2-ov-<id>
   },
@@ -507,7 +507,7 @@ function applyTx(tx) {
    HOVER DETECTION
 ============================================================================= */
 function updateHover() {
-  if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open') || document.body.classList.contains('peine-demesuree-open')) {
+  if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invisibilisation-open') || document.body.classList.contains('peine-demesuree-open')) {
     if (hoveredSkull) hoveredSkull.el && hoveredSkull.el.classList.remove("visible");
     hoveredSkull = null;
     if (legend) legend.classList.remove("visible");
@@ -594,7 +594,7 @@ function onMove(clientX, clientY) {
 // Handlers créés et attachés dans init() — voir la section INIT plus bas.
 
 /* =============================================================================
-   CLIC — invibilisation | cartel | peine-demesuree | navigation retour
+   CLIC — invisibilisation | cartel | peine-demesuree | navigation retour
    ─────────────────────────────────────────────────────────────────────────────
    La navigation externe (window.location.href) est remplacée par un
    CustomEvent 'chp2:navigate-back' capté par Chapitre2Scene.js.
@@ -683,7 +683,7 @@ var audio = {
 };
 
 /* =============================================================================
-   PONT FLÈCHE OPENNING ↔ Chapitre2Scene
+   PONT FLÈCHE OPENING ↔ Chapitre2Scene
    ─────────────────────────────────────────────────────────────────────────────
    Chapitre2Scene injecte ses callbacks via setArrowCallbacks().
    - _arrowShow() : afficher la flèche retour vers Collaboration
@@ -695,12 +695,12 @@ var _arrowHide = null;
 var _arrowShownOnce = false;
 
 /* Source de vérité unique : true dès qu'une sous-partie est ouverte (ou en
-   cours d'ouverture), false dès qu'on revient à l'openning. Empêche par
+   cours d'ouverture), false dès qu'on revient à l'opening. Empêche par
    construction qu'un timer différé (ignition / retour) ne (re)dessine la
-   flèche openning par-dessus une sous-partie. */
+   flèche opening par-dessus une sous-partie. */
 var _subOpen = false;
 
-/* Afficheur gardé de la flèche openning : ne dessine QUE si l'openning est
+/* Afficheur gardé de la flèche opening : ne dessine QUE si l'opening est
    actif ET qu'aucune sous-partie n'est ouverte. Évalué au moment de l'appel
    (y compris depuis un setTimeout), ce qui neutralise toute course au clic. */
 function showOpeningArrow() {
@@ -715,7 +715,7 @@ function showOpeningArrow() {
    IGNITION
    ─────────────────────────────────────────────────────────────────────────────
    Allume, après une temporisation, les pools des crânes DÉVERROUILLÉS (cascade),
-   puis active l'interactivité, puis fait apparaître la flèche openning.
+   puis active l'interactivité, puis fait apparaître la flèche opening.
    La première visite n'allume que le crâne 136 ; les visites suivantes
    restaurent l'état mémorisé (cf. chp2-progress / localStorage).
 ============================================================================= */
@@ -728,7 +728,7 @@ function ignite() {
     _igniteTimers.push(setTimeout(function() {
       if (!_active) return;
       interactive = true;
-      // Afficher la flèche openning ~600ms après le début de l'allumage
+      // Afficher la flèche opening ~600ms après le début de l'allumage
       _igniteTimers.push(setTimeout(function() {
         if (!_active || _subOpen) return;
         if (_arrowShow && !_arrowShownOnce) {
@@ -864,15 +864,15 @@ function _onCartelReturn() {
 // (attaché dans init())
 
 /* =============================================================================
-   PONT TRAVELLING ⇄ INVIBILISATION (lazy)
+   PONT TRAVELLING ⇄ INVISIBILISATION (lazy)
 ============================================================================= */
-var invibilisationModulePromise = null;
+var invisibilisationModulePromise = null;
 
-function loadInvibilisationModule() {
-  if (!invibilisationModulePromise) {
-    invibilisationModulePromise = import('./chp2-invibilisation.js');
+function loadInvisibilisationModule() {
+  if (!invisibilisationModulePromise) {
+    invisibilisationModulePromise = import('./chp2-invisibilisation.js');
   }
-  return invibilisationModulePromise;
+  return invisibilisationModulePromise;
 }
 
 var peineDemesureeModulePromise = null;
@@ -884,14 +884,14 @@ function loadPeineDemesureeModule() {
   return peineDemesureeModulePromise;
 }
 
-function openInvibilisationOverlay() {
-  if (document.body.classList.contains('invibilisation-open')) return;
+function openInvisibilisationOverlay() {
+  if (document.body.classList.contains('invisibilisation-open')) return;
   _subOpen = true;
   setSkullHot(false);
   if (legend) legend.classList.remove("visible");
   if (hoveredSkull && hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
   if (_arrowHide) _arrowHide();
-  document.body.classList.add('invibilisation-open');
+  document.body.classList.add('invisibilisation-open');
 
   // 1) Clic 136 : extinction progressive des bougies + coupure du son chp2 +
   //    fondu au noir par-dessus le travelling (fadeEl au-dessus de l'overlay).
@@ -908,9 +908,9 @@ function openInvibilisationOverlay() {
   //    sans transition : le noir de l'overlay prend le relais à l'identique, et
   //    l'installation gère son propre allumage progressif (révélation du loader).
   setTimeout(function() {
-    if (!_active || !document.body.classList.contains('invibilisation-open')) return;
-    loadInvibilisationModule().then(function(mod) {
-      var ok = mod.openInvibilisation();
+    if (!_active || !document.body.classList.contains('invisibilisation-open')) return;
+    loadInvisibilisationModule().then(function(mod) {
+      var ok = mod.openInvisibilisation();
       if (ok) markVisited('136');   // « Invisibilisation » vue → débloque le crâne 137
       requestAnimationFrame(function() {
         if (fadeEl) {
@@ -920,8 +920,8 @@ function openInvibilisationOverlay() {
         }
       });
     }).catch(function(err) {
-      console.error('[Invibilisation] Échec chargement :', err);
-      document.body.classList.remove('invibilisation-open');
+      console.error('[Invisibilisation] Échec chargement :', err);
+      document.body.classList.remove('invisibilisation-open');
       if (fadeEl) {
         fadeEl.classList.remove('out');
         fadeEl.style.transition = '';
@@ -933,14 +933,14 @@ function openInvibilisationOverlay() {
   }, 1200);
 }
 
-function _onInvibilisationClosed() {
+function _onInvisibilisationClosed() {
   if (!_active) return;
   _subOpen = false;
-  document.body.classList.remove('invibilisation-open');
+  document.body.classList.remove('invisibilisation-open');
   audio.unduck(1200);
-  // La flèche openning réapparaît via 'invibilisation:return' (après rallumage
+  // La flèche opening réapparaît via 'invisibilisation:return' (après rallumage
   // progressif de la bougie), pour rester cohérent avec peine/cartel.
-  var root = document.getElementById('invibilisation-root');
+  var root = document.getElementById('invisibilisation-root');
   if (root) {
     root.classList.remove('no-loader');
     root.style.opacity    = '';
@@ -949,10 +949,10 @@ function _onInvibilisationClosed() {
 }
 // (attaché dans init())
 
-function _onInvibilisationReturn() {
+function _onInvisibilisationReturn() {
   if (!_active) return;
   _subOpen = false;
-  document.body.classList.remove('invibilisation-open');
+  document.body.classList.remove('invisibilisation-open');
   setTimeout(showOpeningArrow, 2800);
   applyProgressLighting({ ms: LIGHT.returnMs });
   audio.fadeIn(0.72, LIGHT.returnMs);
@@ -974,7 +974,7 @@ function _onPeineClosed() {
   if (!_active) return;
   _subOpen = false;
   document.body.classList.remove('peine-demesuree-open');
-  // Flèche openning réaffichée via 'peineDemesuree:return' (après rallumage).
+  // Flèche opening réaffichée via 'peineDemesuree:return' (après rallumage).
 }
 // (attaché dans init())
 
@@ -1064,20 +1064,20 @@ function init() {
   window.addEventListener("mousemove", _mousemoveHandler);
 
   _touchmoveHandler = function(e) {
-    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open')) return;
+    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invisibilisation-open')) return;
     e.preventDefault();
     onMove(e.touches[0].clientX, null);
   };
   window.addEventListener("touchmove", _touchmoveHandler, { passive: false });
 
-  /* ── Clic — invibilisation | cartel | peine-demesuree | navigation ── */
+  /* ── Clic — invisibilisation | cartel | peine-demesuree | navigation ── */
   _clickHandler = function(e) {
-    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open')) return;
+    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invisibilisation-open')) return;
     if (navigating) return;
     if (!hoveredSkull) return;
 
-    if (hoveredSkull.action === "invibilisation") {
-      openInvibilisationOverlay();
+    if (hoveredSkull.action === "invisibilisation") {
+      openInvisibilisationOverlay();
       return;
     }
 
@@ -1170,8 +1170,8 @@ function init() {
   /* ── Événements des sous-parties ── */
   window.addEventListener('cartel:closed',          _onCartelClosed);
   window.addEventListener('cartel:return',          _onCartelReturn);
-  window.addEventListener('invibilisation:closed',  _onInvibilisationClosed);
-  window.addEventListener('invibilisation:return',  _onInvibilisationReturn);
+  window.addEventListener('invisibilisation:closed',  _onInvisibilisationClosed);
+  window.addEventListener('invisibilisation:return',  _onInvisibilisationReturn);
   window.addEventListener('peine-demesuree:closed', _onPeineClosed);
   window.addEventListener('peineDemesuree:return',  _onPeineReturn);
 }
@@ -1184,7 +1184,7 @@ function init() {
 ============================================================================= */
 
 /**
- * Chapitre2Scene injecte ses callbacks pour contrôler la flèche openning.
+ * Chapitre2Scene injecte ses callbacks pour contrôler la flèche opening.
  * @param {Function} showFn  — affiche la flèche avec animation ArrowBase
  * @param {Function} hideFn  — masque la flèche avec animation
  */
@@ -1202,8 +1202,8 @@ export function setAudioManager(mgr) {
 }
 
 /**
- * Sortie cinématographique openning → Espace collaboratif.
- * Déclenchée par le clic sur la flèche openning (Chapitre2Scene).
+ * Sortie cinématographique opening → Espace collaboratif.
+ * Déclenchée par le clic sur la flèche opening (Chapitre2Scene).
  * Éteint progressivement la bougie + le son, fond au noir, puis signale
  * 'chp2:navigate-back' à Chapitre2Scene qui effectue la navigation réelle.
  * Idempotente via le verrou `navigating`.
@@ -1282,8 +1282,8 @@ export function stopChapitre2() {
   if (_clickHandler)      window.removeEventListener("click",     _clickHandler);
   window.removeEventListener('cartel:closed',          _onCartelClosed);
   window.removeEventListener('cartel:return',          _onCartelReturn);
-  window.removeEventListener('invibilisation:closed',  _onInvibilisationClosed);
-  window.removeEventListener('invibilisation:return',  _onInvibilisationReturn);
+  window.removeEventListener('invisibilisation:closed',  _onInvisibilisationClosed);
+  window.removeEventListener('invisibilisation:return',  _onInvisibilisationReturn);
   window.removeEventListener('peine-demesuree:closed', _onPeineClosed);
   window.removeEventListener('peineDemesuree:return',  _onPeineReturn);
 
@@ -1291,7 +1291,7 @@ export function stopChapitre2() {
   if (_resizeObs) { _resizeObs.disconnect(); _resizeObs = null; }
 
   /* 7. Fermer proprement les sous-modules si ouverts */
-  ['cartel-open', 'invibilisation-open', 'peine-demesuree-open'].forEach(function(cls) {
+  ['cartel-open', 'invisibilisation-open', 'peine-demesuree-open'].forEach(function(cls) {
     document.body.classList.remove(cls);
   });
 }

@@ -258,7 +258,7 @@ export class AudioManager {
   /**
    * Boucle d'ambiance du chapitre 2 (fredonnement-son.mp3).
    * Idempotente : si la piste joue déjà, ne fait rien → aucun dédoublement
-   * possible, même si plusieurs instances du module openning tentent de la
+   * possible, même si plusieurs instances du module opening tentent de la
    * démarrer (cache-bust).
    * @param {number} [fadeInMs] durée du fondu d'entrée (défaut config)
    */
@@ -293,7 +293,7 @@ export class AudioManager {
 
   /**
    * Rampe le volume de la piste chp2 vers `toVolume` (sans arrêter la source).
-   * Sert au duck (entrée sous-partie) / unduck (retour openning).
+   * Sert au duck (entrée sous-partie) / unduck (retour opening).
    */
   fadeChp2(toVolume, durationMs) {
     const { gain } = this.tracks.chp2;
@@ -309,7 +309,7 @@ export class AudioManager {
     this.fadeChp2(0, durationMs);
   }
 
-  /** Ramène la piste chp2 à son volume nominal (retour vers l'openning). */
+  /** Ramène la piste chp2 à son volume nominal (retour vers l'opening). */
   unduckChp2(durationMs = 1200) {
     this.fadeChp2(this.config.AUDIO.chp2_vol ?? 0.72, durationMs);
   }

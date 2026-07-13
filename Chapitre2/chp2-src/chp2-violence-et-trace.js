@@ -546,7 +546,7 @@ class Stage {
 
         // Curseur : pulse doré standard au survol d'une diapo (vignette ou
         // diapo active). Piloté DIRECTEMENT — fiable et indépendant de la
-        // délégation globale, comme pour les crânes de l'openning. Les
+        // délégation globale, comme pour les crânes de l'opening. Les
         // mouseenter/leave sur la diapo couvrent aussi ses contrôles internes
         // (plein écran, lecture…) puisque ce sont des enfants de la diapo.
         const _cursorEl = document.getElementById('cursor');

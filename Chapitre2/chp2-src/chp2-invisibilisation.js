@@ -1,12 +1,12 @@
 /**
- * chp2-invibilisation.js — Logique de l'installation "Invibilisation".
+ * chp2-invisibilisation.js — Logique de l'installation "Invisibilisation".
  *
  * ÉTAPE 3 : module ESM avec API publique mount/unmount.
  *
  * Différences avec l'original :
- *   - IIFE → module ESM exposant openInvibilisation() / closeInvibilisation() / isInvibilisationOpen().
+ *   - IIFE → module ESM exposant openInvisibilisation() / closeInvisibilisation() / isInvisibilisationOpen().
  *   - Init lazy : tout le code top-level est déplacé dans mount(root). Tant que
- *     openInvibilisation() n'est pas appelé, rien ne tourne.
+ *     openInvisibilisation() n'est pas appelé, rien ne tourne.
  *   - DOM scopé : document.getElementById('X') → root.querySelector('#X').
  *     Cela permet à #scene (et autres IDs) de coexister avec le travelling.
  *   - Listeners traçables : tous les addEventListener (document, window) sont
@@ -34,22 +34,22 @@ import { CONFIG } from './chp2-config.js';
 
 let _mounted = null;  // { root, destroy } quand l'installation est ouverte, null sinon
 
-export function isInvibilisationOpen() {
+export function isInvisibilisationOpen() {
   return _mounted !== null;
 }
 
 /** Ouvre l'installation. No-op si déjà ouverte. Retourne true si l'ouverture a eu lieu. */
-/** Helper curseur doux (#cursor.hotspot-soft) — pulse atténué d'invibilisation. */
+/** Helper curseur doux (#cursor.hotspot-soft) — pulse atténué d'invisibilisation. */
 function setEyeSoftCursor(on) {
   const c = document.getElementById('cursor');
   if (c) c.classList.toggle('hotspot-soft', !!on);
 }
 
-export function openInvibilisation() {
+export function openInvisibilisation() {
   if (_mounted) return false;
-  const root = document.getElementById('invibilisation-root');
+  const root = document.getElementById('invisibilisation-root');
   if (!root) {
-    console.error('[Invibilisation] Élément #invibilisation-root introuvable.');
+    console.error('[Invisibilisation] Élément #invisibilisation-root introuvable.');
     return false;
   }
   root.classList.add('is-open');
@@ -58,13 +58,13 @@ export function openInvibilisation() {
 }
 
 /** Ferme l'installation et nettoie tout. */
-export function closeInvibilisation() {
+export function closeInvisibilisation() {
   if (!_mounted) return false;
   _mounted.destroy();
   _mounted = null;
-  const root = document.getElementById('invibilisation-root');
+  const root = document.getElementById('invisibilisation-root');
   if (root) root.classList.remove('is-open');
-  window.dispatchEvent(new CustomEvent('invibilisation:closed'));
+  window.dispatchEvent(new CustomEvent('invisibilisation:closed'));
   return true;
 }
 
@@ -389,9 +389,9 @@ const eye4 = eyes[3];
 
 const scene    = $('scene');
 const btnClose = $('btn-close');
-// La flèche de retour vers l'openning est désormais gérée par Chapitre2Scene
-// (ArrowChp2Part 'invibilisation'), harmonisée avec le reste du site.
-// Le module se contente d'émettre 'chp2:invibilisation-ready' quand la
+// La flèche de retour vers l'opening est désormais gérée par Chapitre2Scene
+// (ArrowChp2Part 'invisibilisation'), harmonisée avec le reste du site.
+// Le module se contente d'émettre 'chp2:invisibilisation-ready' quand la
 // sous-partie est prête, et d'écouter 'chp2:request-return' pour repartir.
 
 
@@ -497,15 +497,15 @@ function openCaption() {
   if (isCaptionLocked()) return;
   captionWrapEl.classList.add('expanded');
   // Volet déplié → on estompe les titres/sous-titres (le bouton plein écran reste).
-  document.body.classList.add('invibilisation-legend-open');
+  document.body.classList.add('invisibilisation-legend-open');
 }
 function closeCaption() {
   captionWrapEl.classList.remove('expanded');
-  document.body.classList.remove('invibilisation-legend-open');
+  document.body.classList.remove('invisibilisation-legend-open');
 }
 
 /* « Prêt » : affiche la légende + demande à Chapitre2Scene de DESSINER la flèche
-   de retour (event 'chp2:invibilisation-ready'). Émis UNE seule fois.
+   de retour (event 'chp2:invisibilisation-ready'). Émis UNE seule fois.
    ─────────────────────────────────────────────────────────────────────────────
    Robustesse : si l'utilisateur clique très vite un œil avant la fin de la
    révélation, on est déjà 'zoomed' au moment prévu → on NE marque PAS comme émis
@@ -518,7 +518,7 @@ function emitReadyOnce() {
   if (root.dataset.returning === 'true') return;   // sortie de la sous-partie → non
   _readyEmitted = true;
   captionWrapEl.classList.add('visible');
-  window.dispatchEvent(new CustomEvent('chp2:invibilisation-ready'));
+  window.dispatchEvent(new CustomEvent('chp2:invisibilisation-ready'));
   setTimeout(() => { if (!zoomed && !videoPlaying) animateCaptionLine(); }, 200);
 }
 
@@ -559,8 +559,8 @@ function fadeOutAndReturn() {
         if (_done) return;
         _done = true;
         root.removeEventListener('transitionend', onEnd);
-        closeInvibilisation();                      // nettoie et ferme l'overlay
-        window.dispatchEvent(new CustomEvent('invibilisation:return'));
+        closeInvisibilisation();                      // nettoie et ferme l'overlay
+        window.dispatchEvent(new CustomEvent('invisibilisation:return'));
     }
     function onEnd(e) {
         if (e.target === root && e.propertyName === 'opacity') finish();
@@ -671,7 +671,7 @@ function getAudioEl() {
    synchroniser avec l'état média local (videoPlaying) et disparaître avec
    l'installation.
    ============================================================ */
-const _invCfg    = (CONFIG && CONFIG.invibilisation) || {};
+const _invCfg    = (CONFIG && CONFIG.invisibilisation) || {};
 const FLUTE_SRC  = 'Chapitre2/chp2-medias/flute.mp3';
 const FLUTE_VOL  = (_invCfg.fluteVol    != null) ? _invCfg.fluteVol    : 0.05;  // volume cible (config)
 const FLUTE_FADE = (_invCfg.fluteFadeMs != null) ? _invCfg.fluteFadeMs : 1500;  // durée des fondus (ms)
@@ -1064,11 +1064,11 @@ function doZoom(eye) {
   fluteOut(true);
   // ... et on masque la flèche de sortie pendant la lecture du média
   // (sans la détruire : simple classe CSS, son état/handler sont préservés).
-  document.body.classList.add('invibilisation-media');
+  document.body.classList.add('invisibilisation-media');
 
   // Légende : disparaît pendant le zoom (ready retiré pour couper pointer-events)
   captionWrapEl.classList.remove('visible', 'expanded', 'ready');
-  document.body.classList.remove('invibilisation-legend-open');  // titres réaffichés
+  document.body.classList.remove('invisibilisation-legend-open');  // titres réaffichés
 
   scene.style.willChange   = 'transform';
   eye.wEl.style.willChange = 'transform';
@@ -1113,7 +1113,7 @@ function doUnzoom(eye) {
   // pendant le dézoom, un peu après la fermeture du média.
   fluteIn();
   // ... et la flèche de sortie réapparaît (retrait de la classe média).
-  document.body.classList.remove('invibilisation-media');
+  document.body.classList.remove('invisibilisation-media');
 
   // Arrêter les sous-titres immédiatement
   stopSRT();
@@ -1606,11 +1606,11 @@ return {
       _fluteEl = null;
     }
     // Filet : retirer la classe média (sinon la flèche resterait masquée).
-    document.body.classList.remove('invibilisation-media');
+    document.body.classList.remove('invisibilisation-media');
     // Filet : couper le pulse doux du curseur s'il était actif.
     setEyeSoftCursor(false);
     // Filet : retirer la classe légende (sinon les titres resteraient estompés).
-    document.body.classList.remove('invibilisation-legend-open');
+    document.body.classList.remove('invisibilisation-legend-open');
 
     // 4. Détacher tous les listeners enregistrés
     for (const { target, type, fn, opts } of _listeners) {
@@ -1676,7 +1676,7 @@ return {
         }
       }
     } catch (err) {
-      console.warn('[Invibilisation] cleanup partial error:', err);
+      console.warn('[Invisibilisation] cleanup partial error:', err);
     }
   }
 };

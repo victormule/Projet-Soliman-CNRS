@@ -13,26 +13,26 @@ import { buildChapitre2DOM } from '../../Chapitre2/chp2-src/chp2-dom.js';
  *
  * NAVIGATION :
  *  ┌─────────────────────────────────────────────────────────────────────────┐
- *  │  CollaborationScene ──[cercle II]──► Chapitre2Scene (openning)           │
- *  │  openning ──[crâne 136]──► Invibilisation                                │
- *  │  openning ──[crâne 137]──► Peine démesurée                               │
- *  │  openning ──[crâne 138]──► Violence et ses traces (cartel)               │
- *  │  Sous-parties ──[flèche ←]──► openning   (extinction/rallumage bougie)   │
- *  │  openning    ──[flèche ←]──► Collaboration (extinction progressive)      │
+ *  │  CollaborationScene ──[cercle II]──► Chapitre2Scene (opening)           │
+ *  │  opening ──[crâne 136]──► Invisibilisation                                │
+ *  │  opening ──[crâne 137]──► Peine démesurée                               │
+ *  │  opening ──[crâne 138]──► Violence et ses traces (cartel)               │
+ *  │  Sous-parties ──[flèche ←]──► opening   (extinction/rallumage bougie)   │
+ *  │  opening    ──[flèche ←]──► Collaboration (extinction progressive)      │
  *  └─────────────────────────────────────────────────────────────────────────┘
  *
  * FLÈCHES (toutes ArrowBase, identiques au reste du site) :
- *  - 1 flèche openning (#arrow-chp2-opening) → Espace collaboratif.
+ *  - 1 flèche opening (#arrow-chp2-opening) → Espace collaboratif.
  *  - 3 flèches indépendantes, une par sous-partie, qui se (re)construisent en
- *    animation SVG à chaque ouverture → retour openning.
+ *    animation SVG à chaque ouverture → retour opening.
  *  Une seule est visible à la fois. La scène est l'unique chef d'orchestre :
- *    • l'openning prévient « bougie allumée / sous-partie ouverte / retour »
- *      via le pont setArrowCallbacks (flèche openning) ;
+ *    • l'opening prévient « bougie allumée / sous-partie ouverte / retour »
+ *      via le pont setArrowCallbacks (flèche opening) ;
  *    • chaque sous-partie émet « <part>-ready » (dessiner la flèche) et
  *      « <part>:return / :closed » (retirer la flèche) ;
  *    • un clic sur une flèche de sous-partie émet « chp2:request-return »,
  *      capté par la sous-partie ouverte, qui rejoue son extinction puis
- *      réémet « <part>:return » → l'openning rallume la bougie progressivement.
+ *      réémet « <part>:return » → l'opening rallume la bougie progressivement.
  *
  * TITRE (3 niveaux cinématographiques) :
  *  - #site-title        : « Espace collaboratif »  (posé par CollaborationScene,
@@ -47,9 +47,9 @@ const MODULE_PATH = '../../Chapitre2/';    // depuis src/scenes/ (import())
 
 /* ── Sous-parties : mapping identifiant ⇄ événements du module ───────────── */
 const PARTS = {
-  invibilisation: {
-    ready:   'chp2:invibilisation-ready',
-    return:  ['invibilisation:return', 'invibilisation:closed'],
+  invisibilisation: {
+    ready:   'chp2:invisibilisation-ready',
+    return:  ['invisibilisation:return', 'invisibilisation:closed'],
   },
   'peine-demesuree': {
     ready:   'chp2:peine-ready',
@@ -62,10 +62,10 @@ const PARTS = {
 };
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
-const CHp2_BODY_CLASSES = ['cartel-open', 'invibilisation-open', 'peine-demesuree-open'];
+const CHp2_BODY_CLASSES = ['cartel-open', 'invisibilisation-open', 'peine-demesuree-open'];
 const CSS_LINK_IDS      = [
   'chp2-css-violence', 'chp2-css-opening',
-  'chp2-css-invibilisation', 'chp2-css-peine',
+  'chp2-css-invisibilisation', 'chp2-css-peine',
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -84,12 +84,12 @@ export class Chapitre2Scene extends Scene {
     this.bgMgr      = systems.bgMgr;
     this.transition = systems.transition;
 
-    /** Flèche openning → Collaboration. */
+    /** Flèche opening → Collaboration. */
     this._openingArrow = new ArrowChp2Opening(window.CONFIG);
 
-    /** Une flèche INDÉPENDANTE par sous-partie (openning ← retour). */
+    /** Une flèche INDÉPENDANTE par sous-partie (opening ← retour). */
     this._partArrows = {
-      invibilisation:    new ArrowChp2Part(window.CONFIG, 'invibilisation'),
+      invisibilisation:    new ArrowChp2Part(window.CONFIG, 'invisibilisation'),
       'peine-demesuree': new ArrowChp2Part(window.CONFIG, 'peine-demesuree'),
       cartel:            new ArrowChp2Part(window.CONFIG, 'violence'),
     };
@@ -106,7 +106,7 @@ export class Chapitre2Scene extends Scene {
     /** DOM conteneur du chapitre 2. */
     this._container = null;
 
-    /** Module chp2-openning chargé dynamiquement. */
+    /** Module chp2-opening chargé dynamiquement. */
     this._module = null;
 
     /** Listeners window (ready / return) à retirer en sortie. */
@@ -170,19 +170,19 @@ export class Chapitre2Scene extends Scene {
       // Listeners ready/return des sous-parties (avant le module, par sûreté)
       this._registerWindowListeners();
 
-      // Charger et démarrer le module openning (pattern factory : aucun effet
+      // Charger et démarrer le module opening (pattern factory : aucun effet
       // de bord au chargement ; startChapitre2() fait l'init contre le DOM
       // fraîchement injecté, stopChapitre2() défait tout). Le module n'est
       // donc téléchargé et évalué qu'UNE fois pour toute la session.
       this._module = await import(
-        `${MODULE_PATH}chp2-src/chp2-openning.js`
+        `${MODULE_PATH}chp2-src/chp2-opening.js`
       );
 
       // Pont AUDIO : toute l'ambiance du chapitre 2 passe par l'AudioManager
       // central partagé (piste 'chp2'). Injecté AVANT startChapitre2().
       this._module.setAudioManager?.(this.audio);
 
-      // Pont flèche OPENNING : le module pilote son apparition/disparition.
+      // Pont flèche OPENING : le module pilote son apparition/disparition.
       //  - showFn : bougie allumée OU retour d'une sous-partie
       //  - hideFn : départ vers Collaboration OU ouverture d'une sous-partie
       this._module.setArrowCallbacks?.(
@@ -214,7 +214,7 @@ export class Chapitre2Scene extends Scene {
     // Garantie anti-résidu : coupe l'ambiance chp2 même si le module a échoué.
     this.audio.stopChp2Loop?.();
 
-    // Masquer toutes les flèches (openning + sous-parties)
+    // Masquer toutes les flèches (opening + sous-parties)
     this._openingArrow.hide();
     Object.values(this._partArrows).forEach(a => a.hide());
     this._closeCross.hide();
@@ -274,7 +274,7 @@ export class Chapitre2Scene extends Scene {
     if (part?.classList.contains('visible')) part.style.fontSize = sz;
   }
 
-  /* ── Flèche OPENNING → Collaboration ───────────────────────────────────
+  /* ── Flèche OPENING → Collaboration ───────────────────────────────────
      show() : ArrowBase dessine cercle + chevron (animation SVG native).
      Clic   : explosion dorée ArrowBase, puis demande au module une sortie
               cinématographique (extinction progressive de la bougie + fondu)
@@ -284,7 +284,7 @@ export class Chapitre2Scene extends Scene {
   _showOpeningArrow() {
     if (!this.isActive) return;
     // Garantie explicite : aucune flèche de sous-partie ne doit subsister au
-    // moment où la flèche openning se dessine (évite tout chevauchement visuel).
+    // moment où la flèche opening se dessine (évite tout chevauchement visuel).
     Object.values(this._partArrows).forEach(a => a.hide());
     this._openPart = null;
     this._openingArrow.show(() => this._leaveToCollaboration());
@@ -381,7 +381,7 @@ export class Chapitre2Scene extends Scene {
     bus.emit('navigate', { to: 'collaboration', from: 'chapitre2' });
   }
 
-  /* ── Flèches de SOUS-PARTIE → openning ─────────────────────────────────
+  /* ── Flèches de SOUS-PARTIE → opening ─────────────────────────────────
      Affichée quand la sous-partie signale '<part>-ready' (dessin SVG),
      retirée sur '<part>:return/:closed'. Le clic émet 'chp2:request-return'
      que la sous-partie ouverte capte pour rejouer son extinction.
@@ -394,7 +394,7 @@ export class Chapitre2Scene extends Scene {
     this._openPart = part;
     arrow.show(() => {
       // Une seule sous-partie ouverte à la fois : la sous-partie concernée
-      // capte l'événement et rejoue sa séquence de retour vers l'openning.
+      // capte l'événement et rejoue sa séquence de retour vers l'opening.
       window.dispatchEvent(new CustomEvent('chp2:request-return'));
     });
     this._showPartTitle(part);
@@ -474,13 +474,13 @@ export class Chapitre2Scene extends Scene {
      - '<part>-ready'           → dessiner la flèche + afficher le titre de partie.
      - '<part>:return'/':closed' → retirer la flèche + masquer le titre de partie.
        (couvre aussi les fermetures Escape/backdrop indépendantes de la flèche.)
-     La flèche OPENNING reste pilotée par le pont setArrowCallbacks.
+     La flèche OPENING reste pilotée par le pont setArrowCallbacks.
   ─────────────────────────────────────────────────────────────────────────── */
 
   _registerWindowListeners() {
     this._unregisterWindowListeners();
 
-    // Sortie cinématographique openning → Collaboration (émise par le module
+    // Sortie cinématographique opening → Collaboration (émise par le module
     // une fois la bougie éteinte et le fondu au noir terminés). À ce stade
     // l'écran est déjà noir et le son chp2 coupé : on insère la citation typée
     // (avec bouton « Passer ») AVANT la navigation réelle, comme au chapitre 1.
@@ -616,8 +616,8 @@ export class Chapitre2Scene extends Scene {
   _injectCSS() {
     const sheets = [
       { id: 'chp2-css-violence',       href: 'Chapitre2/chp2-style/chp2-violence-et-trace.css' },
-      { id: 'chp2-css-opening',        href: 'Chapitre2/chp2-style/chp2-openning.css'          },
-      { id: 'chp2-css-invibilisation', href: 'Chapitre2/chp2-style/chp2-invibilisation.css'    },
+      { id: 'chp2-css-opening',        href: 'Chapitre2/chp2-style/chp2-opening.css'          },
+      { id: 'chp2-css-invisibilisation', href: 'Chapitre2/chp2-style/chp2-invisibilisation.css'    },
       { id: 'chp2-css-peine',          href: 'Chapitre2/chp2-style/chp2-peine-demesuree.css'   },
     ];
 

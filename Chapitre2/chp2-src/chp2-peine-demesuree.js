@@ -2,7 +2,7 @@
  * chp2-peine-demesuree.js
  * ─────────────────────────────────────────────────────────────
  * Module ESM — Installation "Une peine démesurée".
- * Modèle : chp2-invibilisation.js (même pattern mount/destroy).
+ * Modèle : chp2-invisibilisation.js (même pattern mount/destroy).
  *
  * API publique
  *   openPeineDemesuree()   → monte l'overlay, lance la séquence.
@@ -711,7 +711,7 @@ function mount(root) {
         });
     }
 
-    /* ── Retour vers l'openning ──
+    /* ── Retour vers l'opening ──
        La flèche est gérée par Chapitre2Scene (ArrowChp2Part 'peine-demesuree').
        Le module écoute l'event global émis au clic de cette flèche.
        Si un média joue, on le FERME proprement (animation retour au texte) AVANT
@@ -744,7 +744,7 @@ function mount(root) {
     /* Séquence de sortie complète, idempotente (verrou _returning) :
        1) laisser finir une animation média en cours ;
        2) si un média est ouvert, le refermer proprement (retour au texte animé) ;
-       3) lancer le fondu de sortie (extinction au noir) → quitte vers l'openning. */
+       3) lancer le fondu de sortie (extinction au noir) → quitte vers l'opening. */
     async function requestReturn() {
         if (_aborted || _returning) return;
         _returning = true;
@@ -780,7 +780,7 @@ function mount(root) {
             _done = true;
             root.removeEventListener('transitionend', onEnd);
             closePeineDemesuree();
-            /* Signaler à openning.js qu'il faut rallumer + son */
+            /* Signaler à opening.js qu'il faut rallumer + son */
             window.dispatchEvent(new CustomEvent('peineDemesuree:return'));
         }
         function onEnd(e) {

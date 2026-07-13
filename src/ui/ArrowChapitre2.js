@@ -11,13 +11,13 @@
  * identique à ArrowCollaboration / ArrowChapitre1) :
  *
  *   1. ArrowChp2Opening  (#arrow-chp2-opening)
- *      - Affichée sur l'openning (travelling) une fois la bougie allumée.
+ *      - Affichée sur l'opening (travelling) une fois la bougie allumée.
  *      - Clic → retour vers l'Espace collaboratif.
  *
- *   2. ArrowChp2Part     (#arrow-chp2-invibilisation | -peine | -violence)
+ *   2. ArrowChp2Part     (#arrow-chp2-invisibilisation | -peine | -violence)
  *      - Une instance INDÉPENDANTE par sous-partie.
  *      - Affichée quand la sous-partie est prête (événement *-ready).
- *      - Clic → retour vers l'openning (referme la sous-partie).
+ *      - Clic → retour vers l'opening (referme la sous-partie).
  *      - z-index élevé pour passer au-dessus des overlays des sous-parties
  *        (qui sont confinés dans le contexte d'empilement de #chapitre2-root).
  *
@@ -46,7 +46,7 @@ function applyBottomLeft(el, config, zIndex) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Flèche openning → Espace collaboratif
+   Flèche opening → Espace collaboratif
    z 600 : au-dessus du travelling (#chapitre2-root = 500), sous le curseur.
 ─────────────────────────────────────────────────────────────────────────── */
 export class ArrowChp2Opening extends ArrowBase {
@@ -59,8 +59,8 @@ export class ArrowChp2Opening extends ArrowBase {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Flèche sous-partie → openning
-   z très élevé : les roots des sous-parties (invibilisation 1000, cartel,
+   Flèche sous-partie → opening
+   z très élevé : les roots des sous-parties (invisibilisation 1000, cartel,
    peine 9000) sont confinés DANS le contexte d'empilement de
    #chapitre2-root (z 500). Vu depuis #app, tout le chapitre 2 vaut donc 500 :
    un z >= 600 suffit, on prend 9999 pour rester sans ambiguïté.

@@ -4,11 +4,11 @@
 
    Source unique de vérité pour tout ce qui se règle sans toucher au code
    du chapitre 2 : sous-titre, titres de sous-parties, lumières « bougie »
-   de l'openning, ambiance de l'installation « Invisibilisation », timings.
+   de l'opening, ambiance de l'installation « Invisibilisation », timings.
 
    Consommé par : src/scenes/Chapitre2Scene.js (import aliasé CHP2),
-   chp2-src/chp2-openning.js (light) et chp2-src/chp2-invibilisation.js
-   (invibilisation). Même convention que Chapitre3/chp3-src/chp3-config.js.
+   chp2-src/chp2-opening.js (light) et chp2-src/chp2-invisibilisation.js
+   (invisibilisation). Même convention que Chapitre3/chp3-src/chp3-config.js.
    ===================================================================== */
 
 export const CONFIG = {
@@ -20,7 +20,7 @@ export const CONFIG = {
   // entre dans une sous-partie, masqués quand on en sort. Clés = identifiants
   // internes utilisés par Chapitre2Scene / les modules chp2.
   parts: {
-    invibilisation:    '',
+    invisibilisation:    '',
     'peine-demesuree': '',
     cartel:            '',
   },
@@ -31,7 +31,7 @@ export const CONFIG = {
     skip_btn_delay: 2000,
   },
 
-  // ── Lumières « bougie » de l'openning (travelling avec les crânes) ──────
+  // ── Lumières « bougie » de l'opening (travelling avec les crânes) ──────
   // Une lumière par crâne, allumée selon la progression (voir chp2-progress).
   //   craneFinalFrac : rayon d'un pool, fraction de min(largeur, hauteur)
   //                    du viewport. Plus petit = pool plus serré sur le crâne.
@@ -51,7 +51,7 @@ export const CONFIG = {
   //   fluteVol    : volume de l'ambiance flûte (0..1).
   //   fluteFadeMs : durée des fondus de la flûte (entrée/coupure/reprise).
   //   exitFadeMs  : durée d'extinction progressive à la sortie (fondu au noir).
-  invibilisation: {
+  invisibilisation: {
     fluteVol:    0.30,
     fluteFadeMs: 1500,
     exitFadeMs:  2500,

@@ -23,7 +23,7 @@
  *
  * Le module est SANS ÉTAT propre au chapitre (hors cache de secours) : il peut
  * être importé une seule fois et partagé entre les ré-évaluations cache-bustées
- * du module openning.
+ * du module opening.
  */
 
 "use strict";

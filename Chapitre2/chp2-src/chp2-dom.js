@@ -1,6 +1,6 @@
 /* =====================================================================
    Chapitre 2 — chp2-dom.js
-   Template DOM complet du chapitre (travelling + cartel + invibilisation
+   Template DOM complet du chapitre (travelling + cartel + invisibilisation
    + peine démesurée + rideau de chargement), extrait de Chapitre2Scene.
    CONTENU ÉDITORIAL : l'article de journal « Le meurtrier de Kléber »
    (l'Humanité, 9 janvier 1907) se modifie ICI (deux occurrences : le bloc
@@ -36,8 +36,8 @@ export function buildChapitre2DOM(assetPath) {
         <p class="close-hint" role="status" aria-live="polite">Cliquer en dehors ou Échap pour refermer</p>
       </div>
 
-      <!-- INVIBILISATION -->
-      <div id="invibilisation-root" aria-hidden="true">
+      <!-- INVISIBILISATION -->
+      <div id="invisibilisation-root" aria-hidden="true">
         <div class="sr-only">
           <h1>Eyes — Installation web interactive autour d'yeux de verre anciens</h1>
         </div>

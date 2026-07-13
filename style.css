@@ -235,15 +235,15 @@ body.page3 #hotspot-layer {
    ────────────────────────────────────────────────────────────────────
    Le chapitre 2 réutilise le MÊME curseur de base que le reste du site
    (#cursor) et le décline par contexte :
-   - .hotspot       : grossissement + pulse doré standard (crânes openning,
+   - .hotspot       : grossissement + pulse doré standard (crânes opening,
                       diapos du cartel) — défini plus haut.
-   - .hotspot-soft  : version atténuée et plus petite (yeux d'invibilisation).
+   - .hotspot-soft  : version atténuée et plus petite (yeux d'invisibilisation).
    - body.peine-aim : remplace entièrement le curseur par un viseur noir
                       minimaliste (sous-partie « peine démesurée »), qui se
                       focalise (grossit + pulse) au survol d'un mot-clef.
    ──────────────────────────────────────────────────────────────────── */
 
-/* Variante atténuée — invibilisation : « grossit et pulse, mais très
+/* Variante atténuée — invisibilisation : « grossit et pulse, mais très
    légèrement ». Plus petit et moins lumineux que .hotspot. */
 #cursor.hotspot-soft {
   width: 12px;
@@ -1133,15 +1133,15 @@ body.chp2-active #skip-btn {
    de légende ne peut pas passer au-dessus des titres par z-index (il est confiné
    dans le contexte d'empilement de #chapitre2-root, z500, alors que les titres
    sont à z600) : on estompe donc les titres dans deux cas — quand le volet de
-   légende est déplié (invibilisation-legend-open) ET pendant la lecture d'un
-   média (invibilisation-media) — puis on les réaffiche en sortant. Le bouton
+   légende est déplié (invisibilisation-legend-open) ET pendant la lecture d'un
+   média (invisibilisation-media) — puis on les réaffiche en sortant. Le bouton
    plein écran (#fs-btn) n'est touché par AUCUNE de ces règles. */
-body.invibilisation-legend-open #site-title,
-body.invibilisation-legend-open #chapitre-subtitle,
-body.invibilisation-legend-open #chapitre-part-title,
-body.invibilisation-media #site-title,
-body.invibilisation-media #chapitre-subtitle,
-body.invibilisation-media #chapitre-part-title {
+body.invisibilisation-legend-open #site-title,
+body.invisibilisation-legend-open #chapitre-subtitle,
+body.invisibilisation-legend-open #chapitre-part-title,
+body.invisibilisation-media #site-title,
+body.invisibilisation-media #chapitre-subtitle,
+body.invisibilisation-media #chapitre-part-title {
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 400ms ease;
@@ -1255,7 +1255,7 @@ body.chp3-active #skip-btn {
   animation: cursorArrowPulse 1.15s ease-in-out infinite;
 }
 
-/* Variante atténuée (yeux d'invibilisation, chapitre 2). */
+/* Variante atténuée (yeux d'invisibilisation, chapitre 2). */
 #cursor.hotspot-soft {
   width: 17px;
   height: 19px;
