@@ -1,0 +1,22 @@
+# ── Dépendances ──────────────────────────────────────────────
+node_modules/
+
+# ── Fichiers système ─────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.DS_Store
+
+# ── Éditeurs ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*~
+
+# ── Logs / temporaires ───────────────────────────────────────
+*.log
+npm-debug.log*
+
+# ── NB : les médias (mp4, mp3, webp, png, polices) SONT versionnés.
+#    Le plus gros fichier (~23 Mo) reste sous la limite GitHub de 100 Mo.
+#    Si le dépôt devient trop lourd, envisager Git LFS pour /**/*.mp4.

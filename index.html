@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soliman-CNRS-Abounaddara</title>
+  <!-- Polices Google chargées de façon non bloquante (media=print puis swap).
+       Cinzel        → titres / sous-titres / navigation (config.js FONTS)
+       Playfair Display → titre de l'écran d'accueil (.ss-title)
+       Inter         → libellés UI de l'écran d'accueil (.ss-eyebrow, .ss-cta)
+       Cormorant Garamond → sous-titres SRT du chapitre 2
+       Old Standard TT / Roboto Condensed → « Peine démesurée » (chapitre 2) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto+Condensed:wght@300;400;700&display=swap"
+        media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto+Condensed:wght@300;400;700&display=swap">
+  </noscript>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Curseur hors de #app — position:fixed relatif au vrai viewport -->
+<div id="cursor"></div>
+
+<div id="app">
+
+<div class="bg-layer" id="bg-vitrine"></div>
+<div class="bg-layer" id="bg-phrenologie"></div>
+<div class="bg-layer" id="bg-collaboration"></div>
+<div class="bg-layer" id="bg-chapitre1"></div>
+<div id="veil"></div>
+<div id="chapter-quote" aria-hidden="true"></div>
+<canvas id="overlay-canvas"></canvas>
+
+<div id="site-title"></div>
+<div id="chapitre-subtitle"></div>
+<div id="chapitre-part-title"></div>
+
+<!-- ══ Overlays images chapitre 1 ══
+     URL en data-bg (pas en background-image) : ces 9 images ne sont
+     téléchargées qu'à l'entrée en phase interactive du chapitre 1
+     (Chapitre1Scene._buildHotspots), pas au chargement du site. -->
+<div id="hotspot-layer"></div>
+<div class="hotspot-img" id="himg-1" data-bg="images/chapitre1-1.webp"></div>
+<div class="hotspot-img" id="himg-2" data-bg="images/chapitre1-2.webp"></div>
+<div class="hotspot-img" id="himg-3" data-bg="images/chapitre1-3.webp"></div>
+<div class="hotspot-img" id="himg-4" data-bg="images/chapitre1-4.webp"></div>
+<div class="hotspot-img" id="himg-5" data-bg="images/chapitre1-5.webp"></div>
+<div class="hotspot-img" id="himg-6" data-bg="images/chapitre1-6.webp"></div>
+<div class="hotspot-img" id="himg-7" data-bg="images/chapitre1-7.webp"></div>
+<div class="hotspot-img" id="himg-8" data-bg="images/chapitre1-8.webp"></div>
+<div class="hotspot-img" id="himg-9" data-bg="images/chapitre1-9.webp"></div>
+
+<!-- Flèche : SVG injecté dynamiquement à chaque showArrow() -->
+<div id="nav-arrow" class="pos-bottom"></div>
+
+<div id="doc-btns"></div>
+<div id="roman-circles"></div>
+<div id="hover-title"></div>
+<div id="nav-bar"></div>
+<div id="skip-btn"></div>
+<div id="media-player"></div>
+
+<div id="fs-btn" title="Plein écran">
+  <svg class="icon-expand" viewBox="0 0 24 24" fill="none"
+       stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+  </svg>
+  <svg class="icon-collapse" viewBox="0 0 24 24" fill="none"
+       stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
+    <line x1="10" y1="14" x2="3" y2="21"/><line x1="14" y1="10" x2="21" y2="3"/>
+  </svg>
+</div>
+
+<div id="start-screen">
+
+  <!-- Grille décorative Bauhaus -->
+  <div class="ss-grid" aria-hidden="true">
+    <div class="ss-grid-line ss-grid-line--h ss-grid-line--top"></div>
+    <div class="ss-grid-line ss-grid-line--h ss-grid-line--bottom"></div>
+    <div class="ss-grid-line ss-grid-line--v ss-grid-line--left"></div>
+    <div class="ss-grid-line ss-grid-line--v ss-grid-line--right"></div>
+    <div class="ss-grid-accent" aria-hidden="true"></div>
+  </div>
+
+  <div class="ss-inner">
+
+    <!-- Bloc supérieur : label projet -->
+    <div class="ss-eyebrow">Projet de recherche</div>
+
+    <!-- Séparateur horizontal -->
+    <div class="ss-rule" aria-hidden="true"></div>
+
+    <!-- Titre principal -->
+    <div class="ss-title">Soliman <span style="white-space:nowrap">al-Halabi</span></div>
+
+    <!-- Corps -->
+    <div class="ss-body">
+ <!--Ce site propose une expérience sonore.<br>
+      L'usage d'un casque est recommandé.-->
+    </div>
+
+    <!-- Séparateur bas -->
+    <div class="ss-rule ss-rule--short" aria-hidden="true"></div>
+
+    <!-- Crédits -->
+    <div class="ss-credits">
+      <span class="ss-credits__sep" aria-hidden="true">—</span>
+      <span class="ss-credits__orgs">Abounaddara · CNRS · 2026</span>
+    </div>
+
+    <!-- CTA -->
+    <div class="ss-cta">Cliquez pour commencer</div>
+
+  </div>
+
+</div>
+
+</div><!-- /#app -->
+
+<!-- ══ Scripts ══
+     Ordre impératif : config.js en premier (définit CONFIG),
+     puis main.js (l'utilise) -->
+<script src="config.js"></script>
+<script type="module" src="src/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,1752 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Playfair+Display:ital,wght@0,400;1,300;1,400&display=swap');
+
+/* ══════════════════════════════════════════════════════════════════
+   RESET & ROOT
+   ══════════════════════════════════════════════════════════════════ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  cursor: none !important;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #000;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 500px;   /* écrasé par JS depuis CONFIG */
+  min-height: 430px;
+  overflow: hidden;
+  touch-action: none;   /* le glissé du doigt pilote curseur + torche sur tout le site */
+  background: #000;
+  cursor: none;
+}
+
+body:not(.experience-started) * {
+  cursor: auto !important;
+}
+
+body:not(.experience-started) #cursor {
+  display: none;
+}
+
+body.resizing * {
+  transition: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BACKGROUNDS
+   ══════════════════════════════════════════════════════════════════ */
+
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+#bg-vitrine {
+  background-image: url("images/vitrineOrfila.webp");
+  opacity: 1;
+}
+
+#bg-phrenologie {
+  background-image: url("images/phrenologie.webp");
+  opacity: 0;
+}
+
+#bg-collaboration {
+  background-image: url("images/collaboration.webp");
+  opacity: 0;
+  transition:
+    opacity 1.2s ease,
+    transform 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Chapitre 1 : état de base — tout le style visuel est géré par JS */
+#bg-chapitre1 {
+  background-color: #000;
+  opacity: 0;
+  /* Pas de transition CSS ici : le JS gère tout pour éviter les conflits */
+}
+
+/* Overlay image chapitre 1 : géré intégralement par JS */
+#chapter1-image-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 1;
+  transform: scale(1);
+  will-change: opacity, transform;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CANVAS & LIGHT
+   ══════════════════════════════════════════════════════════════════ */
+
+#overlay-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Lumière autonome Chapitre 1 */
+#chapter1-fixed-light {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+body.page3 #chapter1-fixed-light {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HOTSPOTS CHAPITRE 1
+   ══════════════════════════════════════════════════════════════════ */
+
+#hotspot-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+body.page3 #hotspot-layer {
+  pointer-events: auto;
+}
+
+.hotspot-img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  pointer-events: none;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  transition: opacity 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.hotspot-img.active {
+  opacity: 1;
+}
+
+.hotspot-zone {
+  position: absolute;
+  cursor: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CURSOR
+   ──────────────────────────────────────────────────────────────────
+   ⚠️ Le rendu du curseur est REDÉFINI plus bas (section « CURSEUR —
+   flèche élégante »), qui prime par ordre de source. Les règles
+   ci-dessous restent la base historique (dimensions, transitions) et
+   servent de repli pour les variantes qui neutralisent le mask.
+   ══════════════════════════════════════════════════════════════════ */
+
+#cursor {
+  position: fixed;
+  z-index: 9999;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 248, 220, 0.38);
+  will-change: transform, width, height, box-shadow, background;
+  transition:
+    width 0.22s ease,
+    height 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.22s ease,
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+#cursor.active {
+  width: 14px;
+  height: 14px;
+  background: rgba(255, 240, 180, 0.9);
+  box-shadow:
+    0 0 0 4px rgba(255, 220, 100, 0.2),
+    0 0 18px rgba(255, 200, 60, 0.55),
+    0 0 36px rgba(255, 160, 20, 0.28);
+}
+
+#cursor.hotspot {
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 240, 180, 0.98);
+  box-shadow:
+    0 0 0 8px rgba(255, 220, 100, 0.16),
+    0 0 22px rgba(255, 210, 80, 0.95),
+    0 0 42px rgba(255, 170, 30, 0.55),
+    0 0 72px rgba(255, 150, 20, 0.28);
+  animation: cursorHotspotPulse 1.05s ease-in-out infinite;
+}
+
+@keyframes cursorHotspotPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow:
+      0 0 0 0 rgba(255, 220, 100, 0.34),
+      0 0 22px rgba(255, 210, 80, 0.95),
+      0 0 42px rgba(255, 170, 30, 0.55),
+      0 0 72px rgba(255, 150, 20, 0.28);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.16);
+    box-shadow:
+      0 0 0 10px rgba(255, 220, 100, 0.08),
+      0 0 28px rgba(255, 215, 110, 1),
+      0 0 56px rgba(255, 170, 30, 0.62),
+      0 0 92px rgba(255, 150, 20, 0.34);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow:
+      0 0 0 0 rgba(255, 220, 100, 0),
+      0 0 22px rgba(255, 210, 80, 0.95),
+      0 0 42px rgba(255, 170, 30, 0.55),
+      0 0 72px rgba(255, 150, 20, 0.28);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   CURSEUR — variantes Chapitre 2
+   ────────────────────────────────────────────────────────────────────
+   Le chapitre 2 réutilise le MÊME curseur de base que le reste du site
+   (#cursor) et le décline par contexte :
+   - .hotspot       : grossissement + pulse doré standard (crânes openning,
+                      diapos du cartel) — défini plus haut.
+   - .hotspot-soft  : version atténuée et plus petite (yeux d'invibilisation).
+   - body.peine-aim : remplace entièrement le curseur par un viseur noir
+                      minimaliste (sous-partie « peine démesurée »), qui se
+                      focalise (grossit + pulse) au survol d'un mot-clef.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* Variante atténuée — invibilisation : « grossit et pulse, mais très
+   légèrement ». Plus petit et moins lumineux que .hotspot. */
+#cursor.hotspot-soft {
+  width: 12px;
+  height: 12px;
+  background: rgba(255, 240, 180, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(255, 220, 100, 0.12),
+    0 0 12px rgba(255, 210, 80, 0.70),
+    0 0 22px rgba(255, 170, 30, 0.38);
+  animation: cursorHotspotPulseSoft 1.25s ease-in-out infinite;
+}
+
+@keyframes cursorHotspotPulseSoft {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow:
+      0 0 0 2px rgba(255, 220, 100, 0.16),
+      0 0 12px rgba(255, 210, 80, 0.70),
+      0 0 22px rgba(255, 170, 30, 0.38);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+    box-shadow:
+      0 0 0 5px rgba(255, 220, 100, 0.05),
+      0 0 16px rgba(255, 215, 110, 0.82),
+      0 0 28px rgba(255, 170, 30, 0.46);
+  }
+}
+
+/* ── Curseur « peine démesurée » ────────────────────────────────────
+   Esprit exploration d'un journal d'antan : le curseur devient un
+   discret point d'encre sépia. Au survol d'un élément interactif (mot-clef,
+   flèche retour, bouton plein écran) il éclôt en un fin anneau de
+   focalisation avec un point de visée central — comme une loupe qui se pose
+   sur le mot. Sobre, minimaliste, sans croix « technique ».
+   Les sélecteurs body.peine-aim #cursor (1,1,1) priment sur #cursor.hotspot
+   (1,1,0) : le rendu encre l'emporte même quand app.js pose .hotspot. */
+body.peine-aim,
+body.peine-aim * {
+  cursor: none !important;
+}
+
+/* Repos — petit point d'encre sépia, sobre sur le papier. */
+body.peine-aim #cursor {
+  width: 6px;
+  height: 6px;
+  background: rgba(32, 24, 13, 0.72);
+  border: 1.3px solid rgba(32, 24, 13, 0);   /* anneau invisible au repos */
+  border-radius: 50%;
+  box-shadow: none;
+  animation: none !important;
+  transition:
+    width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.28s ease,
+    border-color 0.28s ease;
+}
+
+/* Point de visée central (apparaît seulement quand l'anneau est ouvert). */
+body.peine-aim #cursor::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(26, 18, 8, 0.85);
+  transform: translate(-50%, -50%);
+  transition: width 0.24s ease, height 0.24s ease;
+  pointer-events: none;
+}
+
+/* Focalisation — éclosion en anneau fin + point central.
+   .aim-hot : posé par le module au survol d'un mot-clef.
+   .hotspot : posé par app.js sur la flèche retour et le bouton plein écran. */
+body.peine-aim #cursor.aim-hot,
+body.peine-aim #cursor.hotspot {
+  width: 30px;
+  height: 30px;
+  background: rgba(32, 24, 13, 0);            /* centre vidé → anneau */
+  border-color: rgba(26, 18, 8, 0.80);
+  animation: peineAimPulse 1.5s ease-in-out infinite !important;
+}
+body.peine-aim #cursor.aim-hot::after,
+body.peine-aim #cursor.hotspot::after {
+  width: 3px;
+  height: 3px;
+}
+
+@keyframes peineAimPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.07); }
+
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TITLES
+   ══════════════════════════════════════════════════════════════════ */
+
+#site-title {
+  position: absolute;
+  top: 3.2%;
+  left: 3.5%;
+  z-index: 15;
+  pointer-events: none;
+  text-transform: uppercase;
+  color: rgba(210, 175, 90, 0);
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+#site-title.fading-out {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+#site-title.fading-in {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+#site-title .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+#site-title .sep {
+  display: inline-block;
+  margin: 0 0.4em;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+#chapitre-subtitle {
+  position: absolute;
+  top: calc(3.2% + 2.6em);
+  left: 3.5%;
+  z-index: 15;
+  max-width: 42%;
+  line-height: 1.6;
+  pointer-events: none;
+  text-transform: uppercase;
+  /* Valeur de départ : invisible et décalé */
+  color: rgba(210, 175, 90, 0.78);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 1.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s,
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+}
+
+#chapitre-subtitle.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Titre de sous-partie (tier 3) — sous le sous-titre, même grammaire visuelle */
+#chapitre-part-title {
+  position: absolute;
+  top: calc(3.2% + 5.0em);
+  left: 3.5%;
+  z-index: 15;
+  max-width: 42%;
+  line-height: 1.6;
+  pointer-events: none;
+  text-transform: uppercase;
+  color: rgba(210, 175, 90, 0.92);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 1.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.15s,
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
+}
+
+#chapitre-part-title.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#hover-title {
+  position: absolute;
+  right: 0;
+  bottom: 7%;
+  left: 0;
+  z-index: 9;
+  padding: 0 10%;
+  line-height: 1.5;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+#hover-title.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#hover-title::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: 1px;
+  margin: 0.5em auto 0;
+  opacity: 0;
+  background: rgba(255, 255, 255, 0.25);
+  transition:
+    width 0.9s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.3s,
+    opacity 0.35s ease;
+}
+
+#hover-title.visible::after {
+  width: clamp(80px, 18vw, 260px);
+  opacity: 1;
+}
+
+#hover-title span.ht-text {
+  display: inline;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow:
+    0 0 40px rgba(0, 0, 0, 1),
+    0 0 18px rgba(0, 0, 0, 0.98),
+    0 3px 8px rgba(0, 0, 0, 0.9);
+  transition: opacity 0.22s ease;
+}
+
+#hover-title span.ht-text.fading {
+  opacity: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ARROWS & NAVIGATION
+   ══════════════════════════════════════════════════════════════════ */
+
+#nav-arrow {
+  position: absolute;
+  left: 50%;
+  z-index: 9;
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+}
+
+#nav-arrow.pos-bottom {
+  top: auto;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#nav-arrow.pos-top {
+  top: 5%;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#nav-arrow.pos-left {
+  top: auto;
+  bottom: 5%;
+  left: 3.5%;
+  transform: none;
+}
+
+#nav-arrow.visible {
+  pointer-events: auto;
+}
+
+#nav-arrow svg {
+  display: block;
+  overflow: visible;
+  transform-origin: center;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#nav-arrow:hover svg {
+  transform: scale(1.22);
+}
+
+#nav-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 8;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+#nav-bar.visible {
+  /* ⚠️ Le conteneur est dimensionné en PLEIN ÉCRAN par NavigationBar.draw()
+     (width = vW, height = vH) et vit en z-index 8, donc au-dessus de
+     #doc-overlay (7). En `pointer-events: auto` il interceptait TOUS les clics
+     et la molette de la page : les documents ne se fermaient plus au clic et
+     les sites incrustés devenaient inertes.
+     `pointer-events` étant héritée, on neutralise le conteneur et on ne
+     réactive que .nav-btn-zone (ci-dessous). */
+  pointer-events: none;
+  opacity: 1;
+}
+
+#nav-bar svg {
+  display: block;
+  overflow: visible;
+}
+
+.nav-rect-path {
+  fill: none;
+  stroke-linecap: square;
+}
+
+.nav-btn-zone {
+  cursor: none;
+  /* Réactive la capture sur les seules cellules cliquables : le reste du SVG
+     plein écran laisse passer clics et molette (pointer-events est héritée). */
+  pointer-events: auto;
+}
+
+.nav-btn-label {
+  dominant-baseline: middle;
+  text-anchor: middle;
+  font-weight: 300;
+  text-transform: uppercase;
+  transition: letter-spacing 0.4s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DOCUMENT BUTTONS
+   ══════════════════════════════════════════════════════════════════ */
+
+#doc-btns {
+  position: absolute;
+  top: 3.2%;
+  right: 3.5%;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+#doc-btns.visible {
+  /* Seuls les boutons captent : un clic dans les gouttières de la colonne doit
+     atteindre l'overlay et refermer le document. */
+  pointer-events: none;
+  opacity: 1;
+}
+
+.doc-btn {
+  position: relative;
+  pointer-events: auto;
+  cursor: pointer;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Bouton « À Propos » : identique aux boutons documents (blanc). Seul son
+   placement en tête de colonne (marginBottom en JS) le distingue. */
+
+.doc-btn.hovered {
+  z-index: 2;
+  transform: scaleX(1.08) scaleY(1.12) !important;
+}
+
+.doc-btn.push-up {
+  transform: translateY(-0.9%);
+}
+
+.doc-btn.push-down {
+  transform: translateY(0.9%);
+}
+
+.doc-btn svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.doc-rect {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 0.8;
+  transition:
+    stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.3s ease,
+    filter 0.3s ease;
+}
+
+.doc-rect.drawn {
+  stroke-dashoffset: 0;
+}
+
+.doc-label {
+  fill: rgba(255, 255, 255, 0.82);
+  opacity: 0;
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  dominant-baseline: middle;
+  text-anchor: middle;
+  transition: opacity 0.4s ease, fill 0.3s ease;
+}
+
+.doc-label.drawn {
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ROMAN CIRCLES
+   ══════════════════════════════════════════════════════════════════ */
+
+#roman-circles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 9;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.6s ease;
+}
+
+#roman-circles.visible {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.roman-btn {
+  position: relative;
+  transform-origin: center center;
+  will-change: transform;
+  cursor: pointer;
+  transition:
+    transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.3s ease;
+}
+
+.roman-btn.hovered {
+  z-index: 2;
+  transform: scale(1.32) !important;
+}
+
+.roman-btn.push-up {
+  transform: translateX(-1.4%);
+}
+
+.roman-btn.push-down {
+  transform: translateX(1.4%);
+}
+
+.roman-btn svg {
+  display: block;
+  overflow: visible;
+}
+
+.roman-c {
+  fill: none;
+  stroke-width: 1;
+  transition: stroke 0.3s ease, filter 0.3s ease;
+}
+
+.roman-num {
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  dominant-baseline: middle;
+  text-anchor: middle;
+  transition: fill 0.3s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SKIP BUTTON & FULLSCREEN
+   ══════════════════════════════════════════════════════════════════ */
+
+#skip-btn {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.6s ease;
+}
+
+#skip-btn.visible {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+#skip-btn .skip-wrap {
+  position: relative;
+  /* Dimensions gérées par JS via _getSkipSize() — proportionnelles à l'arrow */
+  cursor: none;
+  transform-origin: center center;
+  will-change: transform;
+  transition: transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+#skip-btn .skip-wrap.hovered {
+  transform: scaleX(1.08) scaleY(1.12);
+}
+
+#skip-btn svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#skip-btn .skip-rect {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 0.8;
+  transition:
+    stroke-dashoffset 0.9s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.3s ease,
+    filter 0.3s ease;
+}
+
+#skip-btn .skip-label {
+  fill: rgba(255, 255, 255, 0.82);
+  opacity: 0;
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  dominant-baseline: middle;
+  text-anchor: middle;
+  transition: opacity 0.4s ease, fill 0.3s ease;
+}
+
+#skip-btn .skip-rect.drawn {
+  stroke-dashoffset: 0;
+}
+
+#skip-btn .skip-label.drawn {
+  opacity: 1;
+}
+
+#fs-btn {
+  position: absolute;
+  right: 3.5%;
+  bottom: 5%;
+  z-index: 15;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+#fs-btn svg {
+  display: block;
+  overflow: visible;
+}
+
+#fs-btn .icon-expand,
+#fs-btn .icon-collapse {
+  display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   VEIL & QUOTE
+   ══════════════════════════════════════════════════════════════════ */
+
+#veil {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  background: #000;
+}
+
+#chapter-quote {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9vh 10vw;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 2.6s ease;
+}
+
+#chapter-quote.visible {
+  opacity: 1;
+}
+
+#chapter-quote .quote-inner {
+  width: min(860px, 100%);
+  color: rgba(236, 228, 212, 0.95);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(1.22rem, 1.75vw, 1.9rem);
+  line-height: 1.82;
+  letter-spacing: 0.01em;
+  font-weight: 300;
+  text-align: left;
+  text-wrap: pretty;
+  white-space: pre-line;
+  text-shadow: 0 0 22px rgba(255, 255, 255, 0.04);
+}
+
+#chapter-quote .quote-body {
+  display: inline;
+}
+
+#chapter-quote .cursor {
+  display: inline-block;
+  width: 0.55ch;
+  margin-left: 0.03em;
+  vertical-align: baseline;
+  color: rgba(236, 228, 212, 0.82);
+  animation: quoteBlink 1.25s steps(1) infinite;
+}
+
+@keyframes quoteBlink {
+  0%, 44% {
+    opacity: 1;
+  }
+  45%, 100% {
+    opacity: 0;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   START SCREEN — Editorial Contemporain
+   ══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+
+#start-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  /* Fond avec un léger grain pour la profondeur */
+  background: radial-gradient(circle at center, #121212 0%, #080808 100%);
+  transition: opacity 1.8s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Effet de grain subtil en superposition.
+   ⚠️ Le data-URI contenait un caractère corrompu (« %3微%3C » au lieu de
+   « %3E%3C ») : le SVG était invalide, donc le grain ne s'affichait pas. */
+#start-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+#start-screen.hidden {
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(1.05); /* Effet d'immersion à l'entrée */
+}
+
+/* ── Grille Architecturale ── */
+
+.ss-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: clamp(20px, 4vw, 60px);
+}
+
+.ss-grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ss-grid-line--h {
+  left: 4vw;
+  right: 4vw;
+  height: 1px;
+}
+
+.ss-grid-line--v {
+  top: 4vh;
+  bottom: 4vh;
+  width: 1px;
+}
+
+.ss-grid-line--top    { top: 8vh; }
+.ss-grid-line--bottom { bottom: 8vh; }
+.ss-grid-line--left   { left: 8vw; }
+.ss-grid-line--right  { right: 8vw; }
+
+.ss-grid-accent {
+  position: absolute;
+  top: 8vh;
+  left: 8vw;
+  width: 40px;
+  height: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* ── Contenu ── */
+
+.ss-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: min(700px, 85vw);
+}
+
+/* Label Projet */
+.ss-eyebrow {
+  color: #888;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(0.6rem, 0.8vw, 0.75rem);
+  font-weight: 300;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+  opacity: 0.8;
+}
+
+/* Séparateur minimaliste */
+.ss-rule {
+  width: 40px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  margin-bottom: 1.6rem;
+  transition: width 0.6s ease;
+}
+
+#start-screen:hover .ss-rule {
+  width: 80px;
+}
+
+.ss-rule--short {
+  margin-bottom: 1.2rem;
+}
+
+/* Titre Principal — L'élément central */
+.ss-title {
+  color: #fff;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  font-weight: 400;
+  line-height: 1.1;
+  margin-bottom: 1.6rem;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* Corps de texte */
+.ss-body {
+  max-width: 45ch;
+  color: #aaa;
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+  font-weight: 300;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.6rem;
+}
+
+/* Crédits en bas */
+.ss-credits {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #666;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.ss-credits__sep {
+  width: 15px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Call To Action */
+.ss-cta {
+  margin-top: 1.8rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50px;
+  background: transparent;
+  transition: color 0.4s ease, border-color 0.4s ease, background 0.4s ease;
+}
+
+.ss-cta:hover {
+  color: #000;
+  background: #fff;
+  border-color: #fff;
+}
+
+/* Animation de flottement très subtile sur le titre */
+@keyframes titleFloat {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0); }
+}
+
+.ss-title {
+  animation: titleFloat 6s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CHAPITRE 2 — Containment
+   ─────────────────────────────────────────────────────────────────
+   #chapitre2-root est position:fixed avec z-index:500.
+   Il absorbe les événements souris et empêche tout scroll
+   du document hôte pendant l'expérience chapitre 2.
+   ══════════════════════════════════════════════════════════════════ */
+
+#chapitre2-root {
+  /* position:fixed suffit pour l'isolation — pas de contain:layout (casserait les enfants fixed) */
+  cursor: none;
+}
+
+/* Neutraliser le cursor global pendant le chapitre 2 */
+body.chp2-active,
+body.chp2-active * {
+  cursor: none !important;
+}
+
+/* Garantir que #chapitre2-root est toujours au-dessus de
+   tous les layers du projet principal (canvas, veil, etc.) */
+#chapitre2-root {
+  z-index: 500;
+}
+
+/* Pendant le chapitre 2, les 3 niveaux de titre, le bouton plein écran, ainsi
+   que la citation de sortie (#chapter-quote) et son bouton « Passer »
+   (#skip-btn) doivent flotter AU-DESSUS du root plein écran (z 500) et de
+   toutes ses sous-parties (confinées dans le contexte d'empilement de
+   #chapitre2-root, donc plafonnées à 500 vues d'ici). Sans contenu, la quote et
+   le bouton restent invisibles (opacité 0 / pointer-events none) : aucun effet
+   de bord hors séquence de sortie. */
+body.chp2-active #site-title,
+body.chp2-active #chapitre-subtitle,
+body.chp2-active #chapitre-part-title,
+body.chp2-active #fs-btn,
+body.chp2-active #chapter-quote,
+body.chp2-active #skip-btn {
+  z-index: 600;
+}
+
+/* Pendant l'installation « Invisibilisation », l'overlay immersif (et donc son
+   onglet de légende déroulant, confiné dans le contexte d'empilement de
+   #chapitre2-root) doit passer AU-DESSUS des titres/sous-titres (z 600).
+   Comme le contexte d'empilement de #chapitre2-root plafonne ses enfants à sa
+   propre valeur vue depuis #app, on élève le root au-dessus des titres le temps
+   de l'installation ; il revient à 500 dès la fermeture (classe retirée). */
+/* Pendant l'installation « Invisibilisation », les titres/sous-titres top-left
+   doivent rester visibles ET le bouton plein écran toujours présent. Le volet
+   de légende ne peut pas passer au-dessus des titres par z-index (il est confiné
+   dans le contexte d'empilement de #chapitre2-root, z500, alors que les titres
+   sont à z600) : on estompe donc les titres dans deux cas — quand le volet de
+   légende est déplié (invibilisation-legend-open) ET pendant la lecture d'un
+   média (invibilisation-media) — puis on les réaffiche en sortant. Le bouton
+   plein écran (#fs-btn) n'est touché par AUCUNE de ces règles. */
+body.invibilisation-legend-open #site-title,
+body.invibilisation-legend-open #chapitre-subtitle,
+body.invibilisation-legend-open #chapitre-part-title,
+body.invibilisation-media #site-title,
+body.invibilisation-media #chapitre-subtitle,
+body.invibilisation-media #chapitre-part-title {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 400ms ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CHAPITRE 3 — Containment
+   ─────────────────────────────────────────────────────────────────
+   Mêmes garanties d'empilement que le chapitre 2. #chapitre3-root est
+   position:fixed / z-index:500 (posé aussi en inline par Chapitre3Scene).
+   ══════════════════════════════════════════════════════════════════ */
+
+#chapitre3-root {
+  z-index: 500;
+  cursor: none;
+}
+
+/* Neutraliser le cursor global pendant le chapitre 3 */
+body.chp3-active,
+body.chp3-active * {
+  cursor: none !important;
+}
+
+/* Le titre « Espace collaboratif », le sous-titre du chapitre et le bouton
+   plein écran sont en z 15 : sans cette remontée ils resteraient ENTERRÉS sous
+   #chapitre3-root (z 500). On les fait flotter au-dessus, exactement comme
+   body.chp2-active le fait pour le chapitre 2. #chapitre-part-title n'est pas
+   listé : le chapitre 3 n'a pas de sous-parties (tier 3 inutilisé).
+   #chapter-quote et #skip-btn restent inertes sans contenu (opacité 0 /
+   pointer-events none) : aucun effet de bord. */
+body.chp3-active #site-title,
+body.chp3-active #chapitre-subtitle,
+body.chp3-active #fs-btn,
+body.chp3-active #chapter-quote,
+body.chp3-active #skip-btn {
+  z-index: 600;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CURSEUR — flèche élégante (remplace le point pâle)
+   ────────────────────────────────────────────────────────────────────
+   Placé EN FIN DE FICHIER : ces règles priment sur celles de la section
+   CURSOR plus haut par ordre de source (même spécificité).
+
+   Principe :
+   - #cursor devient une flèche (silhouette SVG via `mask`), remplie par
+     `background-color` → recolorable par état (ivoire → doré au survol).
+   - La POINTE est au coin haut-gauche du SVG (0,0) ; `transform-origin:0 0`
+     garde la pointe fixée sur le point de clic même quand la flèche grossit.
+   - `filter: drop-shadow(...)` donne un liseré sombre + une profondeur →
+     lisible sur fond clair comme sombre, et remplace les `box-shadow`
+     (qui, sur une forme masquée, produiraient un halo rectangulaire).
+   - Le viseur encre de la sous-partie « peine démesurée » (body.peine-aim)
+     est préservé : on y neutralise le mask.
+   ════════════════════════════════════════════════════════════════════ */
+
+#cursor {
+  /* Silhouette flèche — fill blanc pour être robuste (alpha ET luminance). */
+  --cursor-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 20'%3E%3Cpath fill='%23fff' d='M0 0 L0 14.6 L4 11.3 L6.35 17.3 L8.6 16.4 L6.2 10.6 L11.1 10.6 Z'/%3E%3C/svg%3E");
+
+  width: 17px;
+  height: 19px;
+  border-radius: 0;
+  background: none;
+  background-color: rgba(255, 249, 233, 0.97);   /* ivoire chaud */
+
+  -webkit-mask: var(--cursor-arrow) no-repeat 0 0 / contain;
+          mask: var(--cursor-arrow) no-repeat 0 0 / contain;
+
+  /* Pointe (coin haut-gauche du SVG) posée sur le point de clic. */
+  transform-origin: 0 0;
+  transform: translate(-1px, -1px);
+
+  /* Liseré sombre net (visibilité universelle) + légère profondeur. */
+  filter:
+    drop-shadow(0 0 0.6px rgba(0, 0, 0, 0.9))
+    drop-shadow(0 1.5px 2px rgba(0, 0, 0, 0.38));
+
+  box-shadow: none;
+  transition:
+    transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.22s ease,
+    filter 0.22s ease,
+    opacity 0.22s ease;
+}
+
+/* Clic (mousedown) — la flèche s'enfonce légèrement, teinte dorée. */
+#cursor.active {
+  width: 17px;
+  height: 19px;
+  background-color: rgba(255, 226, 158, 1);
+  transform: translate(-1px, -1px) scale(0.88);
+  box-shadow: none;
+  filter:
+    drop-shadow(0 0 0.6px rgba(0, 0, 0, 0.85))
+    drop-shadow(0 0 6px rgba(255, 200, 70, 0.55));
+  animation: none;
+}
+
+/* Survol d'un élément cliquable — flèche dorée, plus grande, glow doux. */
+#cursor.hotspot {
+  width: 17px;
+  height: 19px;
+  background-color: rgba(255, 216, 122, 1);
+  transform: translate(-1px, -1px) scale(1.32);
+  box-shadow: none;
+  filter:
+    drop-shadow(0 0 0.6px rgba(120, 80, 0, 0.55))
+    drop-shadow(0 0 8px rgba(255, 205, 80, 0.85))
+    drop-shadow(0 0 16px rgba(255, 170, 30, 0.45));
+  animation: cursorArrowPulse 1.15s ease-in-out infinite;
+}
+
+/* Variante atténuée (yeux d'invibilisation, chapitre 2). */
+#cursor.hotspot-soft {
+  width: 17px;
+  height: 19px;
+  background-color: rgba(255, 232, 178, 0.98);
+  transform: translate(-1px, -1px) scale(1.12);
+  box-shadow: none;
+  filter:
+    drop-shadow(0 0 0.6px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 0 6px rgba(255, 205, 80, 0.55));
+  animation: none;
+}
+
+/* Pulsation douce ancrée sur la pointe (transform-origin:0 0 hérité). */
+@keyframes cursorArrowPulse {
+  0%, 100% { transform: translate(-1px, -1px) scale(1.32); }
+  50%      { transform: translate(-1px, -1px) scale(1.46); }
+}
+
+/* ── Préservation du viseur « peine démesurée » (chapitre 2) ──────────
+   On neutralise le mask flèche pour rendre au curseur sa forme d'origine
+   (point/viseur encre + ::after) et on restaure l'ancrage CENTRÉ (au repos
+   il n'a pas de transform propre — il héritait donc de la base). Les états
+   focalisés .aim-hot/.hotspot repositionnent eux-mêmes via l'animation
+   peineAimPulse. Spécificité (1,1,1) > #cursor (1,0,0). */
+body.peine-aim #cursor,
+body.peine-aim #cursor.hotspot,
+body.peine-aim #cursor.aim-hot {
+  -webkit-mask: none;
+          mask: none;
+  transform-origin: center;
+  transform: translate(-50%, -50%);
+  filter: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DOCUMENTS & « À PROPOS » — overlay de la scène phrénologie
+   ──────────────────────────────────────────────────────────────────
+   EMPILEMENT :  #veil (6) < #doc-overlay (7) < #nav-bar (8) < #doc-btns (9)
+   L'overlay capte le clic « n'importe où » pour se fermer tout en laissant
+   boutons et navbar cliquables au-dessus.
+
+   MISE EN PAGE : la zone utile évite les régions occupées —
+     droite : colonne des boutons · haut : titre · bas : barre de navigation.
+   Les cadres sont DIMENSIONNÉS EN JS (hauteur commune, largeurs déduites des
+   ratios réels des médias) : le CSS ne fait que définir la zone disponible.
+   ══════════════════════════════════════════════════════════════════ */
+
+#doc-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+#doc-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.doc-ov-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 42% 50%, rgba(8, 8, 8, 0.82) 0%, rgba(0, 0, 0, 0.94) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   STAGE — zone utile.
+   inset vertical = marges calculées en JS (--doc-ov-margin-top/-bot), qui
+   intègrent un plancher : on ne chevauche JAMAIS le titre en haut ni la navbar
+   en bas. inset horizontal = 0 : on gère les côtés au niveau des enfants.
+   La zone est un repère de POSITIONNEMENT (position:relative) : le document et
+   la légende y sont placés INDÉPENDAMMENT l'un de l'autre → aucune interférence
+   de hauteur, la légende ne peut plus "partir en haut".
+   ══════════════════════════════════════════════════════════════════ */
+.doc-ov-stage {
+  position: absolute;
+  top:    var(--doc-ov-margin-top, clamp(74px, 13vh, 150px));
+  bottom: var(--doc-ov-margin-bot, clamp(74px, 13vh, 150px));
+  left:  0;
+  right: 0;
+}
+
+.doc-ov-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── DOCUMENT — centré dans la fenêtre, décalé de la moitié de l'asymétrie ──
+   La zone centrale disponible = fenêtre − 2·(colonne latérale). Le document est
+   centré horizontalement dans CETTE zone, donc au milieu de la fenêtre (les deux
+   colonnes latérales étant égales). Centré verticalement dans le stage. */
+.doc-ov-row {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left:  var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  right: var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  padding: 0 clamp(8px, 1.2vw, 20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 2.2vw, 38px);
+}
+
+/* ── LÉGENDE — colonne gauche, ancrée. Sa position ne dépend QUE du stage :
+   collée au bord gauche, largeur = colonne latérale, centrée verticalement,
+   texte calé à droite (contre le document). Indépendante du document. ── */
+.doc-ov-caption {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  display: flex;
+  flex-direction: column;
+  /* Le BAS de la légende s'aligne sur le BAS du document : on pousse le contenu
+     vers le bas, avec un retrait égal à --doc-ov-cap-bottom (posé en JS =
+     distance entre le bas de la zone et le bas du rectangle du document). */
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 0 clamp(24px, 2.2vw, 40px) var(--doc-ov-cap-bottom, 0px) clamp(18px, 2.4vw, 40px);
+  text-align: right;
+}
+
+/* ── Barre verticale fine à droite de la légende ────────────────────────────
+   Filet doré vertical, centré sur la hauteur de la légende. Apparition
+   cinématographique : il se DESSINE du centre vers les deux extrémités
+   (scaleY 0 → 1), après quoi le texte se révèle. */
+.doc-ov-caption::after {
+  content: '';
+  position: absolute;
+  right: clamp(11px, 1vw, 18px);
+  /* Alignée sur le texte : même retrait bas que la légende, hauteur = celle du
+     bloc de texte (le contenu est calé en bas). */
+  bottom: var(--doc-ov-cap-bottom, 0px);
+  height: min(58%, 11em);
+  width: 1px;
+  background: linear-gradient(
+      to bottom,
+      rgba(210, 175, 90, 0) 0%,
+      rgba(210, 175, 90, 0.75) 20%,
+      rgba(210, 175, 90, 0.75) 80%,
+      rgba(210, 175, 90, 0) 100%);
+  transform: scaleY(0);
+  transform-origin: center;
+  opacity: 0;
+  transition:
+    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 700ms ease;
+}
+
+/* Le contenu textuel : légère montée + fondu, décalé APRÈS le tracé du filet. */
+.doc-ov-caption .doc-ov-cap-text,
+.doc-ov-caption .doc-ov-source {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition:
+    opacity 1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Séquence d'apparition, déclenchée par .in (posé par le JS) ──────────── */
+.doc-ov-caption.in::after {
+  opacity: 1;
+  transform: scaleY(1);                        /* le filet se dessine d'abord */
+}
+.doc-ov-caption.in .doc-ov-cap-text {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 620ms;                      /* puis le titre */
+}
+.doc-ov-caption.in .doc-ov-source {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 860ms;                      /* enfin la source */
+}
+
+
+/* ── TEXTE « À PROPOS » — centré dans la zone centrale (mêmes bornes que le
+   document : entre les deux colonnes), défilable, texte aligné à gauche. ── */
+.doc-ov-text {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left:  var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  right: var(--doc-ov-side, clamp(140px, 20vw, 300px));
+
+  overflow-y: auto;
+  touch-action: pan-y;   /* le texte défile au doigt (dérogation au #app) */
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  /* Barre de défilement à GAUCHE : on inverse le sens d'écriture du conteneur
+     (la barre se place alors du côté "début" = gauche). Le contenu est remis
+     en ltr juste en dessous. */
+  direction: rtl;
+
+  color: rgba(255, 255, 255, 0.94);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 300;
+  letter-spacing: 0.012em;
+
+  /* Fondu haut/bas : le texte s'estompe vers les bords quand il y a de la
+     matière à faire défiler au-dessus / en dessous. Les zones de fondu
+     (--fade-top / --fade-bot, en px) sont pilotées par le JS selon la position
+     de défilement → l'indice n'apparaît que s'il reste du texte de ce côté. */
+  --fade-top: 0px;
+  --fade-bot: 0px;
+  -webkit-mask: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--fade-top),
+      #000 calc(100% - var(--fade-bot)),
+      transparent 100%);
+          mask: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--fade-top),
+      #000 calc(100% - var(--fade-bot)),
+      transparent 100%);
+}
+
+/* Contenu remis dans le sens normal (le rtl ne sert qu'à placer la barre). */
+.doc-ov-text-body {
+  direction: ltr;
+  width: 100%;
+  max-width: calc(74ch * var(--doc-ov-about-frac, 1));
+  margin: 0 auto;
+  padding: 0.5em 0;
+  text-align: left;
+}
+/* Barre de défilement — accord DA : filet doré patiné, très fin, contre le
+   texte (à gauche via direction:rtl du conteneur). */
+.doc-ov-text {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 700ms ease;
+}
+.doc-ov-text.is-scroll { scrollbar-color: rgba(210, 175, 90, 0.55) transparent; }
+.doc-ov-text::-webkit-scrollbar        { width: 5px; }
+.doc-ov-text::-webkit-scrollbar-track  { background: transparent; }
+.doc-ov-text::-webkit-scrollbar-thumb  {
+  background: linear-gradient(rgba(210,175,90,0.0), rgba(203,167,90,0.0));
+  border-radius: 3px;
+  transition: background 700ms ease;
+}
+/* Apparition : le filet doré se révèle en fondu quand le texte devient
+   défilable (.is-scroll posé par le JS après mesure). */
+.doc-ov-text.is-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(rgba(210,175,90,0.65), rgba(203,167,90,0.35));
+}
+.doc-ov-text::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(rgba(231,206,142,0.85), rgba(210,175,90,0.55));
+}
+
+/* Débordement → ancrer en haut (sinon justify-content:center coupe le début). */
+.doc-ov-text.is-scroll { justify-content: flex-start; }
+
+/* Corps : bloc centré horizontalement, texte aligné à gauche. */
+
+
+.doc-ov-text p {
+  margin: 0 0 0.95em;
+  font-size: 1em;
+  line-height: inherit;
+  text-wrap: pretty;
+  text-shadow: 0 0 26px rgba(0, 0, 0, 0.85);
+
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 1.25s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 1.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.doc-ov-text p.in { opacity: 1; transform: translateY(0); }
+.doc-ov-text p:last-child { margin-bottom: 0; }
+
+.doc-ov-text p:first-child {
+  color: rgba(255, 255, 255, 0.99);
+  font-style: italic;
+  font-size: 1.14em;
+  margin-bottom: 1.15em;
+}
+
+/* ── Cadres ────────────────────────────────────────────────────────── */
+.doc-ov-frame {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;   /* le glissé du doigt pilote la loupe, pas le scroll */
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.doc-ov-frame-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.doc-ov-rect {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.82);
+  stroke-width: 1;
+}
+
+.doc-ov-media {
+  opacity: 0;
+  transition: opacity 1200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.doc-ov-media.in { opacity: 1; }
+
+.doc-ov-frame img.doc-ov-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.doc-ov-frame iframe.doc-ov-embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0b0b0b;
+}
+
+.doc-ov-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  padding: 2em;
+  color: rgba(255, 255, 255, 0.70);
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.62rem, 0.86vw, 0.8rem);
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.doc-ov-missing a {
+  color: rgba(255, 220, 120, 0.95);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 220, 120, 0.35);
+  padding-bottom: 2px;
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+.doc-ov-missing a:hover { color: rgba(255, 235, 175, 1); border-color: rgba(255, 220, 120, 0.9); }
+
+/* ── Légende : texte + source ──────────────────────────────────────── */
+.doc-ov-cap-text {
+  display: block;
+  color: rgba(255, 255, 255, 0.80);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  /* Taille FLUIDE, indexée sur la largeur de la colonne (--doc-ov-side) : la
+     légende rapetisse quand la colonne se resserre, au lieu de déborder ou de
+     forcer un retour à la ligne disgracieux. Bornée pour rester lisible. */
+  font-size: clamp(0.66rem, calc(var(--doc-ov-side, 200px) * 0.072), 1.12rem);
+  font-style: italic;
+  font-weight: 300;
+  line-height: 1.5;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+}
+
+.doc-ov-source {
+  display: inline-block;
+  margin-top: 0.85em;
+  color: rgba(210, 175, 90, 0.92);
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.5rem, calc(var(--doc-ov-side, 200px) * 0.05), 0.72rem);
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(210, 175, 90, 0.3);
+  padding-bottom: 3px;
+  pointer-events: auto;
+  transition: color 0.35s ease, border-color 0.35s ease;
+}
+.doc-ov-source:hover { color: rgba(255, 230, 150, 1); border-color: rgba(255, 220, 120, 0.85); }
+
+@media (max-height: 520px) {
+  .doc-ov-cap-text { line-height: 1.35; }
+  .doc-ov-row      { gap: clamp(8px, 1.6vw, 18px); }
+}
+
+/* Écran étroit : on rend de la largeur aux planches, qui restent côte à côte
+   (leur intérêt est la comparaison). */
+/* Pas de bascule de structure sur écran étroit : la mise en page reste
+   IDENTIQUE à toute largeur (légende à gauche, document centré). La légende
+   rapetisse via clamp() si nécessaire. En deçà de MIN_SIZE.width (500px), le
+   viewport est de toute façon verrouillé par #app. */
+
+/* Mouvement réduit : on garde les apparitions, sans translation ni tracé. */
+@media (prefers-reduced-motion: reduce) {
+  .doc-ov-text p,
+  .doc-ov-caption { transform: none; transition-duration: 400ms; }
+  .doc-ov-rect    { transition: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LOUPE — documents images (doc-1, doc-2)
+   Cercle attaché au curseur : petit indicateur partout, grande loupe ×3
+   au survol d'une image. Filet blanc discret.
+   ══════════════════════════════════════════════════════════════════ */
+.doc-ov-loupe {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  z-index: 9998;                       /* sous le curseur custom (#cursor:9999) */
+  pointer-events: none;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background-repeat: no-repeat;
+  background-color: rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 6px 26px rgba(0, 0, 0, 0.45);
+  /* Transition douce entre l'indicateur et la loupe. La position (left/top) est
+     posée en JS à chaque frame : surtout NE PAS la mettre en transition. */
+  transition:
+    width 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    height 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms ease,
+    border-color 260ms ease;
+  will-change: left, top, width, height;
+}
+
+/* Mode loupe (sur image) : bord un peu plus present, halo interne subtil. */
+.doc-ov-loupe.is-zoom {
+  border-color: rgba(255, 255, 255, 0.7);
+  background-color: #0b0b0b;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 10px 34px rgba(0, 0, 0, 0.55),
+    inset 0 0 18px rgba(0, 0, 0, 0.35);
+}
+
+/* Sur écran tactile, pas de loupe (pas de curseur qui plane). */
+/* La loupe fonctionne aussi au TACTILE : elle suit le doigt (pointermove) et
+   affiche le zoom au contact d'une image. Pas de blocage mobile. */
+@media (prefers-reduced-motion: reduce) {
+  .doc-ov-loupe { transition: opacity 200ms ease; }
+}
+
+
+/* ── Flou aux extrémités du texte « À Propos » ──────────────────────────────
+   Deux bandes fixes par-dessus le texte défilant : le flou (backdrop-filter)
+   renforce l'indice de défilement, en plus du fondu au noir. Leur présence est
+   pilotée par --fade-top/--fade-bot (0 quand il n'y a rien à défiler de ce
+   côté). N'apparaissent que sur le texte défilable (.is-scroll). */
+.doc-ov-text-blur {
+  position: absolute;
+  left:  var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  right: var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  height: 74px;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.doc-ov-text-blur.top {
+  top: 0;
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+  -webkit-mask: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+          mask: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+}
+.doc-ov-text-blur.bot {
+  bottom: 0;
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+  -webkit-mask: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
+          mask: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
+   }

@@ -1,0 +1,500 @@
+/* =============================================================================
+   CARTEL MUSÉE — version intégrée Soliman-1.0
+   -----------------------------------------------------------------------------
+   Stratégie de scoping :
+     - Scopés sous #cartel-root : éléments structurels (stage, label, backdrop…).
+     - NON scopés pour .slide et descendants : SlideViewer.open() déplace la
+       slide sous document.body lors du zoom → les styles doivent rester globaux.
+       Ces classes n'existent nulle part ailleurs dans le projet principal.
+
+   CORRECTIFS d'intégration :
+     - Suppression du body.cartel-open #cursor (renommé #chp2-cursor dans SPA).
+     - .slide:focus et .slide:focus-visible → outline:none (évite le contour
+       blanc natif du browser sur la slide cliquée).
+     - .slide et descendants : specificity renforcée (html body .slide …) pour
+       survivre au reset * { margin:0; padding:0 } du projet principal.
+============================================================================= */
+
+/* ── 1. Police custom ──────────────────────────────────────────────────────── */
+@font-face {
+    font-family: 'ElegantTypewriter';
+    src: url('../chp2-fonts/elegant-typewriter-regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ── 2. Variables CSS (:root pour portée globale, y compris slide sous body) ─ */
+:root {
+    --U: min(1.5vw, 1.85vh);
+
+    --color-bg-page:        #333;
+    --color-text:           #000;
+    --color-paper:          #fafaf6;
+    --color-backdrop:       rgba(0, 0, 0, 0.85);
+    --color-close-hint:     #ddd;
+
+    --label-w:              calc(var(--U) * 45);
+    --label-pad-v:          calc(var(--U) * 1.2);
+    --strip-pad-h:          calc(var(--U) * 3);
+    --strip-pad-v:          calc(var(--U) * 2.5);
+    --strip-pad-bot:        calc(var(--U) * 1.5);
+    --strip-margin-v:       calc(var(--U) * 0.6);
+
+    --slide-w:              calc(var(--U) * 13.5);
+    --slide-pad-tb:         calc(var(--U) * 1.5);   /* cadre blanc « monture » bien visible */
+    --slide-peek:           calc(var(--U) * 3.5);
+    --slide-hover:          calc(var(--U) * 8.8);
+    --slide-active-scale:   3.0;
+
+    --fs-title:             calc(var(--U) * 1.45);
+    --fs-info:              calc(var(--U) * 1.20);
+    --fs-caption:           calc(var(--U) * 0.85);
+    --fs-close-hint:        calc(var(--U) * 0.9);
+
+    --pl-bar-pad-v:         calc(var(--U) * 0.32);
+    --pl-bar-pad-h:         calc(var(--U) * 0.55);
+    --pl-bar-gap:           calc(var(--U) * 0.45);
+    --pl-btn:               calc(var(--U) * 1.05);
+    --pl-icon:              calc(var(--U) * 0.65);
+    --pl-fs-time:           calc(var(--U) * 0.5);
+    --pl-progress-h:        calc(var(--U) * 0.13);
+    --pl-progress-h-hover:  calc(var(--U) * 0.22);
+    --pl-vol-w:             calc(var(--U) * 2.2);
+
+    --ease-smooth:          cubic-bezier(0.4, 0, 0.2, 1);
+
+    --dur-intro-label:      3s;
+    --dur-intro-slide:      1.4s;
+    --ease-intro:           cubic-bezier(0.22, 1, 0.36, 1);
+    --dur-slide-pull:       0.22s;
+    --dur-slide-fly:        0.55s;
+    --dur-slide-dezoom:     0.45s;
+    --dur-slide-return:     0.35s;
+    --dur-rest:             0.5s;
+
+    --z-cartel-root:        1000;
+    --z-stage:              1001;
+    --z-label:              1003;
+    --z-backdrop:           1100;
+    --z-slide-zoomed:       1200;
+    --z-close-btn:          1300;
+    --z-close-hint:         1400;
+    --z-overlay-controls:   10;
+}
+
+/* ── 3. Conteneur racine ───────────────────────────────────────────────────── */
+#cartel-root {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-cartel-root);
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--color-text);
+    font-family: 'ElegantTypewriter', serif;
+    overflow: hidden;
+}
+#cartel-root.is-open { display: flex; }
+
+/* Restaure le curseur système quand le cartel est ouvert */
+body.cartel-open { cursor: auto; }
+body.cartel-open #chp2-cursor { display: none !important; }
+
+/* ── 4. Scène ──────────────────────────────────────────────────────────────── */
+#cartel-root .stage-frame {
+    width:  min(100vw, 100vh * 5 / 4);
+    height: min(100vh, 100vw * 4 / 5);
+    aspect-ratio: 5 / 4;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#cartel-root .display-stage {
+    position: relative;
+    z-index: var(--z-stage);
+}
+
+/* ── 5. Cartel papier ──────────────────────────────────────────────────────── */
+#cartel-root .museum-label {
+    width: var(--label-w);
+    aspect-ratio: 900 / 1024;
+    position: relative;
+    z-index: var(--z-label);
+    background: url('../chp2-images/cartel.webp') center / contain no-repeat;
+    /*background-size: cover;*/
+    /*background-position: center;*/
+     border-radius: 2px 3px 2px 4px / 3px 2px 4px 2px;
+     box-shadow: 0 10px 30px rgba(0,0,0,1), inset 0 0 2px rgba(0,0,0,0.15);
+    opacity: 0;
+    transform: translateY(0);
+    cursor: default;
+}
+#cartel-root .museum-label::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    background:
+        radial-gradient(circle at 10% 20%, rgba(0,0,0,0.05), transparent 40%),
+        radial-gradient(circle at 85% 75%, rgba(0,0,0,0.04), transparent 45%);
+}
+#cartel-root .strip {
+    position: relative;
+    margin: var(--strip-margin-v) 0;
+    padding: var(--strip-pad-v) var(--strip-pad-h) var(--strip-pad-bot);
+    background: rgba(255,255,252,0.06);
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.05);
+    transform: rotate(calc(var(--r,0) * 0.3deg));
+}
+#cartel-root .object-title {
+    margin-bottom: calc(var(--U) * 1.2);
+    text-align: center;
+    font-size: var(--fs-title);
+    letter-spacing: 0.07em;
+    white-space: pre-line;
+    font-weight: normal;
+}
+#cartel-root .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: var(--fs-info);
+}
+#cartel-root .ref-number { letter-spacing: 0.12em; }
+#cartel-root .strip.is-left-aligned .object-title { text-align: left; }
+
+/* ── 6. Slides-deck ────────────────────────────────────────────────────────── */
+#cartel-root .slides-deck {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    overflow: visible;
+}
+
+/* ── 7. SLIDE & ENFANTS — NON SCOPÉS ───────────────────────────────────────
+   La slide peut être déplacée sous document.body par SlideViewer.open().
+   On renforce la spécificité avec "html body .slide" pour surpasser le
+   reset global "* { margin:0; padding:0 }" du projet principal.
+─────────────────────────────────────────────────────────────────────────── */
+html body .slide,
+.slide {
+    position: absolute;
+    width: var(--slide-w);
+    padding: var(--slide-pad-tb) !important;   /* cadre — résiste au reset * du projet */
+    display: flex;
+    flex-direction: column;
+    background: #ffffff !important;             /* cadre blanc franc de diapositive */
+    cursor: pointer !important;          /* surpasse cursor:none !important du projet */
+    pointer-events: auto;
+    box-shadow:
+        0 10px 24px rgba(0,0,0,0.50),
+        0 2px 6px   rgba(0,0,0,0.35),
+        inset 0 0 0 1px rgba(0,0,0,0.08); /* liseré du bord du cadre */
+    transform-origin: 50% 50%;
+    transform: rotate(var(--tilt,0deg));
+    transition:
+        left   var(--dur-rest) var(--ease-smooth),
+        right  var(--dur-rest) var(--ease-smooth),
+        transform var(--dur-rest) var(--ease-smooth);
+    font-family: 'ElegantTypewriter', serif;
+    color: var(--color-text);
+    outline: none;                        /* pas de contour focus natif du browser */
+}
+
+/* Supprimer le contour blanc natif du browser quand la slide est cliquée */
+.slide:focus,
+.slide:focus-visible { outline: none; }
+
+.slide[data-dir="left"]  { left:  calc(-1 * var(--slide-peek)); }
+.slide[data-dir="right"] { right: calc(-1 * var(--slide-peek)); }
+.slide[data-dir="left"]:hover:not(.is-pinned):not(.is-active)  { left:  calc(-1 * var(--slide-hover)); }
+.slide[data-dir="right"]:hover:not(.is-pinned):not(.is-active) { right: calc(-1 * var(--slide-hover)); }
+
+/* Boîte média */
+.slide-media-box {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 10 / 9;
+    overflow: hidden;
+    background: #000;
+    flex-shrink: 0;
+    /* Filet fin qui détache la photo du cadre blanc → lecture « diapositive » */
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.22);
+}
+.slide-thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    object-fit: cover;
+    opacity: 1;
+    filter: grayscale(40%);
+    transition: filter 0.4s ease, opacity 0.45s ease;
+}
+.slide:hover:not(.is-pinned):not(.is-active) .slide-thumb { filter: grayscale(0%); }
+.slide-media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    object-fit: contain;
+    opacity: 0;
+    pointer-events: none;
+}
+.slide.is-active .slide-media  { opacity: 1; object-fit: cover; }
+.slide.is-active .slide-thumb  { opacity: 0; }
+.slide.is-active.is-audio .slide-thumb { opacity: 1; }
+.slide.is-active.is-audio .slide-media { opacity: 0; }
+
+/* Overlay contrôles */
+.slide-controls-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: var(--z-overlay-controls);
+}
+.slide.is-active:hover .slide-controls-overlay { opacity: 1; pointer-events: auto; }
+
+/* Barre de progression */
+.ctrl-progress {
+    width: 100%;
+    height: var(--pl-progress-h);
+    background: rgba(255,255,255,0.18);
+    cursor: pointer !important;
+    flex-shrink: 0;
+    transition: height 0.15s ease;
+}
+.ctrl-progress:hover { height: var(--pl-progress-h-hover); }
+.ctrl-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: rgba(255,255,255,0.92);
+    transition: width 0.1s linear;
+    position: relative;
+}
+.ctrl-progress-fill::after {
+    content: "";
+    position: absolute;
+    right: calc(var(--U) * -0.18);
+    top: 50%;
+    width: calc(var(--U) * 0.4);
+    height: calc(var(--U) * 0.4);
+    background: #fff;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.ctrl-progress:hover .ctrl-progress-fill::after { opacity: 1; }
+
+/* Barre noire */
+.ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: var(--pl-bar-gap);
+    padding: var(--pl-bar-pad-v) var(--pl-bar-pad-h);
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+/* Boutons */
+.ctrl-btn {
+    width: var(--pl-btn);
+    height: var(--pl-btn);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: calc(var(--U) * 0.15);
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.ctrl-btn:hover { background: rgba(255,255,255,0.14); }
+.ctrl-btn svg {
+    width: var(--pl-icon);
+    height: var(--pl-icon);
+    fill: rgba(255,255,255,0.92);
+    display: block;
+}
+
+/* Temps */
+.ctrl-time {
+    font-family: 'ElegantTypewriter', monospace;
+    font-size: var(--pl-fs-time);
+    letter-spacing: 0.05em;
+    color: rgba(255,255,255,0.78);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.ctrl-spacer { flex: 1; }
+
+/* Volume */
+.ctrl-volume {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--U) * 0.3);
+}
+.ctrl-volume-slider {
+    width: var(--pl-vol-w);
+    height: var(--pl-progress-h);
+    background: rgba(255,255,255,0.22);
+    border-radius: calc(var(--U) * 0.08);
+    cursor: pointer !important;
+    overflow: hidden;
+    transition: height 0.15s ease;
+}
+.ctrl-volume-slider:hover { height: var(--pl-progress-h-hover); }
+.ctrl-volume-fill {
+    height: 100%;
+    width: 100%;
+    background: rgba(255,255,255,0.88);
+}
+
+/* Légende */
+.slide-caption {
+    padding: 0.6em 0 0.3em;
+    text-align: center;
+    font-size: var(--fs-caption);
+    font-family: 'ElegantTypewriter', serif;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+}
+
+/* ── 8. État actif ─────────────────────────────────────────────────────────── */
+.slide.is-pinned { box-shadow: 0 25px 70px rgba(0,0,0,0.7); }
+.slide.is-zoomed { z-index: var(--z-slide-zoomed); }
+html body .slide.is-active,
+.slide.is-active {
+    /* position, left, top et transform sont pilotés exclusivement par JS inline-styles
+       pendant toute la séquence open/close — ne pas les écraser ici avec !important
+       au risque de provoquer un saut au moment où la classe est ajoutée/retirée.       */
+    z-index: var(--z-slide-zoomed);
+    cursor: default !important;
+    padding: var(--slide-pad-tb);        /* force le padding (reset * du projet) */
+}
+.slide.intro-hidden { opacity: 0; pointer-events: none; }
+
+/* ── 9. Backdrop / close-hint / close-btn ──────────────────────────────────── */
+#cartel-root .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-backdrop);
+    background: var(--color-backdrop);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+#cartel-root .backdrop.is-active { opacity: 1; pointer-events: auto; cursor: pointer; }
+#cartel-root .close-hint {
+    position: fixed;
+    bottom: calc(var(--U) * 2.5);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: var(--z-close-hint);
+    margin: 0;
+    color: var(--color-close-hint);
+    font-size: var(--fs-close-hint);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease 0.5s;
+}
+#cartel-root .backdrop.is-active ~ .close-hint { opacity: 0.65; }
+
+/* Bouton retour — cercle SVG animé cohérent avec le reste du projet */
+#cartel-root .close-btn {
+    position: fixed;
+    bottom: 32px;
+    left: 36px;
+    top: auto;
+    right: auto;
+    width: 48px;
+    height: 48px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer !important;
+    padding: 0;
+    z-index: var(--z-close-btn);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+        opacity    400ms ease,
+        visibility 400ms ease,
+        transform  200ms cubic-bezier(0.2, 0, 0.2, 1),
+        background 200ms ease,
+        box-shadow 200ms ease;
+}
+#cartel-root .close-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #fff;
+    stroke-width: 2;
+    stroke-linecap: round;
+    fill: none;
+    display: block;
+}
+#cartel-root .close-btn.is-active { opacity: 1; visibility: visible; }
+#cartel-root .close-btn:hover {
+    transform: scale(1.28);
+    background: rgba(255,255,255,0.18);
+    box-shadow: 0 0 24px rgba(255,255,255,0.55), 0 0 7px rgba(255,255,255,0.9);
+}
+#cartel-root .close-btn:active { transform: scale(0.95); }
+
+/* ── 10. Réduction de mouvement ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --dur-slide-pull:   0.08s;
+        --dur-slide-fly:    0.12s;
+        --dur-slide-dezoom: 0.08s;
+        --dur-slide-return: 0.08s;
+        --dur-rest:         0.1s;
+        --dur-intro-label:  0.01s;
+        --dur-intro-slide:  0.01s;
+    }
+    #cartel-root .strip { transform: none; }
+    .slide[data-dir="left"]:hover:not(.is-pinned):not(.is-active),
+    .slide[data-dir="right"]:hover:not(.is-pinned):not(.is-active) {
+        left:  calc(-1 * var(--slide-peek));
+        right: calc(-1 * var(--slide-peek));
+    }
+    .slide.is-active {
+        transform: translate(-50%, -50%) scale(var(--slide-active-scale)) !important;
+    }
+}
+
+/* ── 11. Mobile ────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    #cartel-root .close-btn {
+        width:  calc(var(--U) * 4.5);
+        height: calc(var(--U) * 4.5);
+    }
+}
+
+
+

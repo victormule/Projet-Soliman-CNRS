@@ -1,0 +1,499 @@
+/* =============================================================================
+   chp2-invibilisation.css — Styles de l'installation "Invibilisation"
+   ÉTAPE 2 : rescoping sous #invibilisation-root pour cohabiter avec le travelling.
+
+   Règles :
+   - Le reset `*` est supprimé (déjà appliqué globalement par chp2-openning.css).
+   - La règle `html, body` est supprimée et remplacée par des styles sur
+     #invibilisation-root lui-même (position fixed, plein écran, fond noir).
+   - Tous les sélecteurs IDs/classes du module sont préfixés par
+     `#invibilisation-root` pour augmenter leur spécificité et garantir
+     qu'ils ne touchent que le sous-arbre du module.
+   - #invibilisation-root est caché par défaut (display:none) ; la classe
+     `.is-open` (ajoutée par openInvibilisation() à l'étape 3) le révèle.
+
+   Conflits notables résolus :
+   - #scene existe à la fois dans le travelling et dans l'installation.
+     Le scope CSS sépare les deux. Le JS de l'étape 3 utilisera
+     querySelector scopé pour le résoudre côté script.
+============================================================================= */
+
+/* =============================================================================
+   RACINE DE L'OVERLAY
+   - Cachée par défaut (display:none) : zéro impact tant que pas ouvert.
+   - .is-open : plein écran, au-dessus du travelling.
+   - Reproduit les contraintes html/body de l'original (overflow:hidden, fond noir)
+     mais limitées au sous-arbre.
+============================================================================= */
+#invibilisation-root {
+  display: none;
+}
+
+#invibilisation-root.is-open {
+  display: block;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  z-index: 1000;
+  cursor: auto; /* annule le `cursor:none` global du travelling */
+}
+
+/* Toutes les règles ci-dessous présupposent que #invibilisation-root est dans le DOM */
+
+/* ─── sr-only (accessibilité) ─── */
+#invibilisation-root .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ─── Loader ─── */
+#invibilisation-root #loader {
+  position: absolute; /* fixed → absolute : reste plein écran dans le contexte du root fixed */
+  inset: 0;
+  z-index: 999;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#invibilisation-root #loader.out {
+  opacity: 0;
+  pointer-events: none;
+}
+#invibilisation-root #loader-track {
+  display: none; /* barre de chargement retirée : le voile noir suffit (allumage progressif via le fade-out du loader) */
+  width: 100px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+#invibilisation-root #loader-fill {
+  height: 100%;
+  width: 0;
+  background: rgba(255, 255, 255, 0.5);
+  transition: width 0.1s linear;
+}
+
+/* ─── Scène ─── */
+#invibilisation-root #scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  transform: translateZ(0);
+  contain: layout style;
+}
+
+#invibilisation-root .layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  backface-visibility: hidden;
+  pointer-events: none;
+  display: block;
+  transform: translateZ(0);
+}
+
+#invibilisation-root .globe-wrap {
+  position: absolute;
+  inset: 0;
+  transform: translate3d(0, 0, 0);
+  pointer-events: none;
+  contain: layout style;
+}
+#invibilisation-root .globe-wrap.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+#invibilisation-root #gw1 { z-index: 1; }
+#invibilisation-root #gw2 { z-index: 2; }
+#invibilisation-root #gw3 { z-index: 3; }
+#invibilisation-root #gw4 { z-index: 4; }
+
+#invibilisation-root .globe-scale {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(0);
+}
+#invibilisation-root .globe-play { opacity: 0; }
+
+#invibilisation-root #r1 { z-index: 5; }
+#invibilisation-root #r2 { z-index: 6; }
+#invibilisation-root #r3 { z-index: 7; }
+#invibilisation-root #r4 { z-index: 8; }
+
+#invibilisation-root #gf1 { z-index: 9;  }
+#invibilisation-root #gf2 { z-index: 10; }
+#invibilisation-root #gf3 { z-index: 11; }
+#invibilisation-root #gf4 { z-index: 12; }
+
+#invibilisation-root #sk {
+  z-index: 13;
+  pointer-events: none;
+}
+
+#invibilisation-root #gf1,
+#invibilisation-root #gf2,
+#invibilisation-root #gf3,
+#invibilisation-root #gf4 { opacity: 1; }
+
+/*
+  sk-play* : ils étaient en `position:fixed` dans l'original, ce qui les
+  ancrait sur le viewport. Comme #invibilisation-root est lui-même en
+  position:fixed quand ouvert, on peut conserver position:fixed sans
+  changement de comportement : le sous-arbre est un descendant direct
+  du viewport via le root fixed.
+*/
+#invibilisation-root #sk-play1,
+#invibilisation-root #sk-play2,
+#invibilisation-root #sk-play3,
+#invibilisation-root #sk-play4,
+#invibilisation-root #sk-play-final1,
+#invibilisation-root #sk-play-final2,
+#invibilisation-root #sk-play-final3,
+#invibilisation-root #sk-play-final4 {
+  position: fixed;
+  z-index: 14;
+  opacity: 0;
+  pointer-events: none;
+  display: block;
+  transform: translateZ(0);
+  transform-origin: 0 0;
+}
+
+/* ─── Bouton de fermeture ─── */
+#invibilisation-root #btn-close {
+  position: fixed;
+  top: 32px;
+  right: 36px;
+  z-index: 200;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 400ms ease,
+    transform 200ms cubic-bezier(0.2, 0, 0.2, 1),
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+#invibilisation-root #btn-close.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#invibilisation-root #btn-close:hover {
+  transform: scale(1.28);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 24px rgba(255, 255, 255, 0.55),
+    0 0  7px rgba(255, 255, 255, 0.9);
+}
+#invibilisation-root #btn-close svg {
+  width: 18px;
+  height: 18px;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* ─── Overlay vidéo ─── */
+#invibilisation-root #video-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+}
+#invibilisation-root #video-overlay.active { pointer-events: auto; }
+#invibilisation-root #video-overlay video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* === OVERLAY TEXTE (témoignage de l'œil 4) ===
+   Même z-index/comportement que #video-overlay : plein-écran noir,
+   masque entièrement la scène zoomée 120x. Affiche un témoignage
+   en italique Cormorant Garamond. */
+#invibilisation-root #text-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 6vw, 96px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 800ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+#invibilisation-root #text-overlay.active  { pointer-events: auto; }
+#invibilisation-root #text-overlay.visible { opacity: 1; }
+
+#invibilisation-root #text-overlay .text-content {
+  max-width: 1100px;
+  width: 100%;
+  text-align: center;
+  transform: translateY(20px);
+  transition: transform 1000ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+#invibilisation-root #text-overlay.visible .text-content {
+  transform: translateY(0);
+}
+
+#invibilisation-root #text-overlay .text-label {
+  display: block;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-size: clamp(11px, 1.05vw, 16px);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: clamp(20px, 3.2vh, 44px);
+}
+#invibilisation-root #text-overlay .text-quote {
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-size: clamp(22px, 2.8vw, 42px);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.55;
+  letter-spacing: 0.012em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+  text-wrap: balance;
+}
+
+/* ─── Sous-titres SRT ─── */
+#invibilisation-root #srt-subtitles {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  pointer-events: none;
+  text-align: center;
+  width: 92vw;
+  max-width: 1400px;
+  opacity: 0;
+  transition: opacity 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#invibilisation-root #srt-subtitles.visible { opacity: 1; }
+#invibilisation-root #srt-subtitles .srt-line {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.92);
+  color: #fff;
+  font-family: 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
+  font-size: clamp(22px, 4.5vw, 56px);
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  padding: 14px 32px;
+  margin: 4px 0;
+  border-radius: 2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  white-space: pre-wrap;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* === LÉGENDE / NAVBAR RÉTRACTABLE ===
+   #caption-wrap  position: fixed, top: 0 toujours.
+     Fermé  : translateY(-(menu-h + 2vh)) → seule la ligne dépasse à 2vh du bord
+     Ouvert : translateY(0)               → fond couvre depuis le bord supérieur
+
+     #caption     fond noir + texte
+     #caption-tab SVG : triangle noir (intérieur flèche) + ligne animée */
+
+#invibilisation-root #caption-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 51;
+  opacity: 0;
+  pointer-events: none;
+  --menu-h: 64px;
+  /* 2vh de marge inclus dans le translateY négatif */
+  transform: translateY(calc(-1 * var(--menu-h) + 1vh));
+  transition:
+    opacity   700ms ease,
+    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+#invibilisation-root #caption-wrap.visible  { opacity: 1; }
+#invibilisation-root #caption-wrap.ready    { pointer-events: auto; }
+#invibilisation-root #caption-wrap.expanded { transform: translateY(0); }
+
+/* ── Fond noir + texte ── */
+#invibilisation-root #caption {
+  /* min-height au lieu de height : le bloc grandit si le texte wrape
+     sur petit écran. Le JS mesure la hauteur réelle via
+     getBoundingClientRect() pour ajuster --menu-h correctement. */
+  min-height: var(--menu-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.92);
+  padding-top: clamp(12px, 2vh, 20px);
+  padding-bottom: clamp(12px, 2vh, 20px);
+}
+#invibilisation-root #caption p {
+  padding: 0 clamp(16px, 8%, 80px);
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-size: clamp(13px, 1.18vw, 19px);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0.025em;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+}
+
+/* ── SVG ligne + triangle ── */
+#invibilisation-root #caption-tab {
+  width: 100%;
+  display: block;
+  cursor: pointer;
+}
+#invibilisation-root #caption-tab svg {
+  width: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Triangle noir = intérieur de la flèche */
+#invibilisation-root #caption-tab .bg-path {
+  fill: rgba(0, 0, 0, 0.92);
+  stroke: none;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+#invibilisation-root #caption-tab .bg-path.shown { opacity: 1; }
+
+/* Ligne animée */
+#invibilisation-root #caption-tab .line-path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  stroke-dasharray:  var(--line-len, 9999);
+  stroke-dashoffset: var(--line-len, 9999);
+  transition: stroke 400ms ease, filter 400ms ease;
+}
+#invibilisation-root #caption-tab .line-path.drawn {
+  animation: inv-draw-line 1400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+/*
+  Keyframes préfixées en `inv-` pour éviter toute collision avec d'éventuelles
+  animations homonymes ailleurs dans le projet.
+*/
+@keyframes inv-draw-line {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Hover + ouvert : ligne lumineuse */
+#invibilisation-root #caption-wrap:hover    .line-path,
+#invibilisation-root #caption-wrap.expanded .line-path {
+  stroke: rgba(255, 255, 255, 0.88);
+  filter:
+    drop-shadow(0 0 5px  rgba(255, 255, 255, 0.55))
+    drop-shadow(0 0 18px rgba(255, 255, 255, 0.18));
+}
+
+/* Lueur bas du menu ouvert */
+#invibilisation-root #caption-wrap.expanded #caption {
+  box-shadow:
+    0 0 12px   rgba(255, 255, 255, 0.20),
+    0 6px 28px rgba(0, 0, 0, 0.55);
+}
+
+
+/* Masquage du loader quand l'installation est ouverte via la transition */
+#invibilisation-root.no-loader #loader {
+  display: none !important;
+}
+
+/* Optionnel : transition douce de l'opacité du root lui-même */
+#invibilisation-root {
+  transition: opacity 0.4s ease;
+}
+
+/* ─── Bouton retour (flèche) ─── */
+#invibilisation-root #btn-return {
+  position: fixed;
+  bottom: 32px;
+  left: 36px;
+  z-index: 200;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 400ms ease,
+    transform 200ms cubic-bezier(0.2, 0, 0.2, 1),
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+#invibilisation-root #btn-return.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#invibilisation-root #btn-return:hover {
+  transform: scale(1.28);
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 0 24px rgba(255, 255, 255, 0.55),
+    0 0  7px rgba(255, 255, 255, 0.9);
+}
+/* =============================================================================
+   Flèche de sortie pendant la lecture d'un média
+   ─────────────────────────────────────────────────────────────────────────────
+   Quand un média est ouvert (classe body.invibilisation-media posée par le
+   module pendant le zoom), la flèche de retour de la sous-partie disparaît, puis
+   réapparaît au retour sur l'échelle des yeux. On agit uniquement sur l'opacité
+   et les pointer-events : la flèche n'est PAS détruite/redessinée (son tracé SVG
+   et son handler de clic sont préservés → elle ne « casse » pas).
+============================================================================= */
+body.invibilisation-media #arrow-chp2-invibilisation {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 400ms ease;
+}

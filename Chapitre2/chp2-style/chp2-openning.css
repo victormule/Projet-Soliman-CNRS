@@ -1,0 +1,186 @@
+/* =============================================================================
+   chp2-openning.css — Styles du travelling panoramique
+   ADAPTÉ SPA : scopé sous #chapitre2-root pour isolation totale.
+   Les resets globaux (*, html, body) ont été supprimés.
+============================================================================= */
+
+/* ─── Conteneur racine ─── */
+#chapitre2-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  cursor: none;
+  font-family: 'Garamond', 'Georgia', serif;
+  /* Isolation : box-model propre sans affecter le reste */
+  box-sizing: border-box;
+}
+#chapitre2-root *, #chapitre2-root *::before, #chapitre2-root *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ─── Scène ─── */
+#chp2-scene {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#chp2-shake {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+/* ─── Image principale ─── */
+#chp2-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: auto;
+  display: block;
+  filter: sepia(0.08) contrast(1.05);
+  pointer-events: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+}
+
+/* ─── Overlays de crânes ─── */
+#chapitre2-root .chp2-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: auto;
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  will-change: transform, opacity;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  z-index: 3;
+}
+
+#chapitre2-root .chp2-overlay.visible { opacity: var(--chp2-ov-max, 1); }
+
+/* ─── Légende ─── */
+#chp2-legend {
+  position: fixed;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 520;
+  text-align: center;
+  pointer-events: none;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+}
+#chp2-legend .chp2-num {
+  display: block;
+  font-size: clamp(22px, 3vw, 32px);
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  opacity: 0;
+  transform: translateY(8px);
+}
+#chp2-legend .chp2-label {
+  display: block;
+  font-size: clamp(9px, 1.1vw, 11px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  opacity: 0;
+  transform: translateY(8px);
+}
+#chp2-legend.visible .chp2-num,
+#chp2-legend.visible .chp2-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Barre de progression ─── */
+#chp2-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  z-index: 510;
+}
+
+/* ─── Curseur custom ─── */
+#chp2-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.25s ease;
+}
+#chp2-cursor svg {
+  width: 40px;
+  height: 40px;
+}
+#chp2-cursor.visible   { opacity: 1; }
+#chp2-cursor.clickable { transform: translate(-50%, -50%) scale(1.4); }
+
+/* ─── Fondu de navigation ─── */
+#chp2-fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.4s ease-in;
+}
+#chp2-fade.out { opacity: 1; }
+
+/* ─── Masquage des éléments travelling quand le cartel est ouvert ─── */
+body.cartel-open #chp2-legend,
+body.cartel-open #chp2-bar {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* ─── Overlay SRT ─── */
+#srt-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  background: black;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  pointer-events: none;
+}
+#srt-transition-overlay .srt-line {
+  background: rgba(0, 0, 0, 0.92);
+  color: #fff;
+  font-family: 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
+  font-size: clamp(22px, 4.5vw, 56px);
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  padding: 14px 32px;
+  border-radius: 2px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  white-space: pre-wrap;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}

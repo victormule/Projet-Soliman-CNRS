@@ -1,0 +1,646 @@
+/* =============================================================
+   chp2-peine-demesuree.css
+   ---------------------------------------------------------------
+   Installation "Une peine démesurée" — overlay modulaire.
+
+   SCOPING : toutes les règles sont préfixées #peine-demesuree-root.
+   Aucune règle ne touche <html> ni <body>.
+
+   CHEMINS ASSETS (relatifs à index.html) :
+     chp2-fonts/...
+     chp2-images/peine-demesuree/fondjournal.png
+     chp2-images/peine-demesuree/TitreBg2.png
+   ============================================================= */
+
+/* -----------------------------------------------------------
+   @font-face — noms préfixés PD- pour éviter toute collision
+   ----------------------------------------------------------- */
+@font-face {
+    font-family: 'PD-ClarendonCondensed';
+    src: url('../chp2-fonts/ClarendonBT-BoldCondensed.otf') format('opentype');
+    font-weight: bold; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: 'PD-Clarendon';
+    src: url('../chp2-fonts/Clarendon-Regular.otf') format('opentype');
+    font-weight: bold; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: 'PD-TypewriterRegular';
+    src: url('../chp2-fonts/elegant-typewriter-regular.ttf') format('truetype');
+    font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+    font-family: 'PD-TypewriterBold';
+    src: url('../chp2-fonts/ELEGANT-TYPEWRITER-Bold.ttf') format('truetype');
+    font-weight: 700; font-style: normal; font-display: swap;
+}
+
+/* @keyframes nommés pd-* */
+@keyframes pd-drawLine {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
+}
+@keyframes pd-caretBlink {
+    0%,  49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+/* ===========================================================
+   ROOT
+   =========================================================== */
+#peine-demesuree-root {
+    display: none;
+    --pd-u: 1px;
+    --pd-legende-left:      -195;
+    --pd-legende-width:      170;
+    --pd-legende-pad-right:   12;
+    --pd-legende-font-size: 16.5;
+    --pd-legende-offset-y:     2;
+    --pd-titre-scale: 1;
+}
+#peine-demesuree-root.is-open {
+    display:        flex;
+    position:       fixed;
+    inset:          0;
+    z-index:        9000;
+    width:          100vw;
+    height:         100vh;
+    overflow-x:     hidden;
+    overflow-y:     auto;
+    background-color: #000;
+    justify-content: center;
+    align-items:    flex-start;
+    padding:        20px;
+    font-family:    'Old Standard TT', serif;
+    -webkit-font-smoothing:  antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+#peine-demesuree-root.is-open::-webkit-scrollbar { display: none; }
+
+/* Reset scopé */
+#peine-demesuree-root *,
+#peine-demesuree-root *::before,
+#peine-demesuree-root *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ===========================================================
+   CONTENEURS
+   =========================================================== */
+#peine-demesuree-root .viewport {
+    width: 85%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    position: relative;
+}
+#peine-demesuree-root .wrap {
+    width: calc(1300 * var(--pd-u));
+    background-image: url('../chp2-images/fondjournal.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: #e2e0d6;
+    border: calc(1.5 * var(--pd-u)) solid #222;
+    padding: calc(6 * var(--pd-u)) calc(8 * var(--pd-u)) 0;
+    flex-shrink: 0;
+    margin-bottom: calc(20 * var(--pd-u));
+    opacity: 0;
+    transition: opacity 1.8s ease;
+}
+#peine-demesuree-root .wrap.is-visible { opacity: 1; }
+
+/* ===========================================================
+   CINÉMATIQUE — états initiaux
+   =========================================================== */
+#peine-demesuree-root .titre-bloc,
+#peine-demesuree-root .meta-row,
+#peine-demesuree-root .grille,
+#peine-demesuree-root .article-main { opacity: 0; }
+
+#peine-demesuree-root #pd-veil {
+    position: absolute; inset: 0;
+    background: #000;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 2s ease;
+}
+#peine-demesuree-root #pd-veil.lifted { opacity: 0; }
+
+#peine-demesuree-root .svg-filters {
+    position: absolute; width: 0; height: 0; overflow: hidden;
+}
+
+/* ===========================================================
+   GRAND TITRE
+   =========================================================== */
+#peine-demesuree-root .titre-bloc { text-align: center; padding-bottom: 0; }
+#peine-demesuree-root .grand-titre {
+    font-family: 'PD-ClarendonCondensed', serif;
+    font-size: calc(245 * var(--pd-u) * var(--pd-titre-scale, 1));
+    line-height: 0;
+    letter-spacing: calc(3 * var(--pd-u));
+    display: block;
+    transform: scaleY(0.70);
+    transform-origin: center;
+    overflow: visible;
+    white-space: nowrap;
+    margin-bottom: calc(-40 * var(--pd-u));
+}
+#peine-demesuree-root .grand-titre .lettre {
+    display: inline-block;
+    line-height: 1;
+    vertical-align: bottom;
+    opacity: 0;
+    color: #111;
+    -webkit-text-fill-color: transparent;
+    background-image: url('../chp2-images/TitreBg2.webp');
+    background-size: 300% 200%;
+    background-repeat: no-repeat;
+    background-position: center center;
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: url(#pd-rough) blur(calc(0.06 * var(--pd-u)));
+    transform: translateY(calc(1 * var(--pd-u)));
+    transition: opacity 1.4s ease, filter 1.8s ease, transform 2.8s ease;
+}
+#peine-demesuree-root .grand-titre .lettre.is-printed {
+    opacity: 1;
+    filter: url(#pd-rough);
+    transform: translateY(0);
+}
+
+/* ===========================================================
+   META ROW
+   =========================================================== */
+#peine-demesuree-root .meta-row {
+    border-top:    calc(1.5 * var(--pd-u)) solid #bebebe;
+    border-bottom: calc(1.5 * var(--pd-u)) solid #cacaca;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: calc(3 * var(--pd-u)) calc(6 * var(--pd-u));
+    margin-top: calc(2 * var(--pd-u));
+}
+#peine-demesuree-root .meta-gauche {
+    font-size: calc(12.5 * var(--pd-u)); font-weight: 700;
+    white-space: nowrap; opacity: 0; transition: opacity 0.6s ease;
+}
+#peine-demesuree-root .meta-centre {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: calc(19 * var(--pd-u)); font-weight: 700;
+    letter-spacing: calc(5 * var(--pd-u));
+    text-align: center; padding: 0 calc(15 * var(--pd-u));
+    white-space: nowrap; opacity: 0; transition: opacity 0.6s ease;
+}
+#peine-demesuree-root .meta-droite {
+    font-size: calc(12.5 * var(--pd-u)); font-weight: 700;
+    text-align: right; white-space: nowrap; opacity: 0; transition: opacity 0.6s ease;
+}
+#peine-demesuree-root .meta-gauche.is-visible,
+#peine-demesuree-root .meta-centre.is-visible,
+#peine-demesuree-root .meta-droite.is-visible { opacity: 1; }
+
+/* ===========================================================
+   GRILLE
+   =========================================================== */
+#peine-demesuree-root .grille {
+    display: grid;
+    grid-template-columns:
+        calc(78  * var(--pd-u))
+        calc(295 * var(--pd-u))
+        1fr
+        calc(295 * var(--pd-u))
+        calc(78  * var(--pd-u));
+    border-top: calc(2.2 * var(--pd-u)) solid #111;
+    min-height: calc(84 * var(--pd-u));
+}
+#peine-demesuree-root .grille > .col {
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: calc(3 * var(--pd-u)) calc(8 * var(--pd-u));
+    border-right: calc(1 * var(--pd-u)) solid #333;
+    opacity: 0; transform: translateY(12px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+#peine-demesuree-root .grille > .col:last-child { border-right: none; }
+#peine-demesuree-root .grille > .col.is-visible { opacity: 1; transform: translateY(0); }
+
+#peine-demesuree-root .col-prix {
+    text-align: center; gap: 0;
+    justify-content: space-between !important;
+    padding: calc(3 * var(--pd-u)) calc(4 * var(--pd-u)) !important;
+}
+#peine-demesuree-root .prix-haut {
+    display: flex; align-items: flex-start; justify-content: center;
+    transform: scaleY(0.88); transform-origin: center; line-height: 1;
+}
+#peine-demesuree-root .chiffre-5 {
+    font-size: calc(70 * var(--pd-u)); font-weight: 700;
+    line-height: 0.9; font-family: 'Old Standard TT', serif;
+}
+#peine-demesuree-root .lettre-c {
+    font-size: calc(14 * var(--pd-u)); font-weight: 700;
+    margin-top: calc(7 * var(--pd-u)); margin-left: calc(1 * var(--pd-u)); line-height: 1;
+}
+#peine-demesuree-root .prix-bas {
+    font-size: calc(8 * var(--pd-u)); font-weight: 700;
+    text-transform: uppercase; letter-spacing: calc(0.8 * var(--pd-u)); line-height: 1;
+}
+#peine-demesuree-root .col-redac {
+    align-items: center !important; text-align: center;
+    gap: calc(1.5 * var(--pd-u)); font-size: calc(9 * var(--pd-u)); justify-content: center;
+}
+#peine-demesuree-root .redac-titre {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: calc(11 * var(--pd-u)); font-weight: 700; line-height: 0.95;
+    letter-spacing: calc(0.6 * var(--pd-u)); margin-bottom: calc(1 * var(--pd-u));
+    text-transform: uppercase; transform: scaleY(0.9); transform-origin: center;
+}
+#peine-demesuree-root .redac-adresse { font-size: calc(9.5 * var(--pd-u)); font-weight: 700; line-height: 1; }
+#peine-demesuree-root .redac-disclaimer { font-style: italic; font-size: calc(8 * var(--pd-u)); line-height: 1.1; margin: calc(1 * var(--pd-u)) 0; }
+#peine-demesuree-root .redac-tel { font-size: calc(9 * var(--pd-u)); font-weight: 700; line-height: 1; }
+#peine-demesuree-root .col-directeur { text-align: center; gap: calc(2 * var(--pd-u)); justify-content: center; }
+#peine-demesuree-root .dir-label {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: calc(15 * var(--pd-u)); line-height: 0.95;
+    transform: scaleY(0.9); transform-origin: center;
+}
+#peine-demesuree-root .dir-nom {
+    font-family: 'PD-Clarendon', serif;
+    font-size: calc(34 * var(--pd-u)); letter-spacing: calc(4.5 * var(--pd-u));
+    display: inline-block; transform: scaleX(1.35) scaleY(0.88);
+    transform-origin: center; line-height: 0.95; white-space: nowrap;
+}
+#peine-demesuree-root .col-abos {
+    align-items: flex-start !important; justify-content: center !important;
+    padding: calc(3 * var(--pd-u)) calc(8 * var(--pd-u)) !important;
+    font-size: calc(8 * var(--pd-u));
+}
+#peine-demesuree-root .abos-entete {
+    display: grid;
+    grid-template-columns: 1fr calc(65 * var(--pd-u)) calc(52 * var(--pd-u));
+    width: 100%; font-weight: 700; font-size: calc(8.5 * var(--pd-u));
+    border-bottom: calc(1 * var(--pd-u)) solid #333;
+    padding-bottom: calc(1 * var(--pd-u)); margin-bottom: calc(2 * var(--pd-u)); line-height: 1;
+}
+#peine-demesuree-root .abos-entete .col-paris,
+#peine-demesuree-root .abos-entete .col-etr { text-align: right; }
+#peine-demesuree-root .abos-ligne {
+    display: grid;
+    grid-template-columns: 1fr calc(65 * var(--pd-u)) calc(52 * var(--pd-u));
+    width: 100%; align-items: baseline; margin-bottom: 0; line-height: 0.95;
+}
+#peine-demesuree-root .abos-nom { font-size: calc(8 * var(--pd-u)); display: flex; align-items: baseline; overflow: hidden; line-height: 0.95; }
+#peine-demesuree-root .abos-mot { flex-shrink: 0; }
+#peine-demesuree-root .abos-points { flex: 1; overflow: hidden; font-size: calc(8 * var(--pd-u)); letter-spacing: calc(0.8 * var(--pd-u)); white-space: nowrap; line-height: 0.95; }
+#peine-demesuree-root .px-paris,
+#peine-demesuree-root .px-etr { font-size: calc(8 * var(--pd-u)); text-align: right; line-height: 0.95; }
+#peine-demesuree-root .abos-pied { font-style: italic; font-size: calc(6.8 * var(--pd-u)); margin-top: calc(2 * var(--pd-u)); line-height: 1.05; transform: scaleY(0.95); transform-origin: top left; width: 100%; }
+
+/* ===========================================================
+   ARTICLE PRINCIPAL
+   =========================================================== */
+#peine-demesuree-root .article-main {
+    width: 100%;
+    border-top: calc(1.5 * var(--pd-u)) solid #222;
+    padding: calc(18 * var(--pd-u)) calc(34 * var(--pd-u)) calc(20 * var(--pd-u));
+    opacity: 0; transform: translateY(16px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+}
+#peine-demesuree-root .article-main.is-visible { opacity: 1; transform: translateY(0); }
+#peine-demesuree-root .article-inner { width: 100%; max-width: calc(750 * var(--pd-u)); margin: 0 auto; }
+#peine-demesuree-root .article-title {
+    font-family: 'PD-TypewriterBold', serif;
+    font-size: calc(40 * var(--pd-u)); line-height: 1;
+    letter-spacing: 0; margin-bottom: calc(16 * var(--pd-u));
+    color: #111; text-align: left;
+}
+
+#peine-demesuree-root .article-column {
+    --article-side-pad: calc(24 * var(--pd-u));
+    position: relative; overflow: visible;
+    padding-left: var(--article-side-pad); padding-right: var(--article-side-pad);
+    margin-bottom: calc(24 * var(--pd-u));
+}
+#peine-demesuree-root .article-column::before,
+#peine-demesuree-root .article-column::after {
+    content: ""; position: absolute; top: 0; bottom: 0;
+    width: calc(1.5 * var(--pd-u)); background: #111;
+    opacity: 0.95; transition: opacity 0.15s ease;
+}
+#peine-demesuree-root .article-column::before { left: 0; }
+#peine-demesuree-root .article-column::after  { right: 0; }
+#peine-demesuree-root .article-column.is-transitioning::before,
+#peine-demesuree-root .article-column.is-transitioning::after { opacity: 0; }
+#peine-demesuree-root .article-column.is-transitioning { pointer-events: none; }
+
+#peine-demesuree-root .article-stage {
+    position: relative;
+    width: calc(100% + (2 * var(--article-side-pad)));
+    margin-left: calc(-1 * var(--article-side-pad));
+    min-height: calc(420 * var(--pd-u)); overflow: hidden;
+}
+#peine-demesuree-root .article-text-layer {
+    padding-left: var(--article-side-pad); padding-right: var(--article-side-pad);
+}
+#peine-demesuree-root .article-video-layer {
+    position: absolute; inset: 0;
+    display: flex; align-items: stretch; justify-content: center;
+    opacity: 0; pointer-events: none;
+}
+#peine-demesuree-root .article-column.is-video-open .article-text-layer { opacity: 0; pointer-events: none; }
+#peine-demesuree-root .article-column.is-video-open .article-video-layer { opacity: 1; pointer-events: auto; }
+
+#peine-demesuree-root .article-body-wrap { position: relative; width: 100%; }
+#peine-demesuree-root .article-body {
+    font-family: 'PD-TypewriterRegular', serif;
+    font-size: calc(20 * var(--pd-u)); line-height: 1.45; color: #111;
+    text-align: justify; text-justify: inter-word; text-align-last: left;
+    hyphens: none; -webkit-hyphens: none;
+    word-break: normal; overflow-wrap: normal; white-space: normal;
+}
+#peine-demesuree-root .article-body p { margin-bottom: calc(14 * var(--pd-u)); }
+#peine-demesuree-root .article-body p:last-child { margin-bottom: 0; }
+#peine-demesuree-root .article-body-reserve { visibility: hidden; pointer-events: none; user-select: none; }
+#peine-demesuree-root .article-body-typing { position: absolute; inset: 0; }
+
+#peine-demesuree-root .article-footer-meta {
+    border-top: calc(1 * var(--pd-u)) solid rgba(34,34,34,0.65);
+    padding-top: calc(6 * var(--pd-u)); margin-top: calc(8 * var(--pd-u));
+    display: flex; justify-content: space-between; align-items: center;
+    gap: calc(20 * var(--pd-u)); font-size: calc(11 * var(--pd-u));
+    font-weight: 700; color: #111; white-space: nowrap;
+}
+#peine-demesuree-root .article-footer-left  { text-align: left; }
+#peine-demesuree-root .article-footer-right { text-align: right; margin-left: auto; }
+
+/* ===========================================================
+   MOTS CLIQUABLES
+   =========================================================== */
+#peine-demesuree-root .mot-clef {
+    cursor: pointer;
+    border-bottom: calc(1 * var(--pd-u)) solid rgba(119,89,44,0.45);
+    color: #533d16; font-style: italic; font-weight: 700;
+    transition: border-color 0.2s ease, color 0.2s ease; position: relative;
+}
+#peine-demesuree-root .mot-clef:hover { border-bottom-color: #140f05; color: #1a0e00; }
+
+/* ===========================================================
+   LÉGENDE MARGE GAUCHE
+   =========================================================== */
+#peine-demesuree-root #marge-titre {
+    position: absolute;
+    left:  calc(var(--pd-legende-left)  * var(--pd-u));
+    top: 0;
+    width: calc(var(--pd-legende-width) * var(--pd-u));
+    text-align: right;
+    font-family: 'PD-TypewriterRegular', serif;
+    font-size: calc(var(--pd-legende-font-size) * var(--pd-u));
+    font-style: italic; color: #5a3e1b; line-height: 1.35;
+    pointer-events: none; opacity: 0; z-index: 5;
+    transition: opacity 0.25s ease;
+    padding-right: calc(var(--pd-legende-pad-right) * var(--pd-u));
+    border-right: calc(1 * var(--pd-u)) solid rgba(90,62,27,0.35);
+}
+#peine-demesuree-root #marge-titre .legende-categorie { display: block; font-weight: 700; font-style: italic; letter-spacing: 0.02em; margin-bottom: 2px; }
+#peine-demesuree-root #marge-titre .legende-citation  { display: block; font-weight: 400; font-style: italic; opacity: 0.75; font-size: 0.92em; }
+#peine-demesuree-root #marge-titre.visible { opacity: 1; }
+#peine-demesuree-root #marge-titre.hiding  { opacity: 0; transition: opacity 0.3s ease; }
+
+/* ===========================================================
+   BORDURE ANIMÉE / CARET
+   =========================================================== */
+#peine-demesuree-root .draw-border-top { position: relative; }
+#peine-demesuree-root .draw-border-top::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 100%; height: calc(2.2 * var(--pd-u));
+    background: #111; transform-origin: left center; transform: scaleX(0);
+}
+#peine-demesuree-root .draw-border-top.animate-border::before {
+    animation: pd-drawLine 1s cubic-bezier(0.77,0,0.18,1) forwards;
+}
+#peine-demesuree-root .typing-caret {
+    display: inline-block; width: calc(10 * var(--pd-u));
+    animation: pd-caretBlink 0.9s steps(1) infinite;
+}
+
+/* ===========================================================
+   RIDEAU TEXTE ↔ MÉDIA
+   =========================================================== */
+#peine-demesuree-root .video-close {
+    position: absolute; top: calc(-30 * var(--pd-u)); right: 0;
+    display: none; align-items: center; justify-content: center;
+    gap: calc(7 * var(--pd-u)); padding: calc(5 * var(--pd-u)) calc(14 * var(--pd-u));
+    border: calc(0.7 * var(--pd-u)) solid #222; border-radius: 0 !important;
+    background: transparent; color: #111; font-family: 'Old Standard TT', serif;
+    font-size: calc(11 * var(--pd-u)); font-weight: 700;
+    letter-spacing: calc(2.5 * var(--pd-u)); text-transform: uppercase;
+    cursor: pointer; z-index: 20; box-shadow: none; outline: none;
+    appearance: none; -webkit-appearance: none;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+#peine-demesuree-root .article-column.is-video-ui-visible .video-close { display: flex; }
+#peine-demesuree-root .video-close:focus,
+#peine-demesuree-root .video-close:focus-visible,
+#peine-demesuree-root .video-close:active { outline: none; box-shadow: none; border-radius: 0 !important; }
+#peine-demesuree-root .video-close::-moz-focus-inner { border: 0; padding: 0; }
+#peine-demesuree-root .video-close::before,
+#peine-demesuree-root .video-close::after {
+    content: ""; display: block;
+    width: calc(10 * var(--pd-u)); height: calc(1 * var(--pd-u));
+    background: currentColor; flex-shrink: 0;
+}
+#peine-demesuree-root .video-close:hover { background: #111; color: #e8e5da; border-color: #111; }
+
+/* Rideaux */
+#peine-demesuree-root .curtain {
+    position: absolute; top: 0; bottom: 0; width: 50%;
+    z-index: 3; pointer-events: none; overflow: hidden;
+    will-change: clip-path;
+    transition: clip-path 0.55s cubic-bezier(0.77,0,0.18,1);
+}
+#peine-demesuree-root .curtain::before {
+    content: ""; position: absolute;
+    width:  var(--paper-box-width,  100%); height: var(--paper-box-height, 100%);
+    left:   var(--paper-offset-left, 0px); top:    var(--paper-offset-top,  0px);
+    background-image:    var(--paper-bg-image,    url('../chp2-images/fondjournal.webp'));
+    background-repeat:   var(--paper-bg-repeat,   no-repeat);
+    background-size:     var(--paper-bg-size,      cover);
+    background-position: var(--paper-bg-position,  center center);
+}
+#peine-demesuree-root .curtain::after { content: none; }
+#peine-demesuree-root .curtain--left  { left:  0; clip-path: inset(0 100% 0 0); }
+#peine-demesuree-root .curtain--right { right: 0; clip-path: inset(0 0 0 100%); }
+#peine-demesuree-root .article-column.is-curtains-closed .curtain--left,
+#peine-demesuree-root .article-column.is-curtains-closed .curtain--right { clip-path: inset(0 0 0 0); }
+
+#peine-demesuree-root .curtain-line {
+    position: absolute; top: 0; bottom: 0; width: calc(4 * var(--pd-u));
+    background: #0a0a0a; z-index: 4; pointer-events: none;
+    transition: left 0.55s cubic-bezier(0.77,0,0.18,1), right 0.55s cubic-bezier(0.77,0,0.18,1), opacity 0.15s ease;
+}
+#peine-demesuree-root .curtain-line--left  { left:  0%; transform: translateX(-100%); box-shadow:  2px 0 8px rgba(0,0,0,0.2); }
+#peine-demesuree-root .curtain-line--right { right: 0%; transform: translateX( 100%); box-shadow: -2px 0 8px rgba(0,0,0,0.2); }
+#peine-demesuree-root .article-column.is-curtains-closed .curtain-line--left  { left:  50%; transform: translateX(-100%); }
+#peine-demesuree-root .article-column.is-curtains-closed .curtain-line--right { right: 50%; transform: translateX( 100%); }
+
+/* ===========================================================
+   VIDÉO / AUDIO
+   =========================================================== */
+#peine-demesuree-root .video-panel {
+    position: relative; width: 100%; min-height: 100%; background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(48 * var(--pd-u)) calc(28 * var(--pd-u)) calc(28 * var(--pd-u));
+}
+#peine-demesuree-root .video-panel video {
+    display: block; width: auto; height: auto;
+    max-width: calc(100% - calc(8 * var(--pd-u))); max-height: 62vh;
+    aspect-ratio: 4 / 3; background: #000;
+}
+#peine-demesuree-root .audio-stage {
+    width: calc(420 * var(--pd-u)); text-align: center;
+    font-family: 'PD-TypewriterRegular', serif; color: #111;
+}
+#peine-demesuree-root .audio-toggle {
+    border: calc(1 * var(--pd-u)) solid #111; background: transparent;
+    padding: calc(6 * var(--pd-u)) calc(18 * var(--pd-u));
+    font-size: calc(11 * var(--pd-u)); cursor: pointer;
+    margin-bottom: calc(14 * var(--pd-u));
+}
+#peine-demesuree-root .audio-progress {
+    width: 100%; height: calc(12 * var(--pd-u));
+    background: rgba(0,0,0,0.15); position: relative;
+    cursor: pointer; touch-action: none;
+}
+#peine-demesuree-root .audio-bar { height: 100%; width: 0%; background: #111; pointer-events: none; }
+#peine-demesuree-root .audio-subtitles {
+    margin-top: calc(18 * var(--pd-u)); font-size: calc(16 * var(--pd-u));
+    line-height: 1.5; font-style: italic; color: #111; opacity: 0;
+    min-height: calc(52 * var(--pd-u)); max-width: calc(520 * var(--pd-u));
+    margin-left: auto; margin-right: auto;
+    transform: translateY(calc(6 * var(--pd-u)));
+    transition: opacity 0.45s ease, transform 0.45s ease;
+}
+#peine-demesuree-root .audio-subtitles.is-visible { opacity: 0.92; transform: translateY(0); }
+
+/* ===========================================================
+   LÉGENDE MARGE DROITE
+   =========================================================== */
+#peine-demesuree-root #marge-droite {
+    position: absolute; top: calc(10 * var(--pd-u)); left: 100%;
+    margin-left: calc(14 * var(--pd-u)); width: calc(185 * var(--pd-u));
+    font-family: 'PD-TypewriterRegular', serif; font-size: calc(14 * var(--pd-u));
+    line-height: 1.35; color: #5a3e1b; text-align: left;
+    padding-left: calc(12 * var(--pd-u));
+    border-left: calc(1 * var(--pd-u)) solid rgba(90,62,27,0);
+    pointer-events: none; z-index: 6; overflow: hidden;
+    transition: border-left-color 0.45s ease;
+}
+#peine-demesuree-root #marge-droite.line-visible { border-left-color: rgba(90,62,27,0.35); }
+#peine-demesuree-root #marge-droite.visible      { border-left-color: rgba(90,62,27,0.35); }
+#peine-demesuree-root #marge-droite.hiding       { border-left-color: rgba(90,62,27,0.35); transition: border-left-color 0.3s ease; }
+#peine-demesuree-root #marge-droite.hidden       { border-left-color: rgba(90,62,27,0);    transition: border-left-color 0.5s ease 0.15s; }
+
+#peine-demesuree-root #marge-droite > * {
+    opacity: 0; transform: translateX(18px);
+    transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94);
+}
+#peine-demesuree-root #marge-droite.animating > *:nth-child(1) { transition-delay:0.00s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.animating > *:nth-child(2) { transition-delay:0.06s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.animating > *:nth-child(3) { transition-delay:0.12s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.animating > *:nth-child(4) { transition-delay:0.18s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.animating > *:nth-child(5) { transition-delay:0.24s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.animating > *:nth-child(6) { transition-delay:0.30s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.animating > *:nth-child(7) { transition-delay:0.36s; opacity:1; transform:translateX(0); }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(1) { opacity:0; transform:translateX(12px); transition:opacity .15s ease        ,transform .15s ease;        }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(2) { opacity:0; transform:translateX(12px); transition:opacity .15s ease .03s   ,transform .15s ease .03s;   }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(3) { opacity:0; transform:translateX(12px); transition:opacity .15s ease .06s   ,transform .15s ease .06s;   }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(4) { opacity:0; transform:translateX(12px); transition:opacity .15s ease .09s   ,transform .15s ease .09s;   }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(5) { opacity:0; transform:translateX(12px); transition:opacity .15s ease .12s   ,transform .15s ease .12s;   }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(6) { opacity:0; transform:translateX(12px); transition:opacity .15s ease .15s   ,transform .15s ease .15s;   }
+#peine-demesuree-root #marge-droite.hiding > *:nth-child(7) { opacity:0; transform:translateX(12px); transition:opacity .15s ease .18s   ,transform .15s ease .18s;   }
+
+#peine-demesuree-root .legende-droite-nom {
+    display:block; font-family:'PD-TypewriterBold',serif;
+    font-size:calc(15.5*var(--pd-u)); font-weight:700; letter-spacing:0.04em;
+    color:#3d2a0e; line-height:1.2; margin-bottom:calc(4*var(--pd-u));
+}
+#peine-demesuree-root .legende-droite-filet {
+    display:block; height:calc(0.8*var(--pd-u)); background:rgba(90,62,27,0.25);
+    margin-bottom:calc(6*var(--pd-u)); width:calc(28*var(--pd-u));
+}
+#peine-demesuree-root .legende-droite-corps {
+    display:block; font-family:'PD-TypewriterRegular',serif;
+    font-size:calc(12.5*var(--pd-u)); font-style:italic; color:#5a3e1b;
+    line-height:1.45; opacity:0.88; margin-bottom:calc(8*var(--pd-u));
+}
+#peine-demesuree-root .legende-droite-projet {
+    display:block; font-family:'Old Standard TT',serif;
+    font-size:calc(11.5*var(--pd-u)); font-style:italic; font-weight:700;
+    color:#4a3210; line-height:1.35; margin-bottom:calc(4*var(--pd-u)); opacity:0.9;
+}
+#peine-demesuree-root .legende-droite-citation {
+    display:block; font-family:'Old Standard TT',serif;
+    font-size:calc(12*var(--pd-u)); font-style:italic; color:#3d2a0e;
+    line-height:1.3; margin-bottom:calc(8*var(--pd-u)); letter-spacing:0.01em;
+}
+#peine-demesuree-root .legende-droite-copyright {
+    display:block; font-family:'Roboto Condensed',sans-serif;
+    font-size:calc(10*var(--pd-u)); font-weight:700; letter-spacing:0.08em;
+    text-transform:uppercase; color:#7a5c2e; opacity:0.65; line-height:1.4;
+}
+
+/* ===========================================================
+   BOUTON RETOUR (flèche bas-gauche) — même style qu'invibilisation
+   =========================================================== */
+#pd-close-btn {
+    position: fixed;
+    bottom: 32px;
+    left: 36px;
+    top: auto;
+    right: auto;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition:
+        opacity 400ms ease,
+        transform 200ms cubic-bezier(0.2, 0, 0.2, 1),
+        background 200ms ease,
+        box-shadow 200ms ease;
+}
+#peine-demesuree-root.is-open #pd-close-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+#pd-close-btn:hover {
+    transform: scale(1.28);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow:
+        0 0 24px rgba(255, 255, 255, 0.55),
+        0 0  7px rgba(255, 255, 255, 0.9);
+}
+#pd-close-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #fff;
+    stroke-width: 2;
+    stroke-linecap: round;
+    fill: none;
+    display: block;
+}
