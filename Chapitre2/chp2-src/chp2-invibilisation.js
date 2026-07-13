@@ -1351,7 +1351,12 @@ on(document, 'pointerdown', _onPointerPos, { passive: true });
 
 // Fin de contact tactile ou sortie de page : les yeux se rendorment.
 // (pointerup/cancel pour le tactile ; pointerleave sur document pour la souris.)
-function _onPointerAway() {
+function _onPointerAway(e) {
+  // À la souris, pointerup précède immédiatement 'click' : endormir l'œil ici
+  // le sortirait de l'état 'play' et _canZoomOnClick ignorerait le clic
+  // (médias/texte impossibles à ouvrir). On ne traite donc pointerup/cancel
+  // que pour le tactile ; la souris ne « sort » que via pointerleave.
+  if (e && e.pointerType === 'mouse' && e.type !== 'pointerleave') return;
   mouseOnPage = false;
   mouseDirty  = true;
   if (zoomed) return;
