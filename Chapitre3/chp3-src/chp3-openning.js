@@ -12,6 +12,7 @@
 import { CONFIG } from './chp3-config.js';
 import { $, clamp, smooth, easeInOutQuad, easeInOutSine, easeOutCubic,
          damp, setResponsiveSrc } from './chp3-utils.js';
+import { startGrain } from './chp3-grain.js';
 
 /* ── Pont scène : injecté par Chapitre3Scene (src/scenes/Chapitre3Scene.js) ──
    PATTERN FACTORY (Phase 2) : aucun effet de bord au chargement du module.
@@ -118,7 +119,7 @@ function boot() {
         /* ── Pont scène (SPA) : état & helpers d'intégration ─────────────── */
         let _active = true;                 // vrai tant que le module est monté
         let _wantLaunch = false, _launched = false, _navigating = false;
-        let _loopRaf = null, _grainTimer = null;
+        let _loopRaf = null, _grain = null;
         let _arrowShow = null, _arrowHide = null, _audioMgr = null, _doLaunch = null;
         const _tracked = [];
         const _on = (t, ev, fn, opts) => { t.addEventListener(ev, fn, opts); _tracked.push([t, ev, fn, opts]); };
@@ -2447,7 +2448,7 @@ function boot() {
         // init() n'est plus qu'un SETUP : il ne lance plus l'intro tout seul.
         _doLaunch = () => { if (_launched) return; _launched = true; iqShow(); };
 
-        if (CONFIG.grain && !reduceMotion) initGrain(); else $('chp3-grain').style.display = 'none';
+        if (CONFIG.grain && !reduceMotion) _grain = startGrain(() => _active); else $('chp3-grain').style.display = 'none';
 
         // ===============================================================
         //  SON AMBIANT — paramètres dans CONFIG.ambiance (ci-dessus)
@@ -2777,21 +2778,7 @@ function boot() {
             dctx.globalCompositeOperation = 'source-over';
         }
 
-        // ── GRAIN ARGENTIQUE (optionnel) ──────────────────────────────
-        function initGrain() {
-            const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>
-                <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/>
-                <feColorMatrix type='saturate' values='0'/></filter>
-                <rect width='100%' height='100%' filter='url(#n)' opacity='0.5'/></svg>`;
-            const g = $('chp3-grain');
-            g.style.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
-            g.style.backgroundSize  = '160px 160px';
-            (function jit() {
-                if (!_active) return;
-                g.style.backgroundPosition = `${(Math.random()*20)|0}px ${(Math.random()*20)|0}px`;
-                _grainTimer = setTimeout(jit, 90);   // ~11 fps
-            })();
-        }
+        // ── GRAIN ARGENTIQUE : extrait dans chp3-grain.js (startGrain) ──
 
         /* ── Sortie cinématographique → Espace collaboratif ─────────────────
            Masque la flèche, coupe l'audio du chapitre, fond au noir via
@@ -2815,7 +2802,7 @@ function boot() {
             stop: () => {
                 _active = false;
                 try { if (_loopRaf) cancelAnimationFrame(_loopRaf); } catch (_) {}
-                try { if (_grainTimer) clearTimeout(_grainTimer); } catch (_) {}
+                try { if (_grain) _grain.stop(); } catch (_) {}
                 try { if (typeof ambRamp !== 'undefined' && ambRamp) cancelAnimationFrame(ambRamp); } catch (_) {}
                 try { if (ambAudio) { ambAudio.ontimeupdate = null; ambAudio.pause(); } } catch (_) {}
                 try { if (typeof themeAudio !== 'undefined' && themeAudio) themeAudio.pause(); } catch (_) {}
