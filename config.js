@@ -236,54 +236,6 @@ window.CONFIG = {
   },
 
 
-/* ══════════════════════════════════════════════════════════════════
-   CHAPITRE 1
-   ══════════════════════════════════════════════════════════════════ */
-
-  CHAPITRE1: {
-    subtitle: 'Les interprétations du geste de Soliman al-Halabi',
-    debug:    false,
-
-    /* ── Chapter1LightSystem — lumière fixe centrée ──────────────
-    ──────────────────────────────────────────────────────────── */
-    light: {
-      // Phase intro (chapitre1.webp) : lumière large et douce
-      intro_frac:       1.2,   // Fraction min(W,H) — rayon initial
-      intro_duration:   6200,   // Durée allumage depuis 0 (ms)
-
-      // Phase interactive (chapitre1base.webp + hotspots)
-      interactive_frac: 1.5,   // Fraction min(W,H) — rayon interactif
-      trans_duration:   2000,   // Durée transition intro → interactif (ms)
-
-      // Pendant lecture media : lumière réduite
-      media_frac:       0.42,   // Fraction réduite pendant le player
-      media_duration:    800,   // Durée du dim (ms)
-    },
-
-    timing: {
-      // Délai entre l'apparition de l'image chapitre1.webp et le démarrage du son S-phrenologie.mp3
-      phren_sound_delay:  6000,   // ms depuis l'ouverture du voile
-
-      // Délai d'apparition du bouton "Passer" PENDANT S-phrenologie.mp3
-      // 0 = apparaît dès le début du son, 5000 = après 5s de son
-      skip_intro_delay:   3000,   // ms depuis le début du son S-phrenologie
-
-      // Délai d'apparition du bouton "Passer" pendant le texte typing (phase outro)
-      skip_btn_delay:     2000,   // ms depuis le début du typing
-    },
-
-    hotspots: [
-      { img: 'himg-1', label: 'Langage',       l: 61, t: 40, w: 28, h: 35, media: 'Chapitre1/chp1-medias/S1.mp3'        },
-      { img: 'himg-2', label: '33',            l: 12, t: 41, w: 29, h: 37, media: 'Chapitre1/chp1-medias/C2.mp3'        },
-      { img: 'himg-3', label: 'Éventualité',   l: 46, t:  0, w: 22, h: 22, media: 'Chapitre1/chp1-medias/S2.mp3'        },
-      { img: 'himg-4', label: 'Individualité', l: 46, t: 22, w: 19, h: 26, media: 'Chapitre1/chp1-medias/Emprise.mp4'   },
-      { img: 'himg-5', label: 'Pesanteur',     l: 67, t: 18, w: 13, h: 22, media: 'Chapitre1/chp1-medias/Theatre.mp4'  },
-      { img: 'himg-6', label: '27',            l: 21, t:  5, w: 32, h: 23, media: 'Chapitre1/chp1-medias/Defenseur.mp4'},
-      { img: 'himg-7', label: 'Temps',         l: 72, t:  6, w: 20, h: 17, media: 'Chapitre1/chp1-medias/Silence.mp4'  },
-      { img: 'himg-8', label: '25',            l: 19, t: 23, w: 11, h: 20, media: 'Chapitre1/chp1-medias/Klaxon.mp3'   },
-      { img: 'himg-9', label: 'Nez',           l: 38, t: 62, w: 22, h: 22, media: 'Chapitre1/chp1-medias/S3.mp3'       },
-    ],
-  },
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -619,16 +571,3 @@ window.CONFIG.COLLAB = {
   hover_titles:    window.CONFIG.COLLABORATION.circles.hover_titles,
 };
 
-/* ══════════════════════════════════════════════════════════════════
-   ALIAS CHAPITRE1 — Requis par TorchSystem.updateTarget()
-   qui lit CONFIG.CHAPITRE1.torch_phren et torch_interactive (plat)
-   ──────────────────────────────────────────────────────────────────
-   ⚠️ CHAPITRE1 ne définit PAS de bloc `torch` (seulement `light`) : sans
-   optional chaining, ces trois lignes lèvent un TypeError qui INTERROMPT
-   la fin de config.js. Les alias valent donc undefined — exactement comme
-   avant, mais sans casser l'exécution du script.
-   ══════════════════════════════════════════════════════════════════ */
-
-window.CONFIG.CHAPITRE1.torch_phren       = window.CONFIG.CHAPITRE1.torch?.size_phren;
-window.CONFIG.CHAPITRE1.torch_interactive = window.CONFIG.CHAPITRE1.torch?.size_interactive;
-window.CONFIG.CHAPITRE1.torch_media_dim   = window.CONFIG.CHAPITRE1.torch?.size_media_dim;

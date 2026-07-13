@@ -27,8 +27,15 @@ import { CollaborationScene } from './scenes/CollaborationScene.js';
 import { Chapitre2Scene }   from './scenes/Chapitre2Scene.js';
 import { Chapitre3Scene }   from './scenes/Chapitre3Scene.js';
 import { Chapitre1Scene }    from './scenes/Chapitre1Scene.js';
+import { CONFIG as CHP1CONFIG } from '../Chapitre1/chp1-config.js';
 
 const C = window.CONFIG;
+
+/* Registre : la config du chapitre 1 (module ESM) est exposée aux systèmes
+   PARTAGÉS (TorchSystem, MediaPlayer) qui lisent window.CONFIG.CHAPITRE1.
+   Posé AVANT toute construction de système. Chapitre1Scene, elle, importe
+   le module directement (même pattern que les chapitres 2 et 3). */
+window.CONFIG.CHAPITRE1 = CHP1CONFIG;
 
 /* ── 1. Viewport minimal ─────────────────────────────────────── */
 const appEl = document.getElementById('app');

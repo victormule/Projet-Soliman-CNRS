@@ -3,6 +3,7 @@ import { bus }                 from '../core/EventBus.js';
 import { runSkippableQuoteSequence } from '../sequences/QuoteSequence.js';
 import { ArrowCollaboration }  from '../ui/ArrowCollaboration.js';
 import { Chapter1LightSystem } from '../systems/Chapter1LightSystem.js';
+import { CONFIG as CHP1 } from '../../Chapitre1/chp1-config.js';
 
 /**
  * Scène "Chapitre 1"
@@ -185,7 +186,7 @@ export class Chapitre1Scene extends Scene {
       this._light.animateToFraction(this._getIntroLightFrac(), this._getLightIntroDuration(), 1);
 
       // Petit délai avant le lancement du son d'introduction.
-      await this.pause(window.CONFIG.CHAPITRE1.timing?.phren_sound_delay ?? 1800);
+      await this.pause(CHP1.timing?.phren_sound_delay ?? 1800);
 
       // Lance le son d'introduction spécifique du chapitre.
       const src = await this.audio.playPhrenoSound();
@@ -208,7 +209,7 @@ export class Chapitre1Scene extends Scene {
       bus.emit('scene:entered', { name: 'chapitre1' });
 
       // Délai configurable avant d'autoriser le skip pendant le son
-      const skipIntroDelay = window.CONFIG.CHAPITRE1.timing?.skip_intro_delay ?? 0;
+      const skipIntroDelay = CHP1.timing?.skip_intro_delay ?? 0;
       if (skipIntroDelay > 0) await this.pause(skipIntroDelay);
 
       // Si le son s'est terminé entre temps ou si la scène a changé d'état,
@@ -398,7 +399,7 @@ export class Chapitre1Scene extends Scene {
       transition: this.transition,
       text: QUOTE_TEXT,
       charDelay: 54,
-      skipDelay: window.CONFIG.CHAPITRE1.timing?.skip_btn_delay ?? 2000,
+      skipDelay: CHP1.timing?.skip_btn_delay ?? 2000,
       afterTypingDelay: 2800,
       showSkipButton: (onClick) => this._showSkipButton(onClick),
       hideSkipButton: (immediate = false) => this._hideSkipButton(immediate),
@@ -805,14 +806,14 @@ export class Chapitre1Scene extends Scene {
    * Rayon de lumière utilisé pendant l'intro.
    */
   _getIntroLightFrac() {
-    return window.CONFIG.CHAPITRE1.light?.intro_frac ?? 0.64;
+    return CHP1.light?.intro_frac ?? 0.64;
   }
 
   /**
    * Rayon de lumière utilisé pendant la phase interactive.
    */
   _getInteractiveLightFrac() {
-    return window.CONFIG.CHAPITRE1.light?.interactive_frac ?? 0.72;
+    return CHP1.light?.interactive_frac ?? 0.72;
   }
 
   /**
@@ -821,28 +822,28 @@ export class Chapitre1Scene extends Scene {
    * La lumière est volontairement resserrée pour focaliser l'attention.
    */
   _getMediaLightFrac() {
-    return window.CONFIG.CHAPITRE1.light?.media_frac ?? 0.32;
+    return CHP1.light?.media_frac ?? 0.32;
   }
 
   /**
    * Durée d'apparition de la lumière en intro.
    */
   _getLightIntroDuration() {
-    return window.CONFIG.CHAPITRE1.light?.intro_duration ?? 2200;
+    return CHP1.light?.intro_duration ?? 2200;
   }
 
   /**
    * Durée de transition lumineuse intro -> interactif.
    */
   _getLightTransDuration() {
-    return window.CONFIG.CHAPITRE1.light?.trans_duration ?? 2000;
+    return CHP1.light?.trans_duration ?? 2000;
   }
 
   /**
    * Durée de transition lumineuse associée au player.
    */
   _getLightMediaDuration() {
-    return window.CONFIG.CHAPITRE1.light?.media_duration ?? 800;
+    return CHP1.light?.media_duration ?? 800;
   }
 
   /**
@@ -902,7 +903,7 @@ export class Chapitre1Scene extends Scene {
    * - click : ouvre le média et adapte la lumière.
    */
   _buildHotspots() {
-    const C = window.CONFIG.CHAPITRE1;
+    const C = CHP1;
     const HS = C.hotspots;
     const isDbg = !!C.debug;
     const cursor = document.getElementById('cursor');
@@ -1025,7 +1026,7 @@ export class Chapitre1Scene extends Scene {
         }
 
         // Réduction de la lumière pendant la lecture média
-        const L = window.CONFIG.CHAPITRE1.light;
+        const L = CHP1.light;
         const mediaDur = L?.media_duration ?? 800;
         this._light.animateToFraction(this._getMediaLightFrac(), mediaDur, 1);
 
@@ -1204,7 +1205,7 @@ export class Chapitre1Scene extends Scene {
    * - après certains resets visuels.
    */
   _showSubtitle() {
-    const C = window.CONFIG.CHAPITRE1;
+    const C = CHP1;
 
     // Rien à afficher si la configuration ou l'élément DOM est absent.
     if (!C?.subtitle || !this._subtitle) return;
