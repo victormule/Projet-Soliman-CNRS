@@ -22,6 +22,8 @@
 
 'use strict';
 
+import { mediaMap } from './chp2-data-peine-demesuree.js';
+
 /* ─────────────────────────────────────────────────────────────
    ÉTAT DU MODULE
 ───────────────────────────────────────────────────────────── */
@@ -393,26 +395,8 @@ function mount(root) {
 
     /* ─────────────────────────────────────────────────────────
        OUVERTURE MÉDIA EN RIDEAU
+       (mediaMap : données éditoriales — voir chp2-data-peine-demesuree.js)
     ───────────────────────────────────────────────────────── */
-    const MEDIA_BASE     = 'Chapitre2/chp2-medias/';
-    const mediaMap = {
-        condamne:  { type:'video', src:MEDIA_BASE+'Demesure.mp4',
-            legende:{ nom:'Ambre & Flavien', role:'Lycéens',
-                projet:'Les Restes Humains Patrimonialisés, héritage, éthique et politique',
-                soustitre:'Dénouer les images manquantes de Soliman Al-Halabi',
-                citation:'« Le Syrien fanatique »', copyright:'CNRS — Abounaddara 2025–2026' }},
-        souffrance:{ type:'audio', src:MEDIA_BASE+'temoignage-guillaume.mp3' },
-        bourreau:  { type:'video', src:MEDIA_BASE+'ame-noire.mp4',
-            legende:{ nom:'Mathieu', role:'Lycéen',
-                projet:'Les Restes Humains Patrimonialisés, héritage, éthique et politique',
-                soustitre:'Dénouer les images manquantes de Soliman Al-Halabi',
-                citation:'« Le Syrien fanatique »', copyright:'CNRS — Abounaddara 2025–2026' }},
-        supplice:  { type:'video', src:MEDIA_BASE+'Au-tribunal.mp4',
-            legende:{ nom:'Ambre & Garance', role:'Lycéennes',
-                projet:'Les Restes Humains Patrimonialisés, héritage, éthique et politique',
-                soustitre:'Dénouer les images manquantes de Soliman Al-Halabi',
-                citation:'« Le Syrien fanatique »', copyright:'CNRS — Abounaddara 2025–2026' }},
-    };
 
     const articleColumn    = $('article-column');
     const wrap             = $('main-wrap');
