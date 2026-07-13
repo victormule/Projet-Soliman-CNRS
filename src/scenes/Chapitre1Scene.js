@@ -152,7 +152,7 @@ export class Chapitre1Scene extends Scene {
       this._bgChap1.style.transition = 'none';
       this._bgChap1.style.transform = 'scale(1)';
       this._bgChap1.style.filter = '';
-      this._bgChap1.style.backgroundImage = 'url("images/chapitre1.webp")';
+      this._bgChap1.style.backgroundImage = 'url("Chapitre1/chp1-images/chapitre1.webp")';
       this._bgChap1.style.backgroundSize = 'cover';
       this._bgChap1.style.backgroundPosition = 'center center';
       this._bgChap1.style.backgroundRepeat = 'no-repeat';
@@ -168,7 +168,7 @@ export class Chapitre1Scene extends Scene {
 
       // Préchargement explicite de l'image d'intro tant que le voile est fermé.
       // Même si elle est probablement en cache, cela sécurise la transition.
-      await this._preloadImage('images/chapitre1.webp');
+      await this._preloadImage('Chapitre1/chp1-images/chapitre1.webp');
 
       // Prépare le sous-titre visuellement.
       // Il devient "visible", mais reste masqué au regard tant que le voile couvre la scène.
@@ -640,7 +640,7 @@ export class Chapitre1Scene extends Scene {
     if (!this._bgChap1) return;
 
     // Préchargement de l'image de base avant toute animation
-    await this._preloadImage('images/chapitre1base.webp');
+    await this._preloadImage('Chapitre1/chp1-images/chapitre1base.webp');
 
     // Durée commune de la transition, synchronisée avec la lumière
     const DURATION = this._getLightTransDuration();
@@ -687,7 +687,7 @@ export class Chapitre1Scene extends Scene {
     this._bgChap1.style.transform = 'scale(1)';
     this._bgChap1.style.opacity = '1';
     this._bgChap1.style.willChange = '';
-    this._bgChap1.style.backgroundImage = 'url("images/chapitre1base.webp")';
+    this._bgChap1.style.backgroundImage = 'url("Chapitre1/chp1-images/chapitre1base.webp")';
     this._bgChap1.style.backgroundSize = '100% 100%';
     this._bgChap1.style.backgroundPosition = 'center center';
     this._bgChap1.style.backgroundRepeat = 'no-repeat';
@@ -712,7 +712,7 @@ export class Chapitre1Scene extends Scene {
       'inset:0',
       'z-index:0',   // Sous _bgChap1
       'pointer-events:none',
-      'background-image:url("images/chapitre1base.webp")',
+      'background-image:url("Chapitre1/chp1-images/chapitre1base.webp")',
       'background-size:100% 100%',
       'background-position:center center',
       'background-repeat:no-repeat',

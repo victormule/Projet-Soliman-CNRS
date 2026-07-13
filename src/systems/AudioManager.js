@@ -182,7 +182,7 @@ export class AudioManager {
   async startSilenceLoop() {
     if (this.tracks.silence.src) return;
     const ctx = this.getContext();
-    const buf = await this.loadBuffer('Collaboration/Chapitre1/Silence.mp3');
+    const buf = await this.loadBuffer('Chapitre1/chp1-medias/Silence.mp3');
     if (!buf) return;
 
     const src  = ctx.createBufferSource();
