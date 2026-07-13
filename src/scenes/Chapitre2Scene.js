@@ -170,14 +170,12 @@ export class Chapitre2Scene extends Scene {
       // Listeners ready/return des sous-parties (avant le module, par sûreté)
       this._registerWindowListeners();
 
-      // Charger et démarrer le module openning.
-      // CACHE-BUST OBLIGATOIRE : ce module exécute tout son setup au niveau
-      // top-level (refs DOM, boucles RAF, LightSystem). Sans la query unique,
-      // import() renverrait l'instance MISE EN CACHE au 2ᵉ passage → refs DOM
-      // périmées + LightSystem détruite. La query force une réévaluation propre
-      // contre le DOM fraîchement réinjecté à chaque entrée.
+      // Charger et démarrer le module openning (pattern factory : aucun effet
+      // de bord au chargement ; startChapitre2() fait l'init contre le DOM
+      // fraîchement injecté, stopChapitre2() défait tout). Le module n'est
+      // donc téléchargé et évalué qu'UNE fois pour toute la session.
       this._module = await import(
-        /* @vite-ignore */ `${MODULE_PATH}chp2-src/chp2-openning.js?v=${Date.now()}`
+        `${MODULE_PATH}chp2-src/chp2-openning.js`
       );
 
       // Pont AUDIO : toute l'ambiance du chapitre 2 passe par l'AudioManager

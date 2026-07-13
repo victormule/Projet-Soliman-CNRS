@@ -12,6 +12,12 @@
  *   - Le LightSystem est monté sur #chp2-shake (au lieu de #shake).
  *   - Deux exports publics : startChapitre2() / stopChapitre2()
  *     appelés par Chapitre2Scene.enter() / exit().
+ *
+ * PATTERN FACTORY (Phase 2) : aucun effet de bord au chargement du module.
+ * Tout le setup (refs DOM, listeners, boucles rAF, LightSystem) vit dans
+ * init(), appelé par startChapitre2() contre le DOM fraîchement injecté ;
+ * stopChapitre2() défait tout et réarme init(). Le module est importé UNE
+ * fois (plus de cache-bust ?v=Date.now()) et se ré-initialise à chaque visite.
  */
 
 "use strict";
@@ -347,14 +353,16 @@ LightSystem.prototype._startLoop = function() {
    ─────────────────────────────────────────────────────────────────────────────
    IDs préfixés "chp2-" pour éviter toute collision avec le projet principal.
 ============================================================================= */
-var imgEl   = document.getElementById("chp2-img");
-var bar     = document.getElementById("chp2-bar");
+// Refs résolues dans init() : le DOM du chapitre est réinjecté à chaque entrée,
+// des refs capturées au chargement du module seraient périmées à la 2ᵉ visite.
+var imgEl   = null;
+var bar     = null;
 // curseur géré par le projet principal — pas de #chp2-cursor dans le DOM intégré
 var cursor  = null;
 // Référence au curseur custom global (#cursor) : l'openning pilote directement
 // son état .hotspot au survol d'un crâne. Aucun conflit avec app.js car tout le
 // travelling est en pointer-events:none (aucune frontière DOM survolée ici).
-var hotCursor = document.getElementById('cursor');
+var hotCursor = null;
 // État de survol d'un crâne. setSkullHot est DÉCLENCHÉ SUR TRANSITION : il ne
 // modifie #cursor.hotspot que lorsqu'on entre/sort réellement d'un crâne. Ainsi,
 // quand le curseur n'est PAS sur un crâne (sur la flèche d'openning, par ex.),
@@ -367,11 +375,11 @@ function setSkullHot(on) {
   _skullHot = on;
   if (hotCursor) hotCursor.classList.toggle('hotspot', on);
 }
-var legend  = document.getElementById("chp2-legend");
-var legNum  = document.getElementById("chp2-leg-num");
-var legLab  = document.getElementById("chp2-leg-label");
-var shakeEl = document.getElementById("chp2-shake");
-var fadeEl  = document.getElementById("chp2-fade");
+var legend  = null;
+var legNum  = null;
+var legLab  = null;
+var shakeEl = null;
+var fadeEl  = null;
 
 /* =============================================================================
    CRÂNES — zones de clic fractionnaires
@@ -385,7 +393,7 @@ var SKULLS = [
     url:    null,
     action: "invibilisation",
     active: false,
-    el:     document.getElementById("chp2-ov-136")
+    el:     null   // résolu dans init() : chp2-ov-<id>
   },
   {
     id:     "137",
@@ -395,7 +403,7 @@ var SKULLS = [
     url:    null,
     action: "peine-demesuree",
     active: false,
-    el:     document.getElementById("chp2-ov-137")
+    el:     null
   },
   {
     id:     "138",
@@ -405,7 +413,7 @@ var SKULLS = [
     url:    null,
     action: "cartel",
     active: false,
-    el:     document.getElementById("chp2-ov-138")
+    el:     null
   }
 ];
 
@@ -583,15 +591,7 @@ function onMove(clientX, clientY) {
   }
 }
 
-_mousemoveHandler = function(e) { onMove(e.clientX, e.clientY); };
-window.addEventListener("mousemove", _mousemoveHandler);
-
-_touchmoveHandler = function(e) {
-  if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open')) return;
-  e.preventDefault();
-  onMove(e.touches[0].clientX, null);
-};
-window.addEventListener("touchmove", _touchmoveHandler, { passive: false });
+// Handlers créés et attachés dans init() — voir la section INIT plus bas.
 
 /* =============================================================================
    CLIC — invibilisation | cartel | peine-demesuree | navigation retour
@@ -601,104 +601,17 @@ window.addEventListener("touchmove", _touchmoveHandler, { passive: false });
 ============================================================================= */
 var navigating = false;
 
-_clickHandler = function(e) {
-  if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open')) return;
-  if (navigating) return;
-  if (!hoveredSkull) return;
-
-  if (hoveredSkull.action === "invibilisation") {
-    openInvibilisationOverlay();
-    return;
-  }
-
-  if (hoveredSkull.action === "cartel") {
-    openCartelOverlay();
-    return;
-  }
-
-  if (hoveredSkull.action === "peine-demesuree") {
-    openPeineDemesureeOverlay();
-    return;
-  }
-
-  /* Navigation externe → remplacée par signal vers Chapitre2Scene */
-  if (!hoveredSkull.url) return;
-  navigating = true;
-
-  if (legend) legend.classList.remove("visible");
-  if (cursor) cursor.classList.remove("visible");
-  if (hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
-
-  light.animateAll(0, 1600, 0);
-
-  setTimeout(function() { if (fadeEl) fadeEl.classList.add("out"); }, 200);
-  setTimeout(function() {
-    window.dispatchEvent(new CustomEvent('chp2:navigate-back'));
-  }, 2000);
-};
-window.addEventListener("click", _clickHandler);
+// _clickHandler, mesure initiale et boucles rAF : posés dans init().
 
 /* =============================================================================
-   BOUCLES D'ANIMATION
-============================================================================= */
-measure();
-
-// Boucle de travelling (interpolation douce)
-(function travelLoop() {
-  var d = targetX - currentX;
-  currentX = Math.abs(d) < 0.05 ? targetX : currentX + d * 0.08;
-  applyTx(currentX);
-  _travelRaf = requestAnimationFrame(travelLoop);
-})();
-
-// Boucle de tremblement organique
-(function shakeLoop() {
-  var t = performance.now();
-  velocity *= 0.92;
-  var target = 1 + Math.min(SHAKE.boost, velocity / SHAKE.velocityRef * SHAKE.boost);
-  target = Math.min(SHAKE.maxBoost, target);
-  shakeMul += (target - shakeMul) * SHAKE.smoothing;
-
-  var sx = (Math.sin(t * 0.001 * O.shx1.freq * Math.PI * 2 + O.shx1.phase)
-          + Math.sin(t * 0.001 * O.shx2.freq * Math.PI * 2 + O.shx2.phase) * 0.5
-          + Math.sin(t * 0.001 * O.shx3.freq * Math.PI * 2 + O.shx3.phase) * 0.25) / 1.75;
-  var sy = (Math.sin(t * 0.001 * O.shy1.freq * Math.PI * 2 + O.shy1.phase)
-          + Math.sin(t * 0.001 * O.shy2.freq * Math.PI * 2 + O.shy2.phase) * 0.5
-          + Math.sin(t * 0.001 * O.shy3.freq * Math.PI * 2 + O.shy3.phase) * 0.25) / 1.75;
-  var rot = sx * SHAKE.rotation * shakeMul;
-
-  if (shakeEl) {
-    shakeEl.style.transform =
-      "translate(" + (sx * SHAKE.amplitudeX * shakeMul).toFixed(2) + "px,"
-                   + (sy * SHAKE.amplitudeY * shakeMul).toFixed(2) + "px) "
-      + "rotate(" + rot.toFixed(3) + "deg)";
-  }
-  _shakeRaf = requestAnimationFrame(shakeLoop);
-})();
-
-/* =============================================================================
-   LIGHT SYSTEM — instancié après les boucles, monté sur chp2-shake
+   LIGHT SYSTEM — instancié dans init(), monté sur chp2-shake
    ─────────────────────────────────────────────────────────────────────────────
    Une lumière par crâne. Chaque lumière fournit un getCenter() qui renvoie la
    position VIEWPORT live de son crâne (translateX du travelling = currentX
    inclus) ; le LightSystem la convertit en coordonnées canvas. La lumière reste
    ainsi collée au crâne pendant tout le panoramique.
 ============================================================================= */
-var light = new LightSystem("chp2-shake");
-
-SKULLS.forEach(function(s, i) {
-  light.addLight({
-    id:      s.id,
-    phaseMs: i * 733,   // déphasage du scintillement pour éviter le synchronisme
-    getCenter: (function(skull) {
-      return function() {
-        var cxImg = ((skull.box.x0 + skull.box.x1) / 2) * imgW;
-        var cyImg = ((skull.box.y0 + skull.box.y1) / 2) * vpH;
-        return { x: currentX + cxImg, y: cyImg };
-      };
-    })(s)
-  });
-});
+var light = null;
 
 /* =============================================================================
    PROGRESSION — éclairage + interactivité conditionnés par les sous-parties vues
@@ -852,13 +765,8 @@ function safeIgnite() {
 }
 
 /* =============================================================================
-   RESIZE — ResizeObserver
+   RESIZE — ResizeObserver créé dans init()
 ============================================================================= */
-_resizeObs = new ResizeObserver(function() {
-  measure();
-  light.resize();
-});
-_resizeObs.observe(document.documentElement);
 
 /* =============================================================================
    PONT TRAVELLING ⇄ CARTEL
@@ -932,7 +840,7 @@ function _onCartelClosed() {
   document.body.classList.remove('cartel-open');
   showOpeningArrow();
 }
-window.addEventListener('cartel:closed', _onCartelClosed);
+// (attaché dans init())
 
 function _onCartelReturn() {
   if (!_active) return;
@@ -953,7 +861,7 @@ function _onCartelReturn() {
     if (fadeEl) { fadeEl.style.zIndex = ''; fadeEl.style.transition = ''; }
   }, 2600);
 }
-window.addEventListener('cartel:return', _onCartelReturn);
+// (attaché dans init())
 
 /* =============================================================================
    PONT TRAVELLING ⇄ INVIBILISATION (lazy)
@@ -1039,7 +947,7 @@ function _onInvibilisationClosed() {
     root.style.transition = '';
   }
 }
-window.addEventListener('invibilisation:closed', _onInvibilisationClosed);
+// (attaché dans init())
 
 function _onInvibilisationReturn() {
   if (!_active) return;
@@ -1060,7 +968,7 @@ function _onInvibilisationReturn() {
     }, 3100);
   }
 }
-window.addEventListener('invibilisation:return', _onInvibilisationReturn);
+// (attaché dans init())
 
 function _onPeineClosed() {
   if (!_active) return;
@@ -1068,7 +976,7 @@ function _onPeineClosed() {
   document.body.classList.remove('peine-demesuree-open');
   // Flèche openning réaffichée via 'peineDemesuree:return' (après rallumage).
 }
-window.addEventListener('peine-demesuree:closed', _onPeineClosed);
+// (attaché dans init())
 
 function _onPeineReturn() {
   if (!_active) return;
@@ -1089,7 +997,7 @@ function _onPeineReturn() {
     if (fadeEl) { fadeEl.style.zIndex = ''; fadeEl.style.transition = ''; }
   }, 2600);
 }
-window.addEventListener('peineDemesuree:return', _onPeineReturn);
+// (attaché dans init())
 
 /* =============================================================================
    SRT + AUDIO
@@ -1120,9 +1028,158 @@ function parseSRT(raw) {
 }
 
 /* =============================================================================
+   INIT — pattern factory, exécuté à CHAQUE entrée dans le chapitre
+   ─────────────────────────────────────────────────────────────────────────────
+   Le module n'a AUCUN effet de bord au chargement : tout ce qui touche le DOM
+   (refs, listeners, boucles rAF, LightSystem, ResizeObserver) est posé ici,
+   contre le DOM fraîchement réinjecté par Chapitre2Scene. stopChapitre2()
+   défait tout. Remplace l'ancien setup top-level + cache-bust d'import().
+============================================================================= */
+var _inited = false;
+
+function init() {
+  if (_inited) return;
+  _inited = true;
+
+  /* ── Références DOM ── */
+  imgEl     = document.getElementById("chp2-img");
+  bar       = document.getElementById("chp2-bar");
+  hotCursor = document.getElementById('cursor');
+  legend    = document.getElementById("chp2-legend");
+  legNum    = document.getElementById("chp2-leg-num");
+  legLab    = document.getElementById("chp2-leg-label");
+  shakeEl   = document.getElementById("chp2-shake");
+  fadeEl    = document.getElementById("chp2-fade");
+  SKULLS.forEach(function(s) { s.el = document.getElementById("chp2-ov-" + s.id); });
+
+  /* ── Reset de l'état (ré-entrée propre sans réévaluation du module) ── */
+  interactive = false; hoveredSkull = null;
+  lastClientX = 0; lastClientY = 0; lastMt = 0; lastMx2 = 0; lastMy2 = 0;
+  velocity = 0; shakeMul = 1;
+  vpH = 0; vpW = 0; imgW = 0; maxTx = 0; targetX = 0; currentX = 0; ratio = 0;
+  started = false; _skullHot = false; navigating = false;
+
+  /* ── Mouvement (souris + touch) ── */
+  _mousemoveHandler = function(e) { onMove(e.clientX, e.clientY); };
+  window.addEventListener("mousemove", _mousemoveHandler);
+
+  _touchmoveHandler = function(e) {
+    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open')) return;
+    e.preventDefault();
+    onMove(e.touches[0].clientX, null);
+  };
+  window.addEventListener("touchmove", _touchmoveHandler, { passive: false });
+
+  /* ── Clic — invibilisation | cartel | peine-demesuree | navigation ── */
+  _clickHandler = function(e) {
+    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invibilisation-open')) return;
+    if (navigating) return;
+    if (!hoveredSkull) return;
+
+    if (hoveredSkull.action === "invibilisation") {
+      openInvibilisationOverlay();
+      return;
+    }
+
+    if (hoveredSkull.action === "cartel") {
+      openCartelOverlay();
+      return;
+    }
+
+    if (hoveredSkull.action === "peine-demesuree") {
+      openPeineDemesureeOverlay();
+      return;
+    }
+
+    /* Navigation externe → remplacée par signal vers Chapitre2Scene */
+    if (!hoveredSkull.url) return;
+    navigating = true;
+
+    if (legend) legend.classList.remove("visible");
+    if (cursor) cursor.classList.remove("visible");
+    if (hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
+
+    light.animateAll(0, 1600, 0);
+
+    setTimeout(function() { if (fadeEl) fadeEl.classList.add("out"); }, 200);
+    setTimeout(function() {
+      window.dispatchEvent(new CustomEvent('chp2:navigate-back'));
+    }, 2000);
+  };
+  window.addEventListener("click", _clickHandler);
+
+  /* ── Mesure initiale + boucles d'animation ── */
+  measure();
+
+  // Boucle de travelling (interpolation douce)
+  (function travelLoop() {
+    var d = targetX - currentX;
+    currentX = Math.abs(d) < 0.05 ? targetX : currentX + d * 0.08;
+    applyTx(currentX);
+    _travelRaf = requestAnimationFrame(travelLoop);
+  })();
+
+  // Boucle de tremblement organique
+  (function shakeLoop() {
+    var t = performance.now();
+    velocity *= 0.92;
+    var target = 1 + Math.min(SHAKE.boost, velocity / SHAKE.velocityRef * SHAKE.boost);
+    target = Math.min(SHAKE.maxBoost, target);
+    shakeMul += (target - shakeMul) * SHAKE.smoothing;
+
+    var sx = (Math.sin(t * 0.001 * O.shx1.freq * Math.PI * 2 + O.shx1.phase)
+            + Math.sin(t * 0.001 * O.shx2.freq * Math.PI * 2 + O.shx2.phase) * 0.5
+            + Math.sin(t * 0.001 * O.shx3.freq * Math.PI * 2 + O.shx3.phase) * 0.25) / 1.75;
+    var sy = (Math.sin(t * 0.001 * O.shy1.freq * Math.PI * 2 + O.shy1.phase)
+            + Math.sin(t * 0.001 * O.shy2.freq * Math.PI * 2 + O.shy2.phase) * 0.5
+            + Math.sin(t * 0.001 * O.shy3.freq * Math.PI * 2 + O.shy3.phase) * 0.25) / 1.75;
+    var rot = sx * SHAKE.rotation * shakeMul;
+
+    if (shakeEl) {
+      shakeEl.style.transform =
+        "translate(" + (sx * SHAKE.amplitudeX * shakeMul).toFixed(2) + "px,"
+                     + (sy * SHAKE.amplitudeY * shakeMul).toFixed(2) + "px) "
+        + "rotate(" + rot.toFixed(3) + "deg)";
+    }
+    _shakeRaf = requestAnimationFrame(shakeLoop);
+  })();
+
+  /* ── LightSystem (une lumière par crâne) ── */
+  light = new LightSystem("chp2-shake");
+  SKULLS.forEach(function(s, i) {
+    light.addLight({
+      id:      s.id,
+      phaseMs: i * 733,   // déphasage du scintillement pour éviter le synchronisme
+      getCenter: (function(skull) {
+        return function() {
+          var cxImg = ((skull.box.x0 + skull.box.x1) / 2) * imgW;
+          var cyImg = ((skull.box.y0 + skull.box.y1) / 2) * vpH;
+          return { x: currentX + cxImg, y: cyImg };
+        };
+      })(s)
+    });
+  });
+
+  /* ── Resize ── */
+  _resizeObs = new ResizeObserver(function() {
+    measure();
+    light.resize();
+  });
+  _resizeObs.observe(document.documentElement);
+
+  /* ── Événements des sous-parties ── */
+  window.addEventListener('cartel:closed',          _onCartelClosed);
+  window.addEventListener('cartel:return',          _onCartelReturn);
+  window.addEventListener('invibilisation:closed',  _onInvibilisationClosed);
+  window.addEventListener('invibilisation:return',  _onInvibilisationReturn);
+  window.addEventListener('peine-demesuree:closed', _onPeineClosed);
+  window.addEventListener('peineDemesuree:return',  _onPeineReturn);
+}
+
+/* =============================================================================
    EXPORTS PUBLICS — appelés par Chapitre2Scene.js
    ─────────────────────────────────────────────────────────────────────────────
-   startChapitre2() : déclenche l'ignition dès que l'image est prête.
+   startChapitre2() : init() (factory) puis ignition dès que l'image est prête.
    stopChapitre2()  : fade audio, stoppe les boucles, détruit le LightSystem.
 ============================================================================= */
 
@@ -1172,6 +1229,7 @@ export function leaveToCollaboration() {
 }
 
 export function startChapitre2() {
+  init();
   if (!imgEl) {
     console.error('[Chapitre2] #chp2-img introuvable');
     return;
@@ -1188,8 +1246,10 @@ export function startChapitre2() {
 }
 
 export function stopChapitre2() {
-  /* 0. Désactivation : neutralise tout callback asynchrone encore en vol */
+  /* 0. Désactivation : neutralise tout callback asynchrone encore en vol,
+        et réarme init() pour la prochaine entrée (pattern factory). */
   _active = false;
+  _inited = false;
 
   /* 0bis. Reset des états pour permettre une ré-entrée propre */
   _arrowShow = null;
