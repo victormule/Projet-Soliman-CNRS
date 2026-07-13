@@ -98,9 +98,12 @@ export class Chapitre3Scene extends Scene {
       // Listener de retour (avant le module, par sûreté).
       this._registerWindowListeners();
 
-      // Charger et démarrer le module openning (cache-bust obligatoire).
+      // Charger et démarrer le module openning (pattern factory : aucun effet
+      // de bord au chargement ; startChapitre3() monte le moteur contre le DOM
+      // fraîchement injecté, stopChapitre3() le démonte). Le module n'est donc
+      // téléchargé et évalué qu'UNE fois pour toute la session.
       this._module = await import(
-        /* @vite-ignore */ `${MODULE_PATH}chp3-src/chp3-openning.js?v=${Date.now()}`
+        `${MODULE_PATH}chp3-src/chp3-openning.js`
       );
 
       // Parité audio (le module garde son audio interne ; simple transmission).

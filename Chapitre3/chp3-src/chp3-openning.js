@@ -3,27 +3,43 @@
    chp3-main.js — Moteur de l'expérience (caméra, chapitres, révélations,
    théâtre de papier, triptyque, atmosphère, audio, question d'intro)
 
-   Dépend de `CONFIG` défini dans chp3-config.js (chargé en premier).
-   Chargé en `defer` : le DOM est déjà analysé, mais on conserve le garde
-   DOMContentLoaded par robustesse si l'ordre de chargement venait à changer.
+   Dépend de `CONFIG` défini dans chp3-config.js (import ESM).
+   Pattern factory : le module est importé UNE fois par Chapitre3Scene
+   (sans cache-bust) ; startChapitre3() → boot() monte le moteur contre le
+   DOM injecté par la scène, stopChapitre3() le démonte et réarme le boot.
    ===================================================================== */
 
 import { CONFIG } from './chp3-config.js';
 
 /* ── Pont scène : injecté par Chapitre3Scene (src/scenes/Chapitre3Scene.js) ──
-   Le moteur tourne dans une IIFE (et non plus DOMContentLoaded : en import
-   dynamique le DOM est déjà prêt, l'événement ne se déclencherait jamais).
-   Les fonctions moteur vivent dans init() ; le pont _ctx y est posé en fin
-   d'init(), une fois toutes les refs/const initialisées. */
+   PATTERN FACTORY (Phase 2) : aucun effet de bord au chargement du module.
+   Le moteur (ex-IIFE) vit dans boot(), appelé par startChapitre3() contre le
+   DOM fraîchement injecté par la scène ; tout l'état du moteur étant dans les
+   closures de boot()/init(), chaque entrée repart d'un état neuf. Le pont
+   _ctx est posé en fin d'init() ; les _pending* absorbent les appels reçus
+   avant que le moteur soit prêt (setAudioManager/setArrowCallbacks/start). */
 let _ctx = null, _pendingAudio = null, _pendingArrows = null, _pendingStart = false;
+let _booted  = false;  // réarmé par stopChapitre3() → re-boot à la prochaine entrée
+let _bootGen = 0;      // jeton de génération : neutralise un init() différé
+                       // (attente du load image) qui arriverait APRÈS un stop.
 
-export function startChapitre3()      { _pendingStart = true; _ctx?.start?.(); }
-export function stopChapitre3()        { const c = _ctx; _ctx = null; _pendingStart = false; c?.stop?.(); }
+export function startChapitre3() {
+    _pendingStart = true;
+    if (!_booted) { _booted = true; boot(); }   // init() flushe _pendingStart → start
+    else _ctx?.start?.();
+}
+export function stopChapitre3() {
+    const c = _ctx;
+    _ctx = null; _booted = false; _bootGen++;
+    _pendingStart = false; _pendingAudio = null; _pendingArrows = null;
+    c?.stop?.();
+}
 export function setAudioManager(m)     { _pendingAudio = m; _ctx?.setAudioManager?.(m); }
 export function setArrowCallbacks(s, h){ _pendingArrows = { s, h }; _ctx?.setArrowCallbacks?.(s, h); }
 export function leaveToCollaboration() { return _ctx?.leaveToCollaboration?.(); }
 
-(function () {
+function boot() {
+    const _myGen = _bootGen;
 
     // ===================================================================
     //  CONFIG — déplacée dans chp3-src/chp3-config.js (portée globale).
@@ -87,6 +103,9 @@ export function leaveToCollaboration() { return _ctx?.leaveToCollaboration?.(); 
     //  MOTEUR
     // ===================================================================
     function init() {
+        // Un stop est survenu entre boot() et le load de l'image : cette
+        // génération est périmée, ne pas monter un moteur zombie.
+        if (_myGen !== _bootGen) return;
         const DUR_TRAVEL = CONFIG.dureeTravel * 1000;
         const DUR_FADE   = CONFIG.dureeFondu  * 1000;
         const DUR_DRAW   = CONFIG.dureeTracé  * 1000;
@@ -2831,4 +2850,4 @@ export function leaveToCollaboration() { return _ctx?.leaveToCollaboration?.(); 
         if (_pendingArrows) _ctx.setArrowCallbacks(_pendingArrows.s, _pendingArrows.h);
         if (_pendingStart)  _ctx.start();
     }
-})();
+}
