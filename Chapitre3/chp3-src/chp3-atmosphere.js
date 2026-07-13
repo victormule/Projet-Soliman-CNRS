@@ -2,7 +2,7 @@
    Chapitre 3 — chp3-atmosphere.js
    Atmosphère de la galerie : bokeh (poussières lumineuses) + rayons de
    lumière volumétriques, dessinés en composite additif sur #chp3-dust.
-   Code moteur déplacé verbatim depuis chp3-openning.js (Phase 2).
+   Code moteur déplacé verbatim depuis chp3-opening.js (Phase 2).
 
    createAtmosphere({ lightState, reduceMotion, lightDevice, mobileLite })
      → { initDust, resizeDust, drawDust }

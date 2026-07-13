@@ -4,7 +4,7 @@
    chargement) : accès DOM raccourci, clamp/easings/amortissement,
    et chargement responsive des visuels de tableau (srcset natif).
 
-   Extrait de chp3-openning.js (Phase 2, découpage du monolithe).
+   Extrait de chp3-opening.js (Phase 2, découpage du monolithe).
    ===================================================================== */
 
 import { CONFIG } from './chp3-config.js';

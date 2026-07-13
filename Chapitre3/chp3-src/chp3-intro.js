@@ -3,7 +3,7 @@
    Question d'introduction (quiz oui/non + camemberts statistiques +
    camembert « Qui est-il ? » + témoignage en machine à écrire), jouée
    AVANT le travelling. Code moteur déplacé verbatim depuis
-   chp3-openning.js (Phase 2, découpage du monolithe) ; seul changement :
+   chp3-opening.js (Phase 2, découpage du monolithe) ; seul changement :
    launchLoop() → onDone() (callback injecté).
 
    createIntro({ container, reduceMotion, _on, onDone }) →

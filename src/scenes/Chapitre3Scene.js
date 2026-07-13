@@ -24,17 +24,18 @@ import { ArrowChp3Opening }  from '../ui/ArrowChapitre3.js';
  *
  * DOM : injecté dans #chapitre3-root (position:fixed, z 500), IDs préfixés
  * chp3-* (globalement uniques → pas de collision avec #veil du site, etc.).
- * Le module chp3-openning.js lit ces IDs via document.getElementById.
- * Import CACHE-BUSTÉ : le module exécute son setup au niveau top-level ; la
- * query unique force une réévaluation propre contre le DOM réinjecté à chaque
- * entrée (état frais : le questionnaire rejoue à chaque venue).
+ * Le module chp3-opening.js lit ces IDs via document.getElementById.
+ * PATTERN FACTORY : le module n'a aucun effet de bord au chargement ;
+ * startChapitre3() monte le moteur contre le DOM réinjecté (état frais :
+ * le questionnaire rejoue à chaque venue), stopChapitre3() le démonte.
+ * Import unique, sans cache-bust.
  */
 
 /* ── Chemins ────────────────────────────────────────────────────────────── */
 const ASSET_PATH  = 'Chapitre3/';        // depuis la racine serveur (img src)
 const MODULE_PATH = '../../Chapitre3/';  // depuis src/scenes/ (import())
 
-const CSS_LINK_ID = 'chp3-css-openning';
+const CSS_LINK_ID = 'chp3-css-opening';
 
 export class Chapitre3Scene extends Scene {
   /**
@@ -50,13 +51,13 @@ export class Chapitre3Scene extends Scene {
     this.bgMgr      = systems.bgMgr;
     this.transition = systems.transition;
 
-    /** Flèche de retour openning → Espace collaboratif. */
+    /** Flèche de retour opening → Espace collaboratif. */
     this._arrow = new ArrowChp3Opening(window.CONFIG);
 
     /** DOM conteneur du chapitre 3. */
     this._container = null;
 
-    /** Module chp3-openning chargé dynamiquement. */
+    /** Module chp3-opening chargé dynamiquement. */
     this._module = null;
 
     /** Listeners window ('chp3:navigate-back') à retirer en sortie. */
@@ -98,12 +99,12 @@ export class Chapitre3Scene extends Scene {
       // Listener de retour (avant le module, par sûreté).
       this._registerWindowListeners();
 
-      // Charger et démarrer le module openning (pattern factory : aucun effet
+      // Charger et démarrer le module opening (pattern factory : aucun effet
       // de bord au chargement ; startChapitre3() monte le moteur contre le DOM
       // fraîchement injecté, stopChapitre3() le démonte). Le module n'est donc
       // téléchargé et évalué qu'UNE fois pour toute la session.
       this._module = await import(
-        `${MODULE_PATH}chp3-src/chp3-openning.js`
+        `${MODULE_PATH}chp3-src/chp3-opening.js`
       );
 
       // Parité audio (le module garde son audio interne ; simple transmission).
@@ -437,7 +438,7 @@ export class Chapitre3Scene extends Scene {
       const link = Object.assign(document.createElement('link'), {
         id:   CSS_LINK_ID,
         rel:  'stylesheet',
-        href: 'Chapitre3/chp3-style/chp3-openning.css',
+        href: 'Chapitre3/chp3-style/chp3-opening.css',
       });
       link.addEventListener('load',  () => resolve(), { once: true });
       link.addEventListener('error', () => resolve(), { once: true });

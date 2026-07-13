@@ -3,7 +3,7 @@
    Grain argentique optionnel : bruit SVG (feTurbulence) posé en fond de
    #chp3-grain et « secoué » à ~11 fps pour l'aspect pellicule.
 
-   Extrait de chp3-openning.js (Phase 2, découpage du monolithe).
+   Extrait de chp3-opening.js (Phase 2, découpage du monolithe).
    Activation pilotée par CONFIG.grain + prefers-reduced-motion (l'appelant
    décide) ; le moteur fournit isActive() pour stopper la boucle dès qu'il
    est démonté, et appelle stop() dans son propre stop().

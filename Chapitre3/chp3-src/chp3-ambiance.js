@@ -4,7 +4,7 @@
    machine à états ambDesired + boucle manuelle à fondu enchaîné) et
    THÈME DE TABLEAU (canal dédié par cercle ouvert, duck pendant les
    médias concurrents). Code moteur déplacé verbatim depuis
-   chp3-openning.js (Phase 2, découpage du monolithe).
+   chp3-opening.js (Phase 2, découpage du monolithe).
 
    createChapterAudio({ reduceMotion, lightDevice }) →
      { ambStart, ambSetDesired, themePlay, themeDuck, themeStop, stop }
