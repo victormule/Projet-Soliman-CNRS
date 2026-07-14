@@ -486,8 +486,19 @@ if ('requestIdleCallback' in window) {
 } else {
   setTimeout(buildCaptionPaths, 0);
 }
-/* Recalcul après chargement de la font (évite le décalage FOUT) */
-if (document.fonts && document.fonts.ready) {
+/* (4) --menu-h dépend de la HAUTEUR RÉELLE du bloc texte, donc de la police.
+   Cormorant Garamond est chargée en media="print" (swap non bloquant, cf.
+   index.html) : document.fonts.ready peut se résoudre AVANT que CETTE police
+   précise soit appliquée. On attend donc explicitement SA disponibilité —
+   .load() la déclenche ET résout quand elle est prête — puis on re-mesure.
+   Sinon --menu-h reste calé sur la police de substitution ; sur mobile, où le
+   texte de légende wrappe sur 4-5 lignes, un morceau de légende dépasse alors
+   en permanence en haut de l'écran (« affichage catastrophique »). */
+if (document.fonts && document.fonts.load) {
+  document.fonts.load('italic 400 1em "Cormorant Garamond"')
+    .then(() => { if (root.classList.contains('is-open')) buildCaptionPaths(); })
+    .catch(() => {});
+} else if (document.fonts && document.fonts.ready) {
   document.fonts.ready.then(buildCaptionPaths);
 }
 on(window, 'resize', buildCaptionPaths, { passive: true });
@@ -524,6 +535,12 @@ function emitReadyOnce() {
   if (zoomed || videoPlaying) return;              // média/zoom en cours → différé
   if (root.dataset.returning === 'true') return;   // sortie de la sous-partie → non
   _readyEmitted = true;
+  // (4) Re-mesure --menu-h À L'OUVERTURE de la légende, quand la police est
+  // chargée et le layout stabilisé (le calcul du boot a pu tomber trop tôt ou
+  // avec la mauvaise police). La ligne SVG n'étant pas encore .drawn, cet appel
+  // se contente de (re)poser dashoffset = len (ligne cachée) : aucun glitch,
+  // c'est l'état initial correct avant animateCaptionLine().
+  buildCaptionPaths();
   captionWrapEl.classList.add('visible');
   window.dispatchEvent(new CustomEvent('chp2:invisibilisation-ready'));
   setTimeout(() => { if (!zoomed && !videoPlaying) animateCaptionLine(); }, 200);
