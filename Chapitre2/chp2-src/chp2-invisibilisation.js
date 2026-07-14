@@ -108,6 +108,13 @@ function rafT(fn) {
   return id;
 }
 
+/* Tactile (détecté une fois par montage). Plusieurs comportements divergent de
+   la souris : légende (pas de mouseenter), délégation du tap sur les yeux,
+   déverrouillage des médias dans le geste. Déclaré ici car utilisé dès la mise
+   en place de la légende, bien avant les handlers de clic. */
+const _isTouch = window.matchMedia?.('(pointer: coarse)').matches
+              || 'ontouchstart' in window;
+
 /* =============================================================================
    CONFIGURATION (constantes du module original)
 ============================================================================= */
@@ -522,14 +529,25 @@ function emitReadyOnce() {
   setTimeout(() => { if (!zoomed && !videoPlaying) animateCaptionLine(); }, 200);
 }
 
-captionWrapEl.addEventListener('mouseenter', openCaption,  { passive: true });
-captionWrapEl.addEventListener('mouseleave', closeCaption, { passive: true });
+/* ⚠️ TOUS ces listeners passent par on(...) : le DOM du root SURVIT au
+   destroy() (pas de restauration pristine ici) — des addEventListener directs
+   s'accumuleraient à chaque ré-ouverture de l'installation, chaque doublon
+   gardant les CLOSURES du montage précédent (état zoomed/videoPlaying périmé).
+   C'était la source de l'instabilité (double-toggle légende, doubles zooms). */
 
-captionTabEl.addEventListener('click', () => {
+/* Souris seulement : au tactile, le tap synthétise mouseenter AVANT click —
+   la légende s'ouvrait (mouseenter) puis se refermait aussitôt (click/toggle).
+   Au doigt, seul le toggle par tap pilote la légende. */
+if (!_isTouch) {
+  on(captionWrapEl, 'mouseenter', openCaption,  { passive: true });
+  on(captionWrapEl, 'mouseleave', closeCaption, { passive: true });
+}
+
+on(captionTabEl, 'click', () => {
   if (isReturning()) return;
   captionWrapEl.classList.contains('expanded') ? closeCaption() : openCaption();
 });
-captionTabEl.addEventListener('keydown', e => {
+on(captionTabEl, 'keydown', e => {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     captionWrapEl.classList.contains('expanded') ? closeCaption() : openCaption();
@@ -947,7 +965,7 @@ function closeMedia(eye) {
   }
 }
 
-videoEl.addEventListener('ended', () => {
+on(videoEl, 'ended', () => {
   if (videoPlaying && zoomedEye && !zoomedEye.hasAudioOnly) closeMedia(zoomedEye);
 });
 
@@ -1054,8 +1072,35 @@ function applyZoomToSkPlay(eye, S, sceneTx, sceneTy, animated) {
   );
 }
 
+/* ── Tactile : déverrouille l'élément média PENDANT le geste utilisateur ──
+   openMedia() n'est appelé que ~4 s après le tap (fin du zoom : 3600 + 400 ms),
+   HORS geste : les navigateurs mobiles y bloquent play() avec son (politique
+   autoplay) → vidéo noire / audio silencieux = « le média ne s'ouvre pas ».
+   Un play() lancé DANS la pile du click (puis pause immédiate) marque
+   l'élément comme autorisé : le play() différé d'openMedia passe ensuite.
+   Souris/desktop : no-op strict. */
+function unlockMediaForTouch(eye) {
+  if (!_isTouch) return;
+  try {
+    let el = null;
+    if (eye.hasAudioOnly && eye.audioSrc) {
+      el = getAudioEl();
+      if (!el.src) el.src = eye.audioSrc;
+    } else if (eye.hasVideo && eye.videoSrc) {
+      el = videoEl;
+      if (!el.src) el.src = eye.videoSrc;
+    }
+    if (!el) return;                        // témoignage texte : rien à faire
+    const p = el.play();
+    if (p && p.then) {
+      p.then(() => { el.pause(); el.currentTime = 0; }).catch(() => {});
+    }
+  } catch (_) {}
+}
+
 function doZoom(eye) {
   if (isReturning()) return;
+  unlockMediaForTouch(eye);   // tactile : autorise le play() différé d'openMedia
   zoomedEye  = eye;
   eye.state  = 'zoomed';
   eye.wEl.classList.remove('clickable');
@@ -1245,12 +1290,7 @@ function doUnzoom(eye) {
   }, UNZOOM_DUR + 200);
 }
 
-// Détection tactile (une fois) : sur tactile, le clic sur un œil ne peut pas
-// s'appuyer sur l'état 'play' progressif (le doigt se pose directement sur
-// l'œil sans la phase d'approche). On autorise alors le zoom si le point touché
-// est à portée (rayon R_CLOSE), en forçant l'état au passage.
-const _isTouch = window.matchMedia?.('(pointer: coarse)').matches
-              || 'ontouchstart' in window;
+// (_isTouch est déclaré en tête de mount() — utilisé aussi par la légende.)
 
 /** True si (mouseX,mouseY) est dans le rayon de déclenchement de l'œil. */
 function _pointerWithinEye(eye) {
@@ -1275,23 +1315,50 @@ function _canZoomOnClick(eye) {
   return false;
 }
 
-eye1.wEl.addEventListener('click', () => {
-  if (_canZoomOnClick(eye1)) doZoom(eye1);
+eyes.forEach(eye => {
+  on(eye.wEl, 'click', () => {
+    if (_canZoomOnClick(eye)) doZoom(eye);
+  });
 });
 
-eye2.wEl.addEventListener('click', () => {
-  if (_canZoomOnClick(eye2)) doZoom(eye2);
-});
+/* ── Tactile : DÉLÉGATION du tap sur les yeux ─────────────────────────────
+   Le chemin souris exige l'état 'play' pour rendre l'œil cliquable
+   (.clickable → pointer-events:auto). Or un TAP téléporte le point de
+   contact : les rayons éveil et play sont franchis au MÊME tick, la machine
+   d'états (chaîne else-if de tick()) ne passe jamais en 'play', l'œil garde
+   pointer-events:none et son listener click ne peut PAS se déclencher. Et
+   même après un glissé lent jusqu'à 'play', pointerup (qui précède click au
+   tactile) endort l'œil et retire .clickable avant que le click ne parte.
+   → Au doigt, on écoute le click sur le ROOT (toujours atteignable) et on
+   zoome l'œil le plus proche du point touché, à portée élargie. La souris,
+   elle, continue de passer par l'état 'play' : rien ne change au desktop. */
+if (_isTouch) {
+  on(root, 'click', (e) => {
+    // zoomedEye (posé synchroneement par doZoom) et non `zoomed` (posé au rAF
+    // suivant) : évite le double-zoom si le click a déjà été traité par l'œil.
+    if (zoomedEye || zoomed || videoPlaying || isReturning()) return;
+    // Parité desktop : tant que le voile de chargement est visible, il
+    // intercepte les clics — la délégation ne doit pas le contourner.
+    if (loaderEl && loaderEl.style.display !== 'none'
+                 && !loaderEl.classList.contains('out')) return;
+    // La légende gère ses propres taps.
+    if (e.target?.closest?.('#caption-wrap')) return;
 
-eye3.wEl.addEventListener('click', () => {
-  if (_canZoomOnClick(eye3)) doZoom(eye3);
-});
+    const dim = Math.min(rect.vw, rect.vh);
+    const rTouchSq = (dim * R_CLOSE * 2) ** 2;   // rayon élargi pour le doigt
+    let best = null, bestD2 = Infinity;
+    for (const eye of eyes) {
+      const sx = rect.oX + rect.rW * eye.cx;
+      const sy = rect.oY + rect.rH * eye.cy;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < rTouchSq && d2 < bestD2) { best = eye; bestD2 = d2; }
+    }
+    if (best) doZoom(best);
+  });
+}
 
-eye4.wEl.addEventListener('click', () => {
-  if (_canZoomOnClick(eye4)) doZoom(eye4);
-});
-
-btnClose.addEventListener('click', () => {
+on(btnClose, 'click', () => {
   if (!zoomedEye) return;
   if (videoPlaying) {
     closeMedia(zoomedEye);

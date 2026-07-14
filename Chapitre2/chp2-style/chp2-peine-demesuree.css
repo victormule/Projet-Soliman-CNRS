@@ -644,3 +644,19 @@
     fill: none;
     display: block;
 }
+
+/* ===========================================================
+   TACTILE — autoriser le DÉFILEMENT vertical natif au doigt
+   ───────────────────────────────────────────────────────────
+   #app pose touch-action:none pour tout le site (le glissé du
+   doigt pilote curseur et torche). Or touch-action se combine
+   par INTERSECTION avec les ancêtres : tant que #app est à
+   none, AUCUN descendant — même overflow-y:auto — ne peut être
+   défilé au doigt. Pendant la sous-partie (classe body posée
+   par l'opening), on rouvre le pan vertical ; la classe étant
+   retirée à la fermeture, le reste du site est inchangé.
+   Souris/desktop : touch-action est sans effet.
+   =========================================================== */
+body.peine-demesuree-open #app {
+    touch-action: pan-y;
+}
