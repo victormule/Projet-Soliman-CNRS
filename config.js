@@ -457,7 +457,7 @@ window.CONFIG = {
 
   MIN_SIZE: {
     width:  500,
-    height: 350,
+    height: 250,
   },
 
 
