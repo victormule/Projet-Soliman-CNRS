@@ -28,11 +28,22 @@ export class Fullscreen {
     ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'msfullscreenchange']
       .forEach(ev => document.addEventListener(ev, () => {
         document.body.classList.toggle('is-fullscreen', this.isFullscreen());
-        this.rebuild();
+        this.rebuild();   // l'icône change (expand ↔ collapse) : reconstruction voulue
       }));
 
     this.rebuild();
-    window.addEventListener('resize', () => this.rebuild());
+    // ⚠️ Pas de listener 'resize' ici : app.js appelle fullscreen.resize() (throttlé).
+    // Un second listener non throttlé recréait le SVG en boucle sur mobile (barre
+    // d'URL) → clignotement du bouton.
+  }
+
+  /**
+   * Appelé au resize (throttlé par app.js). Ne reconstruit le SVG que si la
+   * TAILLE a réellement changé — sur mobile portrait, la barre d'URL fait varier
+   * la hauteur mais pas min(vW,vH), donc la taille (et le bouton) reste stable.
+   */
+  resize() {
+    if (this.arrowSizeFn() !== this._lastSz) this.rebuild();
   }
 
   /**
@@ -67,6 +78,7 @@ export class Fullscreen {
    */
   rebuild() {
     const sz = this.arrowSizeFn();
+    this._lastSz = sz;                 // pour resize() : évite de reconstruire à taille égale
     const expanded = this.isFullscreen();
     const stroke = 'rgba(255,255,255,0.75)';
     const strokeGlow = 'drop-shadow(0 0 7px rgba(255,210,80,0.80)) drop-shadow(0 0 20px rgba(255,170,30,0.50))';

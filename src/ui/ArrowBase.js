@@ -63,6 +63,7 @@ export class ArrowBase {
 
   show(onClick) {
     const sz   = this._getSizePx();
+    this._lastSz = sz;                 // référence pour resize() (anti re-render)
     const CIRC = 201;
     const PLEN = 60;
 
@@ -268,6 +269,12 @@ export class ArrowBase {
     if (!this.el.classList.contains('visible')) return;
 
     const sz   = this._getSizePx();
+    // Taille inchangée → ni re-render ni repositionnement : la position (marge =
+    // min(vW,vH)·0.05) dérive de la MÊME grandeur que la taille. Sur mobile
+    // portrait, la barre d'URL fait varier la hauteur mais pas min(vW,vH) → on
+    // évite ainsi la réécriture du SVG en rafale (clignotement de la flèche).
+    if (sz === this._lastSz) return;
+    this._lastSz = sz;
     const CIRC = 201;
     const PLEN = 60;
 

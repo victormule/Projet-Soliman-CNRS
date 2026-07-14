@@ -161,13 +161,30 @@ window.addEventListener('touchend', e => {
   lastTouch = { y: null, t: 0 };
 }, { passive: true });
 
-/* ── 11. Resize ──────────────────────────────────────────────── */
+/* ── 11. Resize ──────────────────────────────────────────────────────────────
+   THROTTLÉ (rAF) + garde de dimensions. Sur mobile, l'apparition/disparition de
+   la barre d'URL fait varier innerHeight et émet une RAFALE de 'resize'. Sans
+   throttle, arrows/fullscreen se re-rendaient (innerHTML réécrit) en boucle →
+   clignotement + saut de la flèche, du bouton plein écran et de la légende.
+   On coalesce à un rendu par frame, et on ignore les 'resize' fantômes (mêmes
+   dimensions). fullscreen.resize() ne reconstruit que si la taille a changé. */
+let _resizeQueued = false;
+let _lastVW = window.innerWidth;
+let _lastVH = window.innerHeight;
 window.addEventListener('resize', () => {
-  torch.resize();
-  manager.onResize();
-  player.resize();
-  fullscreen.rebuild();
-});
+  if (_resizeQueued) return;
+  _resizeQueued = true;
+  requestAnimationFrame(() => {
+    _resizeQueued = false;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    if (vw === _lastVW && vh === _lastVH) return;   // resize « fantôme » (aucun changement)
+    _lastVW = vw; _lastVH = vh;
+    torch.resize();
+    manager.onResize();
+    player.resize();
+    fullscreen.resize();
+  });
+}, { passive: true });
 
 /* ── 12. Fullscreen au démarrage ─────────────────────────────── */
 function _requestFullscreen() {
