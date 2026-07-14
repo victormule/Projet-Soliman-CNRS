@@ -1098,9 +1098,26 @@ function unlockMediaForTouch(eye) {
   } catch (_) {}
 }
 
+/* (3) Décodage explicite des découpes du crossfade, DÉCLENCHÉ AU TAP.
+   Au boot mobile, decodeIdle() (requestIdleCallback) ne s'exécute quasi jamais :
+   le thread principal décode déjà les 17 calques critiques, il n'y a pas d'idle.
+   Résultat : au premier zoom, les sk-play ne sont pas encore décodées et
+   « poppent » en retard pendant le crossfade (images qui « chargent mal »).
+   On force donc leur décodage dès le tap : il reste ~570 ms (T_CROSSFADE_START)
+   avant que la première ne doive apparaître — largement assez pour un WebP
+   ~250 Ko. Idempotent : sur desktop ou au 2ᵉ zoom, l'image est déjà décodée →
+   la promesse se résout aussitôt. On ne bloque rien (pas d'await) : le décodage
+   se fait en tâche de fond, en parallèle de l'animation de zoom. */
+function decodeSkPlayForZoom(eye) {
+  [eye.skPlayEl, eye.skPlayFinalEl].forEach(el => {
+    if (el && typeof el.decode === 'function') el.decode().catch(() => {});
+  });
+}
+
 function doZoom(eye) {
   if (isReturning()) return;
   unlockMediaForTouch(eye);   // tactile : autorise le play() différé d'openMedia
+  decodeSkPlayForZoom(eye);   // (3) décode les découpes avant le crossfade
   zoomedEye  = eye;
   eye.state  = 'zoomed';
   eye.wEl.classList.remove('clickable');
