@@ -1,10 +1,11 @@
 /**
- * app.js — v4
+ * app.js — racine de composition du site.
  *
- * CHANGEMENTS vs v3 :
- * - CollaborationScene enregistrée et active
- * - TransitionManager instancié et injecté dans systems
- *   (CollaborationScene l'utilise pour swapSiteTitle)
+ * Construit les systèmes partagés (audio, torche, fonds, transitions),
+ * les composants UI, enregistre les six scènes auprès du SceneManager,
+ * câble le bus d'événements (navigation, player) et les entrées globales
+ * (scroll, resize, écran de démarrage). Voir CLAUDE.md pour la carte
+ * complète de l'architecture.
  */
 
 import { SceneManager }       from './core/SceneManager.js';

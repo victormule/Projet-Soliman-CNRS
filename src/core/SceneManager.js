@@ -32,7 +32,6 @@ export class SceneManager {
       return;
     }
 
-    console.log(`[SceneManager] Start → ${name}`);
     this.currentScene = scene;
     await scene.enter(params);
   }
@@ -66,19 +65,15 @@ export class SceneManager {
     this.isTransitioning = true;
     const from = this.currentScene?.name ?? null;
 
-    console.log(`[SceneManager] ${from} → ${name}`);
-
     try {
       // ── ÉTAPE 1 : Exit → noir garanti ──────────────
       if (this.currentScene) {
         await this.currentScene.exit({ to: name, ...params });
-        console.log(`[SceneManager] ${from} → NOIR ✓`);
       }
 
       // ── ÉTAPE 2 : Enter → visible garanti ──────────
       this.currentScene = next;
       await next.enter({ from, ...params });
-      console.log(`[SceneManager] ${name} → VISIBLE ✓`);
 
     } catch (e) {
       console.error('[SceneManager] Erreur transition :', e);
