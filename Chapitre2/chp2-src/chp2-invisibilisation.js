@@ -1374,8 +1374,14 @@ on(document, 'pointercancel', _onPointerAway, { passive: true });
 on(document, 'pointerleave',  _onPointerAway, { passive: true });
 
 let _resizeTimer = null;
+let _lastResizeW = window.innerWidth;
 
 on(window, 'resize', () => {
+  // Chrome-toggle mobile (barre du navigateur au toucher) : seule la HAUTEUR
+  // change → on ignore, sinon rect/légende/globes se repositionnent et « sautent ».
+  // Un vrai changement (rotation) modifie la largeur.
+  if (_isTouch && window.innerWidth === _lastResizeW) return;
+  _lastResizeW = window.innerWidth;
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(() => {
     rect = buildRect();

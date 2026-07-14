@@ -168,6 +168,8 @@ window.addEventListener('touchend', e => {
    clignotement + saut de la flèche, du bouton plein écran et de la légende.
    On coalesce à un rendu par frame, et on ignore les 'resize' fantômes (mêmes
    dimensions). fullscreen.resize() ne reconstruit que si la taille a changé. */
+const _isTouchDevice = window.matchMedia?.('(pointer: coarse)').matches
+                    || 'ontouchstart' in window;
 let _resizeQueued = false;
 let _lastVW = window.innerWidth;
 let _lastVH = window.innerHeight;
@@ -177,7 +179,15 @@ window.addEventListener('resize', () => {
   requestAnimationFrame(() => {
     _resizeQueued = false;
     const vw = window.innerWidth, vh = window.innerHeight;
-    if (vw === _lastVW && vh === _lastVH) return;   // resize « fantôme » (aucun changement)
+    if (vw === _lastVW && vh === _lastVH) return;      // resize « fantôme »
+
+    // ⚠️ CHROME-TOGGLE MOBILE : sur tactile, TOUCHER l'écran fait apparaître/
+    // disparaître la barre du navigateur → innerHeight change SANS que la largeur
+    // bouge. Recalculer les positions là-dessus fait « sauter » flèche, plein
+    // écran, légende et installation. On l'ignore : seul un vrai changement (la
+    // rotation, qui modifie la LARGEUR) déclenche le repositionnement.
+    if (_isTouchDevice && vw === _lastVW) { _lastVH = vh; return; }
+
     _lastVW = vw; _lastVH = vh;
     torch.resize();
     manager.onResize();

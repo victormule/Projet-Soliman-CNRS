@@ -20,14 +20,19 @@
  *   TouchHover.init();
  */
 
-/* Sélecteur des éléments porteurs d'un effet de survol dans tout le site. */
+/* Sélecteur des éléments porteurs d'un effet de survol dans tout le site.
+   ─────────────────────────────────────────────────────────────────────────────
+   ⚠️ On EXCLUT les boutons à action unique — flèche ([data-arrow]), plein écran
+   (#fs-btn), « Passer » (.skip-wrap). Au tactile, on les TAPE ; leur donner un
+   survol synthétique les faisait « popper » (scale 1.22 rebond) dès que le doigt
+   passait dessus en glissant (fréquent en mode tactile invisibilisation) → effet
+   de saut. Le clic, lui, ne dépend pas de TouchHover : il reste intact.
+   On garde le survol tactile là où il porte une VRAIE révélation au glissé :
+   zones de crâne (chap.1), boutons documents / navigation / cercles romains. */
 const HOVER_SELECTOR = [
   '.doc-btn',
   '.nav-btn-zone',
   '.roman-btn',
-  '[data-arrow]',
-  '#fs-btn',
-  '.skip-wrap',
   '.hotspot-zone',
 ].join(',');
 
