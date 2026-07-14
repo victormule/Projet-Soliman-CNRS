@@ -40,6 +40,8 @@
 export async function runSkippableQuoteSequence({
   transition, // conservé pour compatibilité avec l'appel actuel
   text,
+  label = 'Témoignage',   // libellé fixe au-dessus du texte (petites capitales)
+  credit = '',            // crédit sous le texte, révélé en fin de typing (ex. « E., lycéenne »)
   charDelay = 54,
   skipDelay = 2000,
   afterTypingDelay = 2800,
@@ -121,11 +123,11 @@ export async function runSkippableQuoteSequence({
     fontMinPx: 12,
     fontMaxPx: 52,
 
-    // Rendu typo
-    lineHeight: 1.84,
-    letterSpacingEm: 0.008,
-    textColor: 'rgba(239, 232, 220, 0.96)',
-    cursorColor: 'rgba(239, 232, 220, 0.82)',
+    // Rendu typo — texte en serif italique (couleur ivoire, comme le chapitre 3)
+    lineHeight: 1.7,
+    letterSpacingEm: 0.006,
+    textColor: 'rgba(243, 238, 228, 0.96)',
+    cursorColor: 'rgba(243, 238, 228, 0.82)',
     shadow:
       '0 0 30px rgba(255,255,255,0.035), 0 0 14px rgba(0,0,0,0.18), 0 6px 18px rgba(0,0,0,0.32)',
 
@@ -134,6 +136,13 @@ export async function runSkippableQuoteSequence({
 
     // Classe de visibilité utilisée par le CSS global de la scène
     visibleClass: 'visible',
+
+    // ── Structure « témoignage » (label + crédit), style harmonisé chapitre 3 ──
+    labelText: label,
+    creditText: credit,
+    metaFont: `system-ui, -apple-system, 'Segoe UI', sans-serif`,
+    metaColor: 'rgba(243, 238, 228, 0.85)',   // = --ivory-faint du chapitre 3
+    metaScale: 0.34,                           // taille label/crédit = fraction de la taille du texte
   };
 
   let settled = false;
@@ -145,6 +154,14 @@ export async function runSkippableQuoteSequence({
 
   const refs = buildQuoteDOM(rootEl, CFG);
   applyLayout(rootEl, refs, CFG);
+
+  // Révèle le crédit (fondu) : appelé quand le texte est entièrement tapé,
+  // ou immédiatement en cas de skip. Idempotent, état conservé au resize.
+  const showCredit = () => {
+    if (!CFG.creditText) return;
+    refs.credit.dataset.shown = '1';
+    refs.credit.style.opacity = '1';
+  };
 
   const onResize = () => {
     if (cleaned) return;
@@ -229,10 +246,11 @@ export async function runSkippableQuoteSequence({
     settled = true;
     runToken = Symbol('quote-sequence-skipped');
 
-    // En cas de skip, on force l'affichage du texte complet.
+    // En cas de skip, on force l'affichage du texte complet + le crédit.
     // Le chapitre pourra ensuite faire son fondu sur un état final propre.
     refs.body.textContent = text;
     refs.cursor.style.opacity = '1';
+    showCredit();
 
     hideSkipButton(true);
     cleanup();
@@ -245,6 +263,8 @@ export async function runSkippableQuoteSequence({
   typingPromise.then(async () => {
     if (settled || !isStillValid()) return;
 
+    // Texte entièrement tapé → le crédit apparaît en fondu, puis on tient.
+    showCredit();
     hideSkipButton(true);
     await wait(CFG.afterTypingDelay);
 
@@ -279,24 +299,34 @@ function buildQuoteDOM(rootEl, cfg) {
   rootEl.innerHTML = `
     <div class="quote-seq-stage" aria-live="polite">
       <div class="quote-seq-column">
+        <div class="quote-seq-label"></div>
         <div class="quote-seq-text">
-          <span class="quote-seq-body"></span><span class="quote-seq-cursor">${cfg.cursorChar}</span>
+          <span class="quote-seq-open">«&nbsp;</span><span class="quote-seq-body"></span><span class="quote-seq-cursor">${cfg.cursorChar}</span><span class="quote-seq-close">&nbsp;»</span>
         </div>
+        <div class="quote-seq-credit"></div>
       </div>
     </div>
   `;
 
   const stage = rootEl.querySelector('.quote-seq-stage');
   const column = rootEl.querySelector('.quote-seq-column');
+  const label = rootEl.querySelector('.quote-seq-label');
   const text = rootEl.querySelector('.quote-seq-text');
   const body = rootEl.querySelector('.quote-seq-body');
   const cursor = rootEl.querySelector('.quote-seq-cursor');
+  const credit = rootEl.querySelector('.quote-seq-credit');
 
-  if (!stage || !column || !text || !body || !cursor) {
+  if (!stage || !column || !label || !text || !body || !cursor || !credit) {
     throw new Error('runSkippableQuoteSequence: DOM interne invalide.');
   }
 
-  return { stage, column, text, body, cursor };
+  // Contenus fixes (textContent : jamais d'injection HTML depuis le crédit).
+  label.textContent  = cfg.labelText || '';
+  credit.textContent = cfg.creditText || '';
+  label.style.display  = cfg.labelText  ? 'block' : 'none';
+  credit.style.display = cfg.creditText ? 'block' : 'none';
+
+  return { stage, column, label, text, body, cursor, credit };
 }
 
 /**
@@ -355,6 +385,17 @@ function applyLayout(rootEl, refs, cfg) {
   refs.column.style.width = `${columnPx}px`;
   refs.column.style.maxWidth = '100%';
 
+  // ── Label « Témoignage » (petites capitales espacées, sans-serif) ──
+  const metaPx = clamp(Math.round(fontPx * cfg.metaScale), 11, 22);
+  refs.label.style.fontFamily     = cfg.metaFont;
+  refs.label.style.fontSize       = `${metaPx}px`;
+  refs.label.style.fontWeight     = '500';
+  refs.label.style.letterSpacing  = '0.28em';
+  refs.label.style.textTransform  = 'uppercase';
+  refs.label.style.textAlign      = 'center';
+  refs.label.style.color          = cfg.metaColor;
+  refs.label.style.marginBottom   = `${Math.round(fontPx * 0.85)}px`;
+
   refs.text.style.width = '100%';
   refs.text.style.position = 'relative';
   refs.text.style.color = cfg.textColor;
@@ -362,7 +403,8 @@ function applyLayout(rootEl, refs, cfg) {
   refs.text.style.fontSize = `${fontPx}px`;
   refs.text.style.lineHeight = String(cfg.lineHeight);
   refs.text.style.letterSpacing = `${cfg.letterSpacingEm}em`;
-  refs.text.style.fontWeight = '300';
+  refs.text.style.fontWeight = '400';
+  refs.text.style.fontStyle = 'italic';
   refs.text.style.textAlign = 'justify';
   refs.text.style.textJustify = 'inter-word';
   refs.text.style.whiteSpace = 'pre-wrap';
@@ -383,6 +425,19 @@ function applyLayout(rootEl, refs, cfg) {
   refs.cursor.style.color = cfg.cursorColor;
   refs.cursor.style.animation = 'quoteSeqBlink 1.35s steps(1) infinite';
   refs.cursor.style.opacity = '1';
+
+  // ── Crédit (petites capitales espacées, révélé en fin de typing) ──
+  refs.credit.style.fontFamily    = cfg.metaFont;
+  refs.credit.style.fontSize      = `${metaPx}px`;
+  refs.credit.style.fontWeight    = '500';
+  refs.credit.style.letterSpacing = '0.2em';
+  refs.credit.style.textTransform = 'uppercase';
+  refs.credit.style.textAlign     = 'center';
+  refs.credit.style.color         = cfg.metaColor;
+  refs.credit.style.marginTop     = `${Math.round(fontPx * 0.85)}px`;
+  refs.credit.style.transition    = 'opacity 0.6s ease';
+  // Préserve l'état « révélé » au travers d'un resize (applyLayout est rappelé).
+  refs.credit.style.opacity       = refs.credit.dataset.shown === '1' ? '1' : '0';
 }
 
 /* ============================================================================

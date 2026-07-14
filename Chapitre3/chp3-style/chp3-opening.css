@@ -336,7 +336,8 @@
 }
 #chapitre3-root .iq-quote-text {
     margin:0; font-family:var(--serif); font-style:italic;
-    font-size:calc(var(--iq-quote-text-size, 17) * var(--u)); line-height:1.55; color:var(--ivory);
+    font-size:calc(var(--iq-quote-text-size, 23) * var(--u)); line-height:1.6; color:var(--ivory);
+    text-align:justify; text-justify:inter-word;
 }
 #chapitre3-root .iq-quote-credit {
     display:block; margin-top:calc(8 * var(--u));

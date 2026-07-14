@@ -208,7 +208,7 @@ export const CONFIG = {
         },
 
         quote      : 'Je n’avais pas de connaissance de ce personnage. Il est le général français qui a été tourné en héros napoléonien après son meurtre par Soliman al-Halabi',
-        quoteCredit: 'étudiant',
+        quoteCredit: 'A., étudiant',
 
         // ══ MISE EN PAGE ═════════════════════════════════════════════
         // Source unique de vérité pour TOUTE la géométrie du sondage.
@@ -324,7 +324,7 @@ export const CONFIG = {
             },
 
             // — Témoignage final (machine à écrire) —
-            quote: { labelSize: 10, textSize: 17, creditSize: 11, maxWidthCh: 58 },
+            quote: { labelSize: 12, textSize: 23, creditSize: 12, maxWidthCh: 62 },
         },
         timing: {
             questionIn      : 900,   // ms : fondu/montée de la question

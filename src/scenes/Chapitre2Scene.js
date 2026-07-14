@@ -121,16 +121,17 @@ export class Chapitre2Scene extends Scene {
     /**
      * Texte de la citation typée affichée à la sortie du chapitre 2,
      * juste avant le retour à l'espace collaboratif (écran noir, son coupé).
-     * Le « \n » initial offre une respiration verticale, comme au chapitre 1.
+     * Le label « Témoignage », les guillemets « » et le crédit sont ajoutés
+     * par QuoteSequence — ce texte ne contient que le corps du témoignage.
      */
     this._outroQuoteText =
-      '\n« Ce qui m\u2019a le plus marqué ? sans hésiter : le traitement de son ' +
+      'Ce qui m\u2019a le plus marqué ? sans hésiter : le traitement de son ' +
       'corps. Appendre qu\u2019il a été disséqué, exposé, puis conservé comme un ' +
       'objet c\u2019est choquant. J\u2019ai eu l\u2019impression qu\u2019on ' +
       'l\u2019avait complètement déshumanisé. C\u2019est comme si on voulait ' +
       'punir son corps même après sa mort. Ce geste m\u2019a paru violent, cruel, ' +
       'et profondément injuste. Ça m\u2019a vraiment touché et ouvert les yeux sur ' +
-      'la violence physique et symbolique du colonialisme »';
+      'la violence physique et symbolique du colonialisme';
   }
 
   /* ── Cycle de vie ──────────────────────────────────────────────────────── */
@@ -339,6 +340,7 @@ export class Chapitre2Scene extends Scene {
       await runSkippableQuoteSequence({
         transition: this.transition,
         text: this._outroQuoteText,
+        credit: 'M., lycéen',
         charDelay: 54,
         skipDelay: CHP2.timing?.skip_btn_delay ?? 2000,
         afterTypingDelay: 2800,
