@@ -332,7 +332,7 @@
    clamp(12px, 2.75vmin, 52px), label/crédit ~0.34× · À GARDER SYNCHRONISÉ
    avec QuoteSequence (fontScale 2.75, min 12, max 52, metaScale 0.34).
    Indépendant de --iq-scale/--u du quiz → plus de « tailles bizarres ». */
-#chapitre3-root .iq-quote { display:none; max-width:clamp(260px, 68vw, 920px); opacity:0; transition:opacity var(--iq-epilogue-fade-dur, 700ms) ease; }
+#chapitre3-root .iq-quote { display:none; max-width:clamp(260px, 48vw, 660px); opacity:0; transition:opacity var(--iq-epilogue-fade-dur, 700ms) ease; }
 #chapitre3-root .iq-quote.show { opacity:1; }
 #chapitre3-root .iq-quote-label {
     font-family:var(--sans); font-size:clamp(11px, 0.94vmin, 22px);
