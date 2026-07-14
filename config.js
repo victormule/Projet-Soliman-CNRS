@@ -93,8 +93,8 @@ window.CONFIG = {
       // « À Propos » dans l'overlay. Faciles à ajuster sans toucher au CSS.
       overlay: {
         doc_max_frac_h:  0.95,  // hauteur max d'un document = fraction de la zone
-        doc_max_frac_w:  1.00,  // largeur max d'un document = fraction de la zone
-        margin_v_vh:     18,    // marge haute ET basse de l'overlay (% vh)
+        doc_max_frac_w:  0.95,  // largeur max d'un document = fraction de la zone
+        margin_v_vh:     16,    // marge haute ET basse de l'overlay (% vh)
         about_max_frac:  1.00,  // largeur max du texte « À Propos » (fraction zone)
         about_min_px:    12,    // taille de police mini du texte (px)
         about_max_px:    32,    // taille de police maxi du texte (px)
@@ -103,17 +103,49 @@ window.CONFIG = {
         // Tailles exprimées en fraction de min(largeur, hauteur) du viewport :
         // la loupe garde ainsi une proportion cohérente sur tout écran.
         loupe_idle_frac: 0.045, // Ø du cercle indicateur hors image (frac vp)
-        loupe_zoom_frac: 0.35,  // Ø de la loupe au survol d'une image (frac vp)
-        loupe_zoom:      2.5,   // force du grossissement (×)
+
+        // ⚠️ Ø de la loupe au survol d'une image. C'est une FRACTION du petit
+        // côté de l'écran, MAIS le résultat final est PLAFONNÉ par loupe_zoom_max
+        // (en px) ci-dessous. Tant que ce plafond n'augmente pas, agrandir cette
+        // fraction ne change RIEN (la loupe reste collée au plafond).
+        // → Pour une loupe plus grande : monter loupe_zoom_frac ET loupe_zoom_max.
+        loupe_zoom_frac: 0.5,   // ex. 0.5 = 50 % du petit côté de l'écran
+        loupe_zoom:      2.2,   // force du grossissement (×)
         loupe_idle_min:  30,    // garde-fous px (petit écran)
         loupe_idle_max:  60,
-        loupe_zoom_min:  130,
-        loupe_zoom_max:  260,
+        loupe_zoom_min:  130,   // Ø minimum de la loupe (px)
+        loupe_zoom_max:  480,   // Ø MAXIMUM de la loupe (px) — le vrai plafond
 
         // Décalage VERTICAL de la loupe au-dessus du doigt sur écran tactile,
         // en fraction du Ø de la loupe (0 = centrée sur le doigt, 0.9 = juste
         // au-dessus). Évite que le doigt masque la zone grossie.
         loupe_touch_offset: 0.85,
+
+        // ── INCRUSTATIONS DE SITE (embeds : doc-3, doc-4) ─────────────────
+        // Taille du cadre où s'affiche le site incrusté. Exprimée en FRACTION
+        // de la zone centrale disponible (0..1) :
+        //   • une seule des deux → l'autre suit le ratio du document (16/9) ;
+        //   • les DEUX fournies  → boîte explicite (le ratio est ignoré) ;
+        //   • null               → automatique (plus grand 16/9 qui tient).
+        // Réglage GLOBAL (tous les embeds). Pour régler UN document en
+        // particulier, utiliser width_frac / height_frac dans DOCUMENTS.
+        embed_width_frac:  0.8,   // ex. 0.9 = 90 % de la largeur dispo
+        embed_height_frac: 2.2,   // ex. 0.8 = 80 % de la hauteur dispo
+
+        // ── DÉFILEMENT INITIAL de la page incrustée ──────────────────────
+        // VRAI défilement : on ajoute une ANCRE (#nom) à l'URL du site ; le
+        // navigateur descend tout seul jusqu'à cet endroit à l'ouverture, et le
+        // haut reste accessible (on peut remonter). C'est la seule méthode qui
+        // marche pour un site d'un AUTRE domaine (le défilement en pixels par
+        // script y est interdit). Ne fonctionne que si le site possède l'ancre.
+        // Se règle par document via embed_hash dans DOCUMENTS (voir doc-3/doc-4).
+        embed_hash: null,         // ancre globale (rare) — normalement par document
+
+        // ── (option) ROGNAGE du haut, en PIXELS — À ÉVITER si possible ────
+        // Décale l'iframe vers le haut : le cadre masque la partie qui dépasse.
+        // ⚠️ Cache VRAIMENT le haut (non récupérable). N'a de sens que pour un
+        // site SANS ancre exploitable. Laisser à 0 quand on utilise embed_hash.
+        embed_offset_top: 0,      // ex. 120 = cacher les 120 premiers px du site
       },
 
       // ── Bouton « À Propos » ────────────────────────────────────────────
@@ -295,6 +327,14 @@ window.CONFIG = {
       url:    'https://catalogue-lumiere.com/assassinat-de-kleber/',
       poster: 'images/doc-3-poster.jpg',   // écran tactile : image fixe
       ratio:  '16 / 9',
+      // Taille de l'incrustation, fractions de la zone (0..1 ; null = auto).
+      // Surchargent le réglage global DOCS.overlay.embed_* pour CE document.
+      width_frac:  null,
+      height_frac: null,
+      // Défilement initial : ancre du site (vrai défilement, haut accessible).
+      // Ce site (WordPress) accepte : '#content', '#post-299', '#primary', '#main'.
+      embed_hash: '#content',
+      embed_offset_top: null,   // (option) px rognés en haut — laisser null avec une ancre
       caption: 'Film des frères Lumière, l\u2019assassinat de Kléber — janvier 1898',
       source: { label: 'Ouvrir le catalogue Lumière', href: 'https://catalogue-lumiere.com/assassinat-de-kleber/' },
     },
@@ -302,10 +342,16 @@ window.CONFIG = {
     'doc-4': {
       type: 'embed',
       url:   'https://debordements.fr/Lettre-au-President-de-la-Republique-au-sujet-du-Syrien-fanatique/',
-      // Les incrustations sont affichées dans un cadre de TAILLE FIXE UNIFORME
-      // (identique à doc-3), centré entre les deux colonnes : voir
-      // DocumentOverlay._layoutFrames (gabarit 16/9 commun à tous les embeds).
       ratio: '16 / 9',
+      // Taille de l'incrustation, fractions de la zone (0..1 ; null = auto).
+      // Surchargent le réglage global DOCS.overlay.embed_* pour CE document.
+      width_frac:  null,
+      height_frac: null,
+      // Défilement initial : ce site (débordements) n'expose AUCUNE ancre au
+      // milieu de l'article — un vrai défilement n'est donc pas possible ici.
+      // (Seul recours : embed_offset_top, qui rogne le haut. À éviter.)
+      embed_hash: null,
+      embed_offset_top: null,   // (option) px rognés en haut du site
       caption: 'Lettre au président de la République du collectif Abounaddara au sujet du « Syrien fanatique » — octobre 2022',
       source: { label: 'Ouvrir la lettre sur Débordements', href: 'https://debordements.fr/Lettre-au-President-de-la-Republique-au-sujet-du-Syrien-fanatique/' },
     },

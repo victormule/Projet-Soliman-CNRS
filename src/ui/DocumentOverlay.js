@@ -451,12 +451,14 @@ export class DocumentOverlay {
     const el = this._makeFrameShell();
     const entry = this._frames[this._frames.length - 1];
 
-    // Les incrustations (doc-3, doc-4) partagent une TAILLE FIXE UNIFORME,
-    // centrée entre les deux colonnes : on ne suit aucun ratio propre au
-    // document, `_layoutFrames` reconnaît ce drapeau et donne au cadre la même
-    // boîte pour tous les embeds. Le ratio n'est plus qu'un repli théorique.
+    // Incrustation : `_layoutFrames` reconnaît ce drapeau. Par défaut la boîte
+    // est la plus grande au ratio du document qui tient dans la zone (identique
+    // pour tous les embeds). Les fractions width_frac/height_frac de la config
+    // (par document, sinon globales DOCS.overlay.embed_*) forcent une taille.
     entry.embed = true;
     entry.ratio = this._parseRatio(data.ratio) ?? (16 / 9);
+    entry.wFrac = (typeof data.width_frac  === 'number') ? data.width_frac  : null;
+    entry.hFrac = (typeof data.height_frac === 'number') ? data.height_frac : null;
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches;
 
@@ -484,13 +486,41 @@ export class DocumentOverlay {
       return el;
     }
 
+    const ov = this.config.DOCS?.overlay ?? {};
+
     const iframe = document.createElement('iframe');
     iframe.className = 'doc-ov-media doc-ov-embed';
-    iframe.src            = data.url;
+
+    // ── DÉFILEMENT INITIAL (embed_hash) ───────────────────────────────────
+    // VRAI défilement : on ajoute une ancre (#nom) à l'URL. Le navigateur
+    // défile de lui-même jusqu'à cet élément au chargement — le haut de la page
+    // reste accessible (on peut remonter). C'est la SEULE façon de « descendre »
+    // dans un site d'un autre domaine (un défilement en pixels par script est
+    // interdit par le navigateur). Ne marche que si le site possède l'ancre.
+    const rawHash = (typeof data.embed_hash === 'string' && data.embed_hash) ? data.embed_hash
+                  : (typeof ov.embed_hash   === 'string' && ov.embed_hash)   ? ov.embed_hash
+                  : '';
+    const hash = rawHash && !rawHash.startsWith('#') ? '#' + rawHash : rawHash;
+    iframe.src            = data.url + hash;
     iframe.loading        = 'lazy';
     iframe.referrerPolicy = 'no-referrer';
     iframe.setAttribute('allow', 'fullscreen; autoplay');
     iframe.setAttribute('title', data.caption ?? 'Document');
+
+    // ── ROGNAGE DU HAUT (embed_offset_top) — option distincte ─────────────
+    // Alternative pour un site SANS ancre : on décale l'iframe vers le haut et
+    // le cadre (overflow:hidden) masque ce qui dépasse. ⚠️ Cache réellement le
+    // haut (non récupérable). Laisser à 0 si l'on utilise embed_hash.
+    const offset = (typeof data.embed_offset_top === 'number') ? data.embed_offset_top
+                 : (typeof ov.embed_offset_top   === 'number') ? ov.embed_offset_top
+                 : 0;
+    if (offset > 0) {
+      iframe.style.position = 'absolute';
+      iframe.style.top      = (-offset) + 'px';
+      iframe.style.left     = '0';
+      iframe.style.width    = '100%';
+      iframe.style.height   = `calc(100% + ${offset}px)`;
+    }
 
     // L'incrustation garde ses propres interactions (molette pour défiler,
     // clics internes) ET un clic dessus ne referme pas l'overlay.
@@ -568,15 +598,37 @@ export class DocumentOverlay {
     const availH = row.clientHeight * fracH;
     if (availW < 8 || availH < 8) return;
 
-    // ── Incrustation : TAILLE FIXE UNIFORME, centrée. Tous les embeds (doc-3,
-    //    doc-4) reçoivent exactement la même boîte, indépendamment du contenu :
-    //    la plus grande boîte 16/9 qui tient dans la zone. Deux embeds ouverts
-    //    l'un après l'autre ont donc rigoureusement les mêmes dimensions. ──
+    // ── Incrustation, centrée. Par défaut : la plus grande boîte au ratio du
+    //    document qui tient dans la zone (deux embeds ont alors la même taille).
+    //    Les fractions de config forcent une taille : per-document d'abord
+    //    (width_frac/height_frac), sinon global (overlay.embed_width/height_frac).
+    //    Fournir les DEUX = boîte explicite (ratio ignoré) ; une seule = l'autre
+    //    suit le ratio ; aucune = auto. ──
     if (this._frames.length === 1 && this._frames[0].embed) {
-      const f = this._frames[0];
-      const R = 16 / 9;                         // gabarit commun à tous les embeds
-      let w = availW, h = w / R;
-      if (h > availH) { h = availH; w = h * R; }
+      const f     = this._frames[0];
+      const ratio = f.ratio || (16 / 9);
+      const clamp01 = v => Math.max(0.05, Math.min(1, v));
+      const wF = f.wFrac ?? ov.embed_width_frac  ?? null;
+      const hF = f.hFrac ?? ov.embed_height_frac ?? null;
+
+      let w, h;
+      if (wF != null && hF != null) {
+        // Les deux fournis : boîte explicite (ratio ignoré).
+        w = availW * clamp01(wF);
+        h = availH * clamp01(hF);
+      } else if (wF != null) {
+        // Largeur imposée, hauteur au ratio (bornée par la zone).
+        w = availW * clamp01(wF); h = w / ratio;
+        if (h > availH) { h = availH; w = h * ratio; }
+      } else if (hF != null) {
+        // Hauteur imposée, largeur au ratio (bornée par la zone).
+        h = availH * clamp01(hF); w = h * ratio;
+        if (w > availW) { w = availW; h = w / ratio; }
+      } else {
+        // Auto : plus grande boîte au ratio qui tient dans la zone.
+        w = availW; h = w / ratio;
+        if (h > availH) { h = availH; w = h * ratio; }
+      }
       w = Math.round(w); h = Math.round(h);
       f.el.style.width  = w + 'px';
       f.el.style.height = h + 'px';
