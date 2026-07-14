@@ -40,6 +40,7 @@ export class MediaPlayer {
     this._playerAudio      = null;
     this._playerVideo      = null;
     this._waveCanvas       = null;
+    this._creditEl         = null;   // crédit sous la boîte audio (sons uniquement)
     this._playHit          = null;
     this._playCircle       = null;
     this._playIcon         = null;
@@ -67,6 +68,11 @@ export class MediaPlayer {
   _vH() { return Math.max(this.config.MIN_SIZE.height, window.innerHeight); }
   _isVideo(src) { return /\.mp4$/i.test(src); }
 
+  /* Crédit audio : écart sous la boîte (fraction de sa hauteur) et taille de
+     police (px, bornée) — mêmes valeurs à la construction et au resize. */
+  _creditGapFrac() { return 0.16; }
+  _creditFontPx(rh) { return Math.max(12, Math.min(20, Math.round(rh * 0.17))); }
+
   _getAudioRect() {
     const P = this.config.PLAYER, W = this._vW(), H = this._vH();
     let rw = W * P.audio_w, rh = H * P.audio_h;
@@ -88,7 +94,7 @@ export class MediaPlayer {
   /* ═══════════════════════════════════════════════════════
      OPEN
   ═══════════════════════════════════════════════════════ */
-  open(src, label) {
+  open(src, label, credit) {
     ++this._closeSessionId;
     if (this._active) this._forceClose();
 
@@ -96,6 +102,9 @@ export class MediaPlayer {
 
     this._active = true;
     this._src    = src;
+    // Crédit affiché sous la boîte sinusoïdale — n'a de sens que pour un son.
+    this._credit = (!this._isVideo(src) && typeof credit === 'string' && credit.trim())
+      ? credit.trim() : null;
 
     const P = this.config.PLAYER, W = this._vW(), H = this._vH();
     const isVid = this._isVideo(src), ns = 'http://www.w3.org/2000/svg';
@@ -121,6 +130,7 @@ export class MediaPlayer {
 
     const el = this.el;
     el.innerHTML = '';
+    this._creditEl = null;
 
     const backdrop = document.createElement('div');
     backdrop.style.cssText = 'position:absolute;inset:0;z-index:29;';
@@ -231,6 +241,26 @@ export class MediaPlayer {
     wc.style.cssText = `position:absolute;z-index:31;pointer-events:none;opacity:0;left:${waveX}px;top:${waveY}px;width:${waveW}px;height:${waveH}px;transition:opacity 0.5s ease ${P.draw_speed + 0.2}s;`;
     el.appendChild(wc); this._waveCanvas = wc;
     requestAnimationFrame(() => wc.style.opacity = '1');
+
+    // ── Crédit sous la boîte (sons uniquement) ───────────────────────────
+    // Centré sous le rectangle, il apparaît en fondu comme le reste du player.
+    // La vidéo n'appelle jamais ce chemin → le crédit reste propre aux sons.
+    if (this._credit) {
+      const gap = Math.round(rh * this._creditGapFrac());
+      const fs  = this._creditFontPx(rh);
+      const credit = document.createElement('div');
+      credit.className = 'media-credit';
+      credit.textContent = this._credit;
+      credit.style.cssText =
+        `position:absolute;z-index:33;pointer-events:none;text-align:center;` +
+        `left:${rx}px;top:${ry + rh + gap}px;width:${rw}px;` +
+        `font-family:'Cormorant Garamond','Playfair Display',Georgia,serif;` +
+        `font-style:italic;font-weight:400;font-size:${fs}px;letter-spacing:0.12em;` +
+        `color:rgba(255,255,255,0.62);opacity:0;` +
+        `transition:opacity 0.5s ease ${P.draw_speed + 0.3}s;`;
+      el.appendChild(credit); this._creditEl = credit;
+      requestAnimationFrame(() => credit.style.opacity = '1');
+    }
 
     const bSvg = document.createElementNS(ns, 'svg');
     bSvg.setAttribute('width', '100%'); bSvg.setAttribute('height', '100%');
@@ -527,6 +557,7 @@ export class MediaPlayer {
       if (this._playerAudio) { this._playerAudio.src = ''; this._playerAudio = null; }
       if (this._playerVideo) { this._playerVideo.src = ''; this._playerVideo = null; }
       this._analyser = null; this._src = null; this._videoLayout = null;
+      this._creditEl = null; this._credit = null;
       this.el.innerHTML = '';
 
       this.torch.grow(this._torchBefore, P.torch_ms);
@@ -559,6 +590,7 @@ export class MediaPlayer {
     if (this._playerVideo) { this._playerVideo.src = ''; this._playerVideo = null; }
     if (this._waveRaf) { cancelAnimationFrame(this._waveRaf); this._waveRaf = null; }
     this.el.innerHTML = '';
+    this._creditEl = null; this._credit = null;
     this._playerHoverTitle = null;
     if (this._onClose) this._onClose(null);
   }
@@ -626,6 +658,7 @@ export class MediaPlayer {
       if(this._playIcon){this._playIcon.setAttribute('points',`${bCX-ic*0.65},${bCY-ic} ${bCX-ic*0.65},${bCY+ic} ${bCX+ic*1.1},${bCY}`);}
       if(this._pauseIcon){const rs=this._pauseIcon.querySelectorAll('rect');if(rs[0]){rs[0].setAttribute('x',bCX-gap3-prw3);rs[0].setAttribute('y',bCY-ic);rs[0].setAttribute('width',prw3);rs[0].setAttribute('height',ic*2);}if(rs[1]){rs[1].setAttribute('x',bCX+gap3);rs[1].setAttribute('y',bCY-ic);rs[1].setAttribute('width',prw3);rs[1].setAttribute('height',ic*2);}}
       if(this._playHit){this._playHit.style.width=(bR*3.2)+'px';this._playHit.style.height=(bR*3.2)+'px';this._playHit.style.left=(bCX-bR*1.6)+'px';this._playHit.style.top=(bCY-bR*1.6)+'px';}
+      if(this._creditEl){const gap=Math.round(rh*this._creditGapFrac());this._creditEl.style.left=rx+'px';this._creditEl.style.top=(ry+rh+gap)+'px';this._creditEl.style.width=rw+'px';this._creditEl.style.fontSize=this._creditFontPx(rh)+'px';}
     }
   }
 }

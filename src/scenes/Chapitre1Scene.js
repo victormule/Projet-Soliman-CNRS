@@ -1036,7 +1036,7 @@ export class Chapitre1Scene extends Scene {
         this._arrow.el.style.transition = `opacity ${(P.torch_ms || 800) / 1000}s ease`;
         this._arrow.el.style.opacity = '0';
 
-        bus.emit('player:open', { src: h.media, label: h.label });
+        bus.emit('player:open', { src: h.media, label: h.label, credit: h.credit });
       });
 
       this._hotspotLayer.appendChild(zone);

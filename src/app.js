@@ -132,7 +132,7 @@ manager.register(new Chapitre3Scene(systems));
 bus.on('navigate', ({ to }) => manager.go(to));
 
 /* ── 9. Player ───────────────────────────────────────────────── */
-bus.on('player:open', ({ src, label }) => player.open(src, label));
+bus.on('player:open', ({ src, label, credit }) => player.open(src, label, credit));
 player.setOnClose((prevTitle) => bus.emit('player:close', { prevTitle }));
 
 /* ── 10. Scroll ──────────────────────────────────────────────── */
