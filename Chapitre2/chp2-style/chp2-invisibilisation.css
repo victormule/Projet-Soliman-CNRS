@@ -366,8 +366,12 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
   pointer-events: none;                    /* légende purement informative */
 }
 
+/* Taille de police pilotée en JS (positionCaption) selon la largeur dispo, pour
+   que la légende reste agréable quand la colonne se resserre. Repli si absent. */
+#invisibilisation-root #caption-wrap { --cap-fs: clamp(12px, 1.05vw, 16px); }
+
 /* Filet doré vertical, à GAUCHE du texte. Se trace du centre vers les extrémités
-   (scaleY 0 → 1) quand .visible est posé ; s'efface au retrait. */
+   (scaleY 0 → 1) quand .visible est posé ; un léger halo doré l'accompagne. */
 #invisibilisation-root #caption-wrap::before {
   content: '';
   position: absolute;
@@ -378,48 +382,77 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
   background: linear-gradient(
       to bottom,
       rgba(210, 175, 90, 0)    0%,
-      rgba(210, 175, 90, 0.75) 18%,
-      rgba(210, 175, 90, 0.75) 82%,
+      rgba(210, 175, 90, 0.72) 16%,
+      rgba(210, 175, 90, 0.72) 84%,
       rgba(210, 175, 90, 0)    100%);
   transform: scaleY(0);
   transform-origin: center;
   opacity: 0;
   transition:
-    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity    700ms ease;
+    transform 1200ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity    800ms ease,
+    filter     900ms ease;
 }
 #invisibilisation-root #caption-wrap.visible::before {
   transform: scaleY(1);
   opacity: 1;
+  filter: drop-shadow(0 0 4px rgba(210, 175, 90, 0.40));
 }
 
-/* Bloc texte : plus de fond noir ni de min-height (c'était la bannière). */
+/* Bloc : plus de fond noir (c'était la bannière). Colonne verticale. */
 #invisibilisation-root #caption {
-  display: block;
+  display: flex;
+  flex-direction: column;
   background: none;
   min-height: 0;
   padding: 0;
 }
+
+/* ── Titre doré (rompt la monotonie du bloc de texte) ── */
+#invisibilisation-root #caption .caption-title {
+  font-family: 'Cinzel', serif;
+  font-size: calc(var(--cap-fs) * 0.82);
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: rgba(214, 180, 96, 0.92);
+  margin-bottom: 0.85em;
+  /* Révélation : fondu + léger glissé depuis le filet. */
+  opacity: 0;
+  transform: translateX(-7px);
+  transition:
+    opacity   900ms ease,
+    transform 1000ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Corps de légende (italique, sous le titre) ── */
 #invisibilisation-root #caption p {
   text-align: left;                 /* justifié à GAUCHE, contre le filet */
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-size: clamp(12px, 1.05vw, 17px);
+  font-size: var(--cap-fs);
   font-style: italic;
   font-weight: 400;
   line-height: 1.5;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.82);
-  /* Léger fondu + glissé (depuis le filet, à gauche), APRÈS le tracé du filet. */
+  letter-spacing: 0.015em;
+  color: rgba(255, 255, 255, 0.80);
   opacity: 0;
-  transform: translateX(-6px);
+  transform: translateX(-7px);
   transition:
     opacity   1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* ── Cascade d'apparition : filet (0) → titre (~430ms) → corps (~660ms) ── */
+#invisibilisation-root #caption-wrap.visible .caption-title {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 430ms;
+}
 #invisibilisation-root #caption-wrap.visible #caption p {
   opacity: 1;
   transform: translateX(0);
-  transition-delay: 520ms;
+  transition-delay: 660ms;
 }
 
 

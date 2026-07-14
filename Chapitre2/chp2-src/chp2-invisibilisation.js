@@ -426,10 +426,9 @@ const captionWrapEl  = $('caption-wrap');
    fait que poser/retirer .visible et POSITIONNER le bloc contre le bord droit de
    l'image (cf. positionCaption). */
 
-/* Décalage de la légende vers la GAUCHE : elle pénètre légèrement DANS l'image
-   (par-dessus), au lieu de rester entièrement dans la marge noire. Exprimé en
-   fraction de la largeur d'écran (réglage). */
-const CAPTION_SHIFT_FRAC = 0.035;   // ≈ 3,5 % de la largeur de l'écran
+/* Réglages de la légende latérale (fractions de la largeur d'écran). */
+const CAPTION_SHIFT_FRAC = 0.035;   // décalage à gauche → pénètre dans l'image (~3,5%)
+const CAPTION_MIN_FRAC   = 0.12;    // sous cette largeur (% fenêtre) → légende MASQUÉE
 
 /* Cale la légende par rapport au bord droit RÉEL de l'image (rect = boîte
    object-fit:contain des yeux), décalée vers la gauche de CAPTION_SHIFT_FRAC :
@@ -447,12 +446,16 @@ function positionCaption() {
   const shift       = Math.round(vw * CAPTION_SHIFT_FRAC);
   const left        = imgRight + gap - shift;            // filet un peu DANS l'image
   const width       = vw - rightMargin - left;           // jusqu'au bord droit écran
-  const MIN_W       = 140;                               // sous ce seuil → masquée
-  if (width >= MIN_W) {
+  const minW        = vw * CAPTION_MIN_FRAC;             // seuil de masquage (% fenêtre)
+  if (width >= minW) {
     captionWrapEl.style.display = '';
     captionWrapEl.style.left    = left + 'px';
     captionWrapEl.style.right   = 'auto';
     captionWrapEl.style.width   = width + 'px';
+    // Typo responsive : la police suit la largeur de la colonne (bornée) pour
+    // que la légende reste lisible et agréable quand elle se resserre.
+    const fs = Math.max(11.5, Math.min(16.5, width * 0.075));
+    captionWrapEl.style.setProperty('--cap-fs', fs.toFixed(1) + 'px');
   } else {
     // Ne tient pas en largeur (portrait / image pleine largeur) → on masque.
     captionWrapEl.style.display = 'none';

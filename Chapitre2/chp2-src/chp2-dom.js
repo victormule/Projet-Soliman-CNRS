@@ -86,7 +86,8 @@ export function buildChapitre2DOM(assetPath) {
         </button>
         <div id="caption-wrap" aria-label="Légende">
           <aside id="caption" aria-label="Légende">
-            <p>L'échelle de Martin-Schultz est une échelle colorimétrique en 16&nbsp;tons utilisée en anthropologie physique pour déterminer approximativement la couleur des yeux.</p>
+            <span class="caption-title">Échelle de Martin-Schultz</span>
+            <p>Échelle colorimétrique en 16&nbsp;tons utilisée en anthropologie physique pour déterminer approximativement la couleur des yeux.</p>
           </aside>
         </div>
         <div id="video-overlay">
