@@ -395,9 +395,17 @@ function mount(root) {
         /* ── Tactile : le GLISSÉ du doigt déclenche l'aperçu du mot-clef sous le
            doigt. mouseover/mouseout ne se déclenchent pas au doigt ; on lit donc
            l'élément réellement SOUS le doigt (elementFromPoint) à chaque touchmove.
-           Listeners PASSIFS → le défilement vertical natif n'est jamais bloqué. */
+
+           On fait AUSSI suivre le viseur global #cursor au doigt : sinon il reste
+           figé (cursor.js ne le déplace qu'au mousemove) et on ne voit pas où l'on
+           pointe → le survol « ne marche pas ». Même principe que le suivi pointeur
+           d'invisibilisation, mais via touchmove : peine DÉFILE, or pendant un
+           défilement le navigateur annule les pointermove alors que les touchmove,
+           eux, continuent d'être émis. Listeners PASSIFS → le scroll n'est jamais
+           bloqué. */
         const _coarse = window.matchMedia?.('(pointer: coarse)').matches || ('ontouchstart' in window);
         if (_coarse) {
+            const cursorEl = document.getElementById('cursor');
             let _touchMot = null;
             const showTouchMot = (mot) => {
                 if (mot === _touchMot) return;      // pas de changement → rien à faire
@@ -419,6 +427,12 @@ function mount(root) {
             const onTouchHover = (e) => {
                 const t = e.touches && e.touches[0];
                 if (!t) return;
+                // Le viseur suit le doigt (position instantanée : left/top ne sont
+                // pas transitionnés en CSS).
+                if (cursorEl) {
+                    cursorEl.style.left = t.clientX + 'px';
+                    cursorEl.style.top  = t.clientY + 'px';
+                }
                 const raw = document.elementFromPoint(t.clientX, t.clientY);
                 showTouchMot(raw ? trouverMotClef(raw, articleBody) : null);
             };
