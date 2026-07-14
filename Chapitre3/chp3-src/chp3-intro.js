@@ -17,6 +17,7 @@
 
 import { CONFIG } from './chp3-config.js';
 import { easeOutCubic } from './chp3-utils.js';
+import { typeWithBreathing } from '../../src/sequences/QuoteSequence.js';
 
 export function createIntro({ container, reduceMotion, _on, onDone }) {
     const rvWait = ms => new Promise(r => setTimeout(r, ms));
@@ -464,22 +465,8 @@ export function createIntro({ container, reduceMotion, _on, onDone }) {
         });
     }
 
-    // Machine à écrire, caractère par caractère (curseur clignotant en CSS).
-    function iqTypewriter(el, text, speed) {
-        return new Promise(resolve => {
-            el.parentElement.classList.add('typing');
-            if (reduceMotion || speed <= 0) {
-                el.textContent = text; el.parentElement.classList.remove('typing'); resolve(); return;
-            }
-            let i = 0;
-            const step = () => {
-                i++; el.textContent = text.slice(0, i);
-                if (i < text.length) setTimeout(step, speed);
-                else { el.parentElement.classList.remove('typing'); resolve(); }
-            };
-            step();
-        });
-    }
+    // Frappe du témoignage : déléguée à typeWithBreathing (QuoteSequence),
+    // partagée avec les chapitres 1 & 2 (cf. iqRunEpilogue).
 
     function iqAwaitChoice() {
         return new Promise(resolve => {
@@ -713,7 +700,17 @@ export function createIntro({ container, reduceMotion, _on, onDone }) {
         iqEl.content.style.opacity = '1';
         await rvWait(T.toEpilogueQuote);
         iqEl.quote.classList.add('show');
-        await iqTypewriter(iqEl.quoteTyped, IQ.quote, reduceMotion ? 0 : T.typeSpeed);
+        // Frappe « respirante » : même moteur que les chapitres 1 & 2
+        // (QuoteSequence), pauses de ponctuation incluses, base 54 ms/car.
+        iqEl.quoteText.classList.add('typing');
+        if (reduceMotion) {
+            iqEl.quoteTyped.textContent = IQ.quote;
+        } else {
+            await typeWithBreathing(iqEl.quoteTyped, IQ.quote, {
+                charDelay: 54, wait: rvWait, isActive: () => introActive,
+            });
+        }
+        iqEl.quoteText.classList.remove('typing');
         iqEl.quoteCredit.classList.add('show');
 
         // 4) Tenue, puis extinction de la citation seule (retour à l'écran nu).

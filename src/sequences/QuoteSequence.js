@@ -37,6 +37,56 @@
  * finaux. Ici, on ne pilote que son contenu interne.
  */
 
+/* Tempo de la frappe « respirante » — pauses de ponctuation, respirations,
+   organicité. PARTAGÉ par runSkippableQuoteSequence (chapitres 1 & 2) et
+   typeWithBreathing (chapitre 3) : la frappe est ainsi rigoureusement
+   identique dans les trois témoignages. */
+const EXPRESSIVE_TEMPO = {
+  introHold: 220,
+  commaPause: 75,
+  semicolonPause: 125,
+  colonPause: 150,
+  dashPause: 170,
+  sentencePause: 245,
+  lineBreakPause: 170,
+  paragraphPause: 560,
+  humanizeRatio: 0.22,
+  softWordRelease: 12,
+  longWordPause: 18,
+  emphasisPause: 50,
+};
+
+/**
+ * Frappe « respirante » d'un texte dans un élément, avec exactement les mêmes
+ * pauses que runSkippableQuoteSequence. Le chapitre 3 l'utilise pour taper son
+ * témoignage comme ceux des chapitres 1 & 2 (même moteur, même rythme).
+ * @param {HTMLElement} el              Élément cible (rempli via textContent).
+ * @param {string} text
+ * @param {Object} opts
+ * @param {number}   [opts.charDelay=54]  Délai de base par caractère (ms).
+ * @param {Function} opts.wait            Attente (ms) fournie par l'appelant.
+ * @param {Function} [opts.isActive]      Interrompt la frappe si elle renvoie false.
+ */
+export async function typeWithBreathing(el, text, { charDelay = 54, wait, isActive = () => true } = {}) {
+  if (!el || typeof text !== 'string') return;
+  if (typeof wait !== 'function') throw new Error('typeWithBreathing: "wait" manquant.');
+  const cfg = { baseDelay: charDelay, ...EXPRESSIVE_TEMPO };
+  if (cfg.introHold > 0) await wait(cfg.introHold);
+  let output = '';
+  let currentWord = '';
+  for (let i = 0; i < text.length; i++) {
+    if (!isActive()) return;
+    const ch = text[i];
+    const prev = i > 0 ? text[i - 1] : '';
+    const next = i < text.length - 1 ? text[i + 1] : '';
+    output += ch;
+    el.textContent = output;
+    if (/\S/.test(ch) && ch !== '\n') currentWord += ch;
+    else currentWord = '';
+    await wait(getExpressiveDelay({ ch, prev, next, currentWord, cfg }));
+  }
+}
+
 export async function runSkippableQuoteSequence({
   transition, // conservé pour compatibilité avec l'appel actuel
   text,
@@ -81,24 +131,9 @@ export async function runSkippableQuoteSequence({
    * - présence.
    */
   const CFG = {
-    // ── Typing / tempo ────────────────────────────────────────────
+    // ── Typing / tempo (partagé avec typeWithBreathing, cf. EXPRESSIVE_TEMPO) ──
     baseDelay: charDelay,
-    introHold: 220,
-
-    // Respirations de ponctuation
-    commaPause: 75,
-    semicolonPause: 125,
-    colonPause: 150,
-    dashPause: 170,
-    sentencePause: 245,
-    lineBreakPause: 170,
-    paragraphPause: 560,
-
-    // Organicité
-    humanizeRatio: 0.22,
-    softWordRelease: 12,
-    longWordPause: 18,
-    emphasisPause: 50,
+    ...EXPRESSIVE_TEMPO,
 
     // Séquence
     skipDelay,
