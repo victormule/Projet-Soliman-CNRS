@@ -426,33 +426,36 @@ const captionWrapEl  = $('caption-wrap');
    fait que poser/retirer .visible et POSITIONNER le bloc contre le bord droit de
    l'image (cf. positionCaption). */
 
-/* Cale la légende dans la MARGE DROITE, filet contre le bord droit RÉEL de
-   l'image (rect = boîte object-fit:contain des yeux). Le texte, justifié à
-   gauche, s'écrit alors vers la droite dans la marge noire — jamais par-dessus
-   l'image. Si la marge est trop étroite (portrait/mobile, image pleine largeur),
-   on retombe sur un calage au bord droit de l'écran, largeur minimale. Ne mesure
-   RIEN dans le DOM (pas de reflow) : juste de la géométrie viewport → sûr. */
+/* Décalage de la légende vers la GAUCHE : elle pénètre légèrement DANS l'image
+   (par-dessus), au lieu de rester entièrement dans la marge noire. Exprimé en
+   fraction de la largeur d'écran (réglage). */
+const CAPTION_SHIFT_FRAC = 0.035;   // ≈ 3,5 % de la largeur de l'écran
+
+/* Cale la légende par rapport au bord droit RÉEL de l'image (rect = boîte
+   object-fit:contain des yeux), décalée vers la gauche de CAPTION_SHIFT_FRAC :
+   le filet mord un peu sur l'image, le texte (justifié à gauche) s'écrit vers la
+   droite. La largeur est déduite de la place jusqu'au bord droit de l'écran → le
+   texte se recompose tout seul (responsive). Si cette largeur devient trop
+   petite pour être lisible (portrait / image pleine largeur), la légende est
+   simplement MASQUÉE. Ne mesure RIEN dans le DOM (juste de la géométrie) → sûr. */
 function positionCaption() {
   if (!captionWrapEl) return;
   const vw = rect.vw, vh = rect.vh;
   const imgRight    = rect.oX + rect.rW;                 // bord droit de l'image
-  const gap         = Math.round(Math.min(vw, vh) * 0.008);  // écart filet ↔ image
+  const gap         = Math.round(Math.min(vw, vh) * 0.008);
   const rightMargin = 10;                                // marge au bord droit écran
-  const avail       = vw - imgRight - gap - rightMargin;
-  // Seuil bas : la marge d'un écran 16:9 (~180px) doit suffire à loger la
-  // légende (colonne étroite) ; on ne bascule en repli « sur l'image » que
-  // quasiment sans marge (portrait/mobile, image pleine largeur).
-  const MIN_W       = 110;
-  if (avail >= MIN_W) {
-    // Assez de marge à droite : filet collé au bord de l'image.
-    captionWrapEl.style.left  = (imgRight + gap) + 'px';
-    captionWrapEl.style.right = 'auto';
-    captionWrapEl.style.width = avail + 'px';
+  const shift       = Math.round(vw * CAPTION_SHIFT_FRAC);
+  const left        = imgRight + gap - shift;            // filet un peu DANS l'image
+  const width       = vw - rightMargin - left;           // jusqu'au bord droit écran
+  const MIN_W       = 140;                               // sous ce seuil → masquée
+  if (width >= MIN_W) {
+    captionWrapEl.style.display = '';
+    captionWrapEl.style.left    = left + 'px';
+    captionWrapEl.style.right   = 'auto';
+    captionWrapEl.style.width   = width + 'px';
   } else {
-    // Marge trop étroite : calage au bord droit de l'écran (repli).
-    captionWrapEl.style.left  = 'auto';
-    captionWrapEl.style.right = rightMargin + 'px';
-    captionWrapEl.style.width = MIN_W + 'px';
+    // Ne tient pas en largeur (portrait / image pleine largeur) → on masque.
+    captionWrapEl.style.display = 'none';
   }
 }
 
@@ -1684,7 +1687,10 @@ return {
       if (fill) fill.style.width = '0';
 
       const capWrap = $('caption-wrap');
-      if (capWrap) capWrap.classList.remove('visible');
+      if (capWrap) {
+        capWrap.classList.remove('visible');
+        capWrap.style.display = '';   // annule un éventuel masquage (positionCaption)
+      }
 
       // SRT container vidé
       srtContainer.classList.remove('visible');
