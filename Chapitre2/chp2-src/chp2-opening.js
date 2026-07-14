@@ -1064,9 +1064,19 @@ function init() {
   window.addEventListener("mousemove", _mousemoveHandler);
 
   _touchmoveHandler = function(e) {
-    if (document.body.classList.contains('cartel-open') || document.body.classList.contains('invisibilisation-open')) return;
+    // Une sous-partie ouverte gère elle-même le tactile : peine-demesuree
+    // DÉFILE (overflow-y:auto), cartel/invisibilisation ont leurs propres gestes.
+    // L'opening ne doit alors NI paner NI preventDefault — sinon le défilement du
+    // doigt dans la sous-partie est bloqué. (peine-demesuree était oublié ici.)
+    if (document.body.classList.contains('cartel-open')
+     || document.body.classList.contains('invisibilisation-open')
+     || document.body.classList.contains('peine-demesuree-open')) return;
     e.preventDefault();
-    onMove(e.touches[0].clientX, null);
+    // On transmet AUSSI clientY : le survol des crânes au GLISSÉ du doigt en
+    // dépend (fy = clientY / vpH dans updateHover). Sans lui, le doigt restait
+    // « en haut » (fy = 0) et aucun crâne ne s'allumait pendant le glissé.
+    var t = e.touches[0];
+    onMove(t.clientX, t.clientY);
   };
   window.addEventListener("touchmove", _touchmoveHandler, { passive: false });
 

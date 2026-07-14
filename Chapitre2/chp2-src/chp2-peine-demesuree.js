@@ -391,6 +391,42 @@ function mount(root) {
             if (motActif && margeTitre.classList.contains('visible'))
                 requestAnimationFrame(() => positionnerLegende(motActif));
         }, { passive: true });
+
+        /* ── Tactile : le GLISSÉ du doigt déclenche l'aperçu du mot-clef sous le
+           doigt. mouseover/mouseout ne se déclenchent pas au doigt ; on lit donc
+           l'élément réellement SOUS le doigt (elementFromPoint) à chaque touchmove.
+           Listeners PASSIFS → le défilement vertical natif n'est jamais bloqué. */
+        const _coarse = window.matchMedia?.('(pointer: coarse)').matches || ('ontouchstart' in window);
+        if (_coarse) {
+            let _touchMot = null;
+            const showTouchMot = (mot) => {
+                if (mot === _touchMot) return;      // pas de changement → rien à faire
+                _touchMot = mot;
+                if (!mot) {
+                    motActif = null;
+                    margeTitre.classList.remove('visible');
+                    setAimHot(false);
+                    return;
+                }
+                motActif = mot;
+                margeTitre.innerHTML =
+                    `<span class="legende-categorie">${mot.dataset.categorie || ''}</span>` +
+                    `<span class="legende-citation">${mot.dataset.titre || ''}</span>`;
+                positionnerLegende(mot);
+                margeTitre.classList.add('visible');
+                setAimHot(true);
+            };
+            const onTouchHover = (e) => {
+                const t = e.touches && e.touches[0];
+                if (!t) return;
+                const raw = document.elementFromPoint(t.clientX, t.clientY);
+                showTouchMot(raw ? trouverMotClef(raw, articleBody) : null);
+            };
+            on(root, 'touchstart',  onTouchHover, { passive: true });
+            on(root, 'touchmove',   onTouchHover, { passive: true });
+            on(root, 'touchend',    () => showTouchMot(null), { passive: true });
+            on(root, 'touchcancel', () => showTouchMot(null), { passive: true });
+        }
     }
 
     /* ─────────────────────────────────────────────────────────
