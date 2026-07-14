@@ -356,11 +356,14 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 #invisibilisation-root #caption-wrap {
   position: fixed;
   top:   clamp(18px, 9vh, 96px);
+  /* left / right / width sont posés en JS (positionCaption) pour caler le filet
+     contre le bord droit RÉEL de l'image. Ces valeurs ne servent que de repli
+     avant le premier positionnement (légende encore invisible). */
   right: clamp(16px, 3.5vw, 48px);
+  width: clamp(150px, 20vw, 300px);
   z-index: 51;
-  width: clamp(180px, 24vw, 320px);
-  padding-left: clamp(14px, 1.4vw, 22px);   /* espace pour le filet, à gauche */
-  pointer-events: none;                      /* légende purement informative */
+  padding-left: clamp(10px, 1vw, 15px);   /* petit écart texte ↔ filet (à gauche) */
+  pointer-events: none;                    /* légende purement informative */
 }
 
 /* Filet doré vertical, à GAUCHE du texte. Se trace du centre vers les extrémités
@@ -398,7 +401,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
   padding: 0;
 }
 #invisibilisation-root #caption p {
-  text-align: right;
+  text-align: left;                 /* justifié à GAUCHE, contre le filet */
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   font-size: clamp(12px, 1.05vw, 17px);
   font-style: italic;
@@ -406,9 +409,9 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
   line-height: 1.5;
   letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.82);
-  /* Léger fondu + glissé, APRÈS le tracé du filet (transition-delay). */
+  /* Léger fondu + glissé (depuis le filet, à gauche), APRÈS le tracé du filet. */
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(-6px);
   transition:
     opacity   1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
     transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);

@@ -422,9 +422,39 @@ const captionWrapEl  = $('caption-wrap');
 
 /* Légende latérale STATIQUE (haut-droite) : plus de languette SVG, plus de
    mesure --menu-h ni de reconstruction au resize (c'était la source des bugs
-   d'affichage). Tout le rendu — filet doré + fondu du texte — est en CSS ;
-   le JS ne fait que poser/retirer la classe .visible (cf. emitReadyOnce /
-   doZoom / doUnzoom). */
+   d'affichage). Le rendu — filet doré + fondu du texte — est en CSS ; le JS ne
+   fait que poser/retirer .visible et POSITIONNER le bloc contre le bord droit de
+   l'image (cf. positionCaption). */
+
+/* Cale la légende dans la MARGE DROITE, filet contre le bord droit RÉEL de
+   l'image (rect = boîte object-fit:contain des yeux). Le texte, justifié à
+   gauche, s'écrit alors vers la droite dans la marge noire — jamais par-dessus
+   l'image. Si la marge est trop étroite (portrait/mobile, image pleine largeur),
+   on retombe sur un calage au bord droit de l'écran, largeur minimale. Ne mesure
+   RIEN dans le DOM (pas de reflow) : juste de la géométrie viewport → sûr. */
+function positionCaption() {
+  if (!captionWrapEl) return;
+  const vw = rect.vw, vh = rect.vh;
+  const imgRight    = rect.oX + rect.rW;                 // bord droit de l'image
+  const gap         = Math.round(Math.min(vw, vh) * 0.008);  // écart filet ↔ image
+  const rightMargin = 10;                                // marge au bord droit écran
+  const avail       = vw - imgRight - gap - rightMargin;
+  // Seuil bas : la marge d'un écran 16:9 (~180px) doit suffire à loger la
+  // légende (colonne étroite) ; on ne bascule en repli « sur l'image » que
+  // quasiment sans marge (portrait/mobile, image pleine largeur).
+  const MIN_W       = 110;
+  if (avail >= MIN_W) {
+    // Assez de marge à droite : filet collé au bord de l'image.
+    captionWrapEl.style.left  = (imgRight + gap) + 'px';
+    captionWrapEl.style.right = 'auto';
+    captionWrapEl.style.width = avail + 'px';
+  } else {
+    // Marge trop étroite : calage au bord droit de l'écran (repli).
+    captionWrapEl.style.left  = 'auto';
+    captionWrapEl.style.right = rightMargin + 'px';
+    captionWrapEl.style.width = MIN_W + 'px';
+  }
+}
 
 // Vrai dès que la flèche de retour a été cliquée (fadeOutAndReturn() a posé
 // root.dataset.returning='true'). La sous-partie se ferme : plus aucune action
@@ -444,6 +474,7 @@ function emitReadyOnce() {
   if (zoomed || videoPlaying) return;              // média/zoom en cours → différé
   if (root.dataset.returning === 'true') return;   // sortie de la sous-partie → non
   _readyEmitted = true;
+  positionCaption();                               // cale le bloc contre l'image
   captionWrapEl.classList.add('visible');
   window.dispatchEvent(new CustomEvent('chp2:invisibilisation-ready'));
 }
@@ -1181,6 +1212,7 @@ function doUnzoom(eye) {
     // Guard : ne pas afficher si un nouveau zoom/média a démarré entre-temps.
     setTimeout(() => {
       if (zoomed || videoPlaying) return;
+      positionCaption();
       captionWrapEl.classList.add('visible');
     }, 500);
   }, UNZOOM_DUR + 200);
@@ -1341,6 +1373,7 @@ on(window, 'resize', () => {
   clearTimeout(_resizeTimer);
   _resizeTimer = setTimeout(() => {
     rect = buildRect();
+    positionCaption();                 // le bord droit de l'image a bougé
     if (zoomed && zoomedEye) {
       applyZoomTransforms(zoomedEye, false);
     }
