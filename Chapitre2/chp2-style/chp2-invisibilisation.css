@@ -345,115 +345,78 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* === LÉGENDE / NAVBAR RÉTRACTABLE ===
-   #caption-wrap  position: fixed, top: 0 toujours.
-     Fermé  : translateY(-(menu-h + 2vh)) → seule la ligne dépasse à 2vh du bord
-     Ouvert : translateY(0)               → fond couvre depuis le bord supérieur
-
-     #caption     fond noir + texte
-     #caption-tab SVG : triangle noir (intérieur flèche) + ligne animée */
-
+/* === LÉGENDE LATÉRALE (statique, HAUT-DROITE) ===
+   Remplace l'ancienne bannière déroulante (languette SVG + mesure --menu-h,
+   source des bugs d'affichage sur mobile). Même grammaire que les légendes de
+   document de la phrénologie : un filet doré vertical se trace, puis le texte
+   apparaît en fondu. Ici : ancrée en HAUT À DROITE, texte JUSTIFIÉ À DROITE,
+   filet À GAUCHE du texte. Apparition/disparition via la classe .visible
+   (posée par le module quand la sous-partie est prête, retirée pendant un média).
+   Plus de languette, plus de --menu-h, plus de reconstruction au resize. */
 #invisibilisation-root #caption-wrap {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  top:   clamp(18px, 9vh, 96px);
+  right: clamp(16px, 3.5vw, 48px);
   z-index: 51;
-  opacity: 0;
-  pointer-events: none;
-  --menu-h: 64px;
-  /* 2vh de marge inclus dans le translateY négatif */
-  transform: translateY(calc(-1 * var(--menu-h) + 1vh));
-  transition:
-    opacity   700ms ease,
-    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+  width: clamp(180px, 24vw, 320px);
+  padding-left: clamp(14px, 1.4vw, 22px);   /* espace pour le filet, à gauche */
+  pointer-events: none;                      /* légende purement informative */
 }
-#invisibilisation-root #caption-wrap.visible  { opacity: 1; }
-#invisibilisation-root #caption-wrap.ready    { pointer-events: auto; }
-#invisibilisation-root #caption-wrap.expanded { transform: translateY(0); }
 
-/* ── Fond noir + texte ── */
+/* Filet doré vertical, à GAUCHE du texte. Se trace du centre vers les extrémités
+   (scaleY 0 → 1) quand .visible est posé ; s'efface au retrait. */
+#invisibilisation-root #caption-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 1px;
+  background: linear-gradient(
+      to bottom,
+      rgba(210, 175, 90, 0)    0%,
+      rgba(210, 175, 90, 0.75) 18%,
+      rgba(210, 175, 90, 0.75) 82%,
+      rgba(210, 175, 90, 0)    100%);
+  transform: scaleY(0);
+  transform-origin: center;
+  opacity: 0;
+  transition:
+    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity    700ms ease;
+}
+#invisibilisation-root #caption-wrap.visible::before {
+  transform: scaleY(1);
+  opacity: 1;
+}
+
+/* Bloc texte : plus de fond noir ni de min-height (c'était la bannière). */
 #invisibilisation-root #caption {
-  /* min-height au lieu de height : le bloc grandit si le texte wrape
-     sur petit écran. Le JS mesure la hauteur réelle via
-     getBoundingClientRect() pour ajuster --menu-h correctement. */
-  min-height: var(--menu-h);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.92);
-  padding-top: clamp(12px, 2vh, 20px);
-  padding-bottom: clamp(12px, 2vh, 20px);
+  display: block;
+  background: none;
+  min-height: 0;
+  padding: 0;
 }
 #invisibilisation-root #caption p {
-  padding: 0 clamp(16px, 8%, 80px);
+  text-align: right;
   font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-size: clamp(13px, 1.18vw, 19px);
+  font-size: clamp(12px, 1.05vw, 17px);
   font-style: italic;
   font-weight: 400;
-  line-height: 1.55;
-  letter-spacing: 0.025em;
-  color: rgba(255, 255, 255, 0.85);
-  text-align: center;
-}
-
-/* ── SVG ligne + triangle ── */
-#invisibilisation-root #caption-tab {
-  width: 100%;
-  display: block;
-  cursor: pointer;
-}
-#invisibilisation-root #caption-tab svg {
-  width: 100%;
-  display: block;
-  overflow: visible;
-}
-
-/* Triangle noir = intérieur de la flèche */
-#invisibilisation-root #caption-tab .bg-path {
-  fill: rgba(0, 0, 0, 0.92);
-  stroke: none;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.82);
+  /* Léger fondu + glissé, APRÈS le tracé du filet (transition-delay). */
   opacity: 0;
-  transition: opacity 500ms ease;
+  transform: translateX(8px);
+  transition:
+    opacity   1000ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-#invisibilisation-root #caption-tab .bg-path.shown { opacity: 1; }
-
-/* Ligne animée */
-#invisibilisation-root #caption-tab .line-path {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 1px;
-  stroke-linecap: butt;
-  stroke-linejoin: miter;
-  stroke-dasharray:  var(--line-len, 9999);
-  stroke-dashoffset: var(--line-len, 9999);
-  transition: stroke 400ms ease, filter 400ms ease;
-}
-#invisibilisation-root #caption-tab .line-path.drawn {
-  animation: inv-draw-line 1400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-/*
-  Keyframes préfixées en `inv-` pour éviter toute collision avec d'éventuelles
-  animations homonymes ailleurs dans le projet.
-*/
-@keyframes inv-draw-line {
-  to { stroke-dashoffset: 0; }
-}
-
-/* Hover + ouvert : ligne lumineuse */
-#invisibilisation-root #caption-wrap:hover    .line-path,
-#invisibilisation-root #caption-wrap.expanded .line-path {
-  stroke: rgba(255, 255, 255, 0.88);
-  filter:
-    drop-shadow(0 0 5px  rgba(255, 255, 255, 0.55))
-    drop-shadow(0 0 18px rgba(255, 255, 255, 0.18));
-}
-
-/* Lueur bas du menu ouvert */
-#invisibilisation-root #caption-wrap.expanded #caption {
-  box-shadow:
-    0 0 12px   rgba(255, 255, 255, 0.20),
-    0 6px 28px rgba(0, 0, 0, 0.55);
+#invisibilisation-root #caption-wrap.visible #caption p {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 520ms;
 }
 
 

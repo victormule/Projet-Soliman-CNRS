@@ -84,16 +84,10 @@ export function buildChapitre2DOM(assetPath) {
             <line x1="16" y1="2" x2="2" y2="16"/>
           </svg>
         </button>
-        <div id="caption-wrap" aria-label="Menu légende">
+        <div id="caption-wrap" aria-label="Légende">
           <aside id="caption" aria-label="Légende">
             <p>L'échelle de Martin-Schultz est une échelle colorimétrique en 16&nbsp;tons utilisée en anthropologie physique pour déterminer approximativement la couleur des yeux.</p>
           </aside>
-          <div id="caption-tab" role="button" aria-label="Afficher la légende" tabindex="0">
-            <svg id="caption-tab-svg" aria-hidden="true">
-              <path class="bg-path"   id="caption-bg"/>
-              <path class="line-path" id="caption-line"/>
-            </svg>
-          </div>
         </div>
         <div id="video-overlay">
           <video id="voyeur-video" preload="none" playsinline></video>

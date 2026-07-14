@@ -419,170 +419,34 @@ const btnClose = $('btn-close');
 const textOverlay = $('text-overlay');
 
 const captionWrapEl  = $('caption-wrap');
-const captionEl      = $('caption');
-const captionTabEl   = $('caption-tab');
-const captionSvg     = $('caption-tab-svg');
-const captionLine    = $('caption-line');
-const captionBg      = $('caption-bg');
 
-/*
-  Géométrie du SVG :
-  - Hauteur SVG = TIP_H (profondeur de la flèche)
-  - La ligne va de (0,0) → descend en V au centre → (W,0)
-  - Le fond noir remplit le rectangle jusqu'à cette ligne
-    = path qui part du coin haut-gauche, longe la ligne, revient
-*/
-const TIP_W = 60;  /* demi-largeur du rectangle haut de la languette px */
-const MH    = 10;  /* hauteur de la partie rectangulaire (les "murs") px */
-const TIP_H = 28;  /* hauteur totale jusqu'à la pointe px                */
-
-function buildCaptionPaths() {
-  const W  = window.innerWidth;
-  const cx = W / 2;
-
-  captionSvg.setAttribute('viewBox', `0 0 ${W} ${TIP_H}`);
-  captionSvg.setAttribute('width',  W);
-  captionSvg.setAttribute('height', TIP_H);
-
-  /* ── Forme "maison à l'envers" ────────────────────────────
-     Ligne horizontale, descend en murs verticaux, épaulements,
-     puis converge vers la pointe centrale.
-     Points :
-       (0,0) → (cx-TIP_W,0)          ligne gauche
-       (cx-TIP_W, MH)                 mur gauche
-       (cx, TIP_H)                    pointe
-       (cx+TIP_W, MH)                 mur droit
-       (cx+TIP_W, 0)                  remontée droite
-       (W, 0)                         ligne droite           */
-  const shape = [
-    `M 0,0`,
-    `L ${cx - TIP_W},0`,
-    `L ${cx - TIP_W},${MH}`,
-    `L ${cx},${TIP_H}`,
-    `L ${cx + TIP_W},${MH}`,
-    `L ${cx + TIP_W},0`,
-    `L ${W},0`,
-  ].join(' ');
-
-  captionLine.setAttribute('d', shape);
-
-  const len = captionLine.getTotalLength();
-  captionLine.style.setProperty('--line-len', len);
-  captionLine.style.strokeDasharray = len;
-  if (!captionLine.classList.contains('drawn')) {
-    captionLine.style.strokeDashoffset = len;
-  }
-
-  /* Fond : même forme fermée */
-  captionBg.setAttribute('d',
-    `M ${cx - TIP_W},0 L ${cx - TIP_W},${MH} L ${cx},${TIP_H} L ${cx + TIP_W},${MH} L ${cx + TIP_W},0 Z`
-  );
-
-  /* --menu-h = hauteur du fond texte.
-     Le translateY au repos = -(menu-h + 2vh), donc la ligne
-     apparaît exactement à 2vh du bord supérieur.            */
-  const menuH = captionEl.getBoundingClientRect().height;
-  if (menuH > 0) captionWrapEl.style.setProperty('--menu-h', menuH + 'px');
-}
-
-/*
-  Construction du SVG du menu : différée hors du chemin critique.
-  Raison : getTotalLength() + getBoundingClientRect() forcent un reflow
-  synchrone, et le menu n'est de toute façon pas visible (opacity:0)
-  avant la fin du chargement des images.
-  On recalcule aussi après chargement de la police (la hauteur du texte
-  peut changer quand Cormorant Garamond remplace la police de substitution,
-  ce qui est particulièrement visible sur mobile en fenêtre réduite).
-*/
-if ('requestIdleCallback' in window) {
-  requestIdleCallback(buildCaptionPaths, { timeout: 1500 });
-} else {
-  setTimeout(buildCaptionPaths, 0);
-}
-/* (4) --menu-h dépend de la HAUTEUR RÉELLE du bloc texte, donc de la police.
-   Cormorant Garamond est chargée en media="print" (swap non bloquant, cf.
-   index.html) : document.fonts.ready peut se résoudre AVANT que CETTE police
-   précise soit appliquée. On attend donc explicitement SA disponibilité —
-   .load() la déclenche ET résout quand elle est prête — puis on re-mesure.
-   Sinon --menu-h reste calé sur la police de substitution ; sur mobile, où le
-   texte de légende wrappe sur 4-5 lignes, un morceau de légende dépasse alors
-   en permanence en haut de l'écran (« affichage catastrophique »). */
-if (document.fonts && document.fonts.load) {
-  document.fonts.load('italic 400 1em "Cormorant Garamond"')
-    .then(() => { if (root.classList.contains('is-open')) buildCaptionPaths(); })
-    .catch(() => {});
-} else if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(buildCaptionPaths);
-}
-on(window, 'resize', buildCaptionPaths, { passive: true });
-
-/* ── Ouverture / fermeture ─────────────────────────────────── */
-function isCaptionLocked() { return zoomed || videoPlaying; }
+/* Légende latérale STATIQUE (haut-droite) : plus de languette SVG, plus de
+   mesure --menu-h ni de reconstruction au resize (c'était la source des bugs
+   d'affichage). Tout le rendu — filet doré + fondu du texte — est en CSS ;
+   le JS ne fait que poser/retirer la classe .visible (cf. emitReadyOnce /
+   doZoom / doUnzoom). */
 
 // Vrai dès que la flèche de retour a été cliquée (fadeOutAndReturn() a posé
 // root.dataset.returning='true'). La sous-partie se ferme : plus aucune action
 // ni ouverture de média ne doit pouvoir démarrer pendant le fondu de sortie.
 function isReturning() { return root.dataset.returning === 'true'; }
 
-function openCaption() {
-  if (isCaptionLocked()) return;
-  captionWrapEl.classList.add('expanded');
-  // Volet déplié → on estompe les titres/sous-titres (le bouton plein écran reste).
-  document.body.classList.add('invisibilisation-legend-open');
-}
-function closeCaption() {
-  captionWrapEl.classList.remove('expanded');
-  document.body.classList.remove('invisibilisation-legend-open');
-}
-
-/* « Prêt » : affiche la légende + demande à Chapitre2Scene de DESSINER la flèche
-   de retour (event 'chp2:invisibilisation-ready'). Émis UNE seule fois.
+/* « Prêt » : révèle la légende latérale (classe .visible → le filet doré se
+   trace puis le texte apparaît, tout en CSS) et demande à Chapitre2Scene de
+   DESSINER la flèche de retour ('chp2:invisibilisation-ready'). Émis UNE fois.
    ─────────────────────────────────────────────────────────────────────────────
-   Robustesse : si l'utilisateur clique très vite un œil avant la fin de la
-   révélation, on est déjà 'zoomed' au moment prévu → on NE marque PAS comme émis
-   et on diffère. La sortie du média (doUnzoom) rappellera ce helper, qui dessinera
-   alors la flèche si elle n'était pas encore apparue. */
+   Robustesse : si l'utilisateur zoome un œil très vite (avant la révélation), on
+   est déjà 'zoomed' → on NE marque PAS comme émis et on diffère ; la sortie du
+   média (doUnzoom) rappellera ce helper. */
 let _readyEmitted = false;
 function emitReadyOnce() {
   if (_readyEmitted) return;
   if (zoomed || videoPlaying) return;              // média/zoom en cours → différé
   if (root.dataset.returning === 'true') return;   // sortie de la sous-partie → non
   _readyEmitted = true;
-  // (4) Re-mesure --menu-h À L'OUVERTURE de la légende, quand la police est
-  // chargée et le layout stabilisé (le calcul du boot a pu tomber trop tôt ou
-  // avec la mauvaise police). La ligne SVG n'étant pas encore .drawn, cet appel
-  // se contente de (re)poser dashoffset = len (ligne cachée) : aucun glitch,
-  // c'est l'état initial correct avant animateCaptionLine().
-  buildCaptionPaths();
   captionWrapEl.classList.add('visible');
   window.dispatchEvent(new CustomEvent('chp2:invisibilisation-ready'));
-  setTimeout(() => { if (!zoomed && !videoPlaying) animateCaptionLine(); }, 200);
 }
-
-/* ⚠️ TOUS ces listeners passent par on(...) : le DOM du root SURVIT au
-   destroy() (pas de restauration pristine ici) — des addEventListener directs
-   s'accumuleraient à chaque ré-ouverture de l'installation, chaque doublon
-   gardant les CLOSURES du montage précédent (état zoomed/videoPlaying périmé).
-   C'était la source de l'instabilité (double-toggle légende, doubles zooms). */
-
-/* Souris seulement : au tactile, le tap synthétise mouseenter AVANT click —
-   la légende s'ouvrait (mouseenter) puis se refermait aussitôt (click/toggle).
-   Au doigt, seul le toggle par tap pilote la légende. */
-if (!_isTouch) {
-  on(captionWrapEl, 'mouseenter', openCaption,  { passive: true });
-  on(captionWrapEl, 'mouseleave', closeCaption, { passive: true });
-}
-
-on(captionTabEl, 'click', () => {
-  if (isReturning()) return;
-  captionWrapEl.classList.contains('expanded') ? closeCaption() : openCaption();
-});
-on(captionTabEl, 'keydown', e => {
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    captionWrapEl.classList.contains('expanded') ? closeCaption() : openCaption();
-  }
-});
 
 function fadeOutAndReturn() {
     if (root.dataset.returning === 'true') return;
@@ -629,16 +493,6 @@ on(window, 'chp2:request-return', () => {
     if (zoomed || videoPlaying) return;
     fadeOutAndReturn();
 });
-
-/* ── Séquence au chargement ───────────────────────────────────
-   1. La ligne se trace (1400ms)
-   2. Le fond noir apparaît en fondu (500ms)
-   3. Le wrapper devient interactif (.ready)                    */
-function animateCaptionLine() {
-  captionLine.classList.add('drawn');
-  setTimeout(() => { if (!zoomed && !videoPlaying) captionBg.classList.add('shown'); }, 1200);
-  setTimeout(() => { if (!zoomed && !videoPlaying) captionWrapEl.classList.add('ready'); }, 1800);
-}
 
 const videoOverlay = $('video-overlay');
 const videoEl      = $('voyeur-video');
@@ -897,7 +751,7 @@ function openMedia(eye) {
   if (!zoomed || zoomedEye !== eye) return;
   videoPlaying = true;
   // Filet de sécurité : menu définitivement masqué pendant la lecture
-  captionWrapEl.classList.remove('visible', 'expanded', 'ready');
+  captionWrapEl.classList.remove('visible');
 
   if (eye.hasText) {
     /* Œil 4 — Témoignage. Pas de média à charger : on affiche
@@ -1159,7 +1013,7 @@ function doZoom(eye) {
   document.body.classList.add('invisibilisation-media');
 
   // Légende : disparaît pendant le zoom (ready retiré pour couper pointer-events)
-  captionWrapEl.classList.remove('visible', 'expanded', 'ready');
+  captionWrapEl.classList.remove('visible');
   document.body.classList.remove('invisibilisation-legend-open');  // titres réaffichés
 
   scene.style.willChange   = 'transform';
@@ -1323,16 +1177,11 @@ function doUnzoom(eye) {
 
     wakeRAF();
 
-    // Légende : réapparaît après le dézoom avec l'animation complète
-    // Guard : ne pas afficher si un nouveau zoom/média a démarré entre-temps
+    // Légende latérale : réapparaît après le dézoom (filet + texte en fondu, CSS).
+    // Guard : ne pas afficher si un nouveau zoom/média a démarré entre-temps.
     setTimeout(() => {
       if (zoomed || videoPlaying) return;
-      captionLine.classList.remove('drawn');
-      captionBg.classList.remove('shown');
-      captionWrapEl.classList.remove('ready');
-      void captionLine.getBoundingClientRect();
       captionWrapEl.classList.add('visible');
-      setTimeout(() => { if (!zoomed && !videoPlaying) animateCaptionLine(); }, 80);
     }, 500);
   }, UNZOOM_DUR + 200);
 }
@@ -1802,11 +1651,7 @@ return {
       if (fill) fill.style.width = '0';
 
       const capWrap = $('caption-wrap');
-      if (capWrap) capWrap.classList.remove('visible', 'expanded', 'ready');
-      const capLine = $('caption-line');
-      if (capLine) capLine.classList.remove('drawn');
-      const capBg = $('caption-bg');
-      if (capBg) capBg.classList.remove('shown');
+      if (capWrap) capWrap.classList.remove('visible');
 
       // SRT container vidé
       srtContainer.classList.remove('visible');
