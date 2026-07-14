@@ -115,6 +115,13 @@ function rafT(fn) {
 const _isTouch = window.matchMedia?.('(pointer: coarse)').matches
               || 'ontouchstart' in window;
 
+/* MODE LÉGER TACTILE (téléphone) : classe body → le CSS affiche le globe « play »
+   en permanence et masque l'image de repos (globe-fixe). Le suivi du doigt et le
+   tap→média sont gérés en JS (branche dédiée de tick() + délégation du clic).
+   Rien de tout cela ne s'applique au desktop (la classe n'est jamais posée là).
+   Retirée au destroy(). */
+if (_isTouch) document.body.classList.add('invisibilisation-touch');
+
 /* =============================================================================
    CONFIGURATION (constantes du module original)
 ============================================================================= */
@@ -127,6 +134,12 @@ const R_CLOSE = 0.06;
 
 const MAX_MOVE   = 0.009;
 const LERP_SPEED = 0.055;
+
+/* ── MODE LÉGER TACTILE — réglages (téléphone uniquement) ───────────────────
+   Faciles à ajuster. N'ont AUCUN effet sur desktop (branche gardée par _isTouch). */
+const R_TOUCH_FOLLOW  = 0.55;  // rayon dans lequel un œil suit le doigt (fraction min(vp))
+const R_TOUCH_TAP     = 0.20;  // rayon dans lequel un tap ouvre le média de l'œil le plus proche
+const TOUCH_MOVE_MULT = 2.5;   // amplitude du suivi (× le déplacement desktop MAX_MOVE)
 
 const T_WAKE_FADE  = 400;
 const T_SLEEP_FADE = 700;
@@ -1379,7 +1392,7 @@ if (_isTouch) {
     if (e.target?.closest?.('#caption-wrap')) return;
 
     const dim = Math.min(rect.vw, rect.vh);
-    const rTouchSq = (dim * R_CLOSE * 2) ** 2;   // rayon élargi pour le doigt
+    const rTouchSq = (dim * R_TOUCH_TAP) ** 2;   // rayon de tap élargi (réglable)
     let best = null, bestD2 = Infinity;
     for (const eye of eyes) {
       const sx = rect.oX + rect.rW * eye.cx;
@@ -1515,6 +1528,51 @@ function tick(timestamp) {
 
     if (zoomed && eye === zoomedEye) continue;
 
+    /* ── MODE LÉGER TACTILE ────────────────────────────────────────────────
+       Pas de machine d'états : le globe « play » (affiché en permanence via le
+       CSS) suit simplement le doigt dans un LARGE rayon, et revient au centre
+       quand le doigt est loin ou relâché. Le `continue` court-circuite tout le
+       chemin desktop ci-dessous → celui-ci reste STRICTEMENT inchangé. */
+    if (_isTouch) {
+      const sxT = oX + rW * eye.cx;
+      const syT = oY + rH * eye.cy;
+      const ddxT = mouseX - sxT;
+      const ddyT = mouseY - syT;
+      const rFollowPx = dim * R_TOUCH_FOLLOW;
+      const d2T = (mouseOnPage && !zoomed) ? ddxT * ddxT + ddyT * ddyT : Infinity;
+
+      if (mouseOnPage && !zoomed && d2T > 0 && d2T < rFollowPx * rFollowPx) {
+        const dist  = Math.sqrt(d2T);
+        const inf   = 1 - dist / rFollowPx;               // plus proche = plus fort
+        const scale = maxMovePx * TOUCH_MOVE_MULT * inf / dist;
+        eye.tx = ddxT * scale;
+        eye.ty = ddyT * scale;
+      } else {
+        eye.tx = 0;
+        eye.ty = 0;
+      }
+
+      // Léger tremblement (vie) tant que le doigt est présent.
+      const trT = (mouseOnPage && !zoomed) ? trembleOffset(eye, t) : { ox: 0, oy: 0 };
+      eye.vx = lerp(eye.vx, eye.tx + trT.ox, LERP_SPEED);
+      eye.vy = lerp(eye.vy, eye.ty + trT.oy, LERP_SPEED);
+
+      const txT = ((eye.vx * 100) | 0) / 100;
+      const tyT = ((eye.vy * 100) | 0) / 100;
+      const tStrT = `translate3d(${txT}px,${tyT}px,0)`;
+      if (eye._lastTransform !== tStrT) {
+        eye.wEl.style.transform = tStrT;
+        eye._lastTransform = tStrT;
+      }
+
+      if ((mouseOnPage && !zoomed)
+          || Math.abs(eye.vx - eye.tx) > VEL_EPSILON
+          || Math.abs(eye.vy - eye.ty) > VEL_EPSILON) {
+        needsMoreFrames = true;
+      }
+      continue;
+    }
+
     const sx  = oX + rW * eye.cx;
     const sy  = oY + rH * eye.cy;
 
@@ -1595,9 +1653,16 @@ wakeRAF();
 const criticalImages = Array.from(
   $$('img.layer:not(.globe-play)')
 );
+// MODE LÉGER TACTILE : les globes « play » sont affichés EN PERMANENCE dès la
+// révélation → ils doivent être décodés AVANT le fondu du loader, sinon les yeux
+// apparaissent blancs au démarrage (decodeIdle ne tourne quasi pas sur mobile).
+// On les fait donc passer de « différé » à « critique ». Desktop : inchangé.
+if (_isTouch) {
+  Array.from($$('img.globe-play')).forEach(img => criticalImages.push(img));
+}
 const deferredImages = Array.from(
   $$(
-    'img.globe-play,' +
+    (_isTouch ? '' : 'img.globe-play,') +
     '#sk-play1,#sk-play2,#sk-play3,#sk-play4,' +
     '#sk-play-final1,#sk-play-final2,#sk-play-final3,#sk-play-final4'
   )
@@ -1712,6 +1777,9 @@ return {
     setEyeSoftCursor(false);
     // Filet : retirer la classe légende (sinon les titres resteraient estompés).
     document.body.classList.remove('invisibilisation-legend-open');
+    // Mode léger tactile : retirer la classe (sinon elle persisterait après la
+    // fermeture et affecterait un éventuel remontage/desktop du même document).
+    document.body.classList.remove('invisibilisation-touch');
 
     // 4. Détacher tous les listeners enregistrés
     for (const { target, type, fn, opts } of _listeners) {

@@ -140,6 +140,24 @@
 #invisibilisation-root #gf3 { z-index: 11; }
 #invisibilisation-root #gf4 { z-index: 12; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODE LÉGER TACTILE (téléphone) — classe body.invisibilisation-touch posée par
+   le module au montage tactile (retirée au destroy).
+   ───────────────────────────────────────────────────────────────────────────
+   Sur téléphone il n'y a pas de survol : au lieu de la machine éveil/sommeil/
+   play, on AFFICHE EN PERMANENCE le globe « play » (highlight) et on MASQUE
+   l'image de repos (globe-fixe). Le suivi du doigt et le tap→média sont en JS.
+   `!important` : ces règles doivent primer sur l'opacité inline que le JS pose
+   encore par endroits (fin de dézoom notamment) → le look « play » se rétablit
+   tout seul au retour d'un média, sans code de remise à zéro.
+   Desktop : la classe n'est jamais posée → ZÉRO effet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.invisibilisation-touch #invisibilisation-root .globe-play { opacity: 1 !important; }
+body.invisibilisation-touch #invisibilisation-root #gf1,
+body.invisibilisation-touch #invisibilisation-root #gf2,
+body.invisibilisation-touch #invisibilisation-root #gf3,
+body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important; }
+
 #invisibilisation-root #sk {
   z-index: 13;
   pointer-events: none;
