@@ -337,12 +337,29 @@ LightSystem.prototype._render = function(t) {
   ctx.globalAlpha = 1;
 };
 
+/* Une lumière est-elle en train de s'animer ou d'être visible ? Sert à décider
+   si le canvas doit encore être repeint (cf. _startLoop). */
+LightSystem.prototype._hasActiveLight = function() {
+  for (var id in this._anims) { if (this._anims.hasOwnProperty(id)) return true; }
+  for (var i = 0; i < this.lights.length; i++) {
+    var L = this.lights[i];
+    if (L.opacity > 0.001 && L.frac > 0.0001) return true;
+  }
+  return false;
+};
+
 LightSystem.prototype._startLoop = function() {
   if (this.raf) return;
   var self = this;
   var loop = function(t) {
     if (!self.raf) return; // stoppé par destroy()
     self.raf = requestAnimationFrame(loop);
+    // Économie mobile : quand une sous-partie couvre le travelling (overlay
+    // opaque) ET qu'aucune lumière n'est active, le canvas est déjà tout noir →
+    // inutile de le repeindre (130 % du viewport) 60×/s. On continue tant qu'une
+    // lumière s'anime, pour que le fondu de sortie reste visible ; on ne saute
+    // qu'une fois toutes les lumières éteintes. (`_subOpen` : état module.)
+    if (_subOpen && !self._hasActiveLight()) return;
     self._render(t);
   };
   self.raf = requestAnimationFrame(loop);
@@ -1121,35 +1138,44 @@ function init() {
   /* ── Mesure initiale + boucles d'animation ── */
   measure();
 
-  // Boucle de travelling (interpolation douce)
+  // Boucle de travelling (interpolation douce). GELÉE quand une sous-partie est
+  // ouverte : le travelling est alors masqué par l'overlay opaque → paner +
+  // appeler applyTx()/updateHover() à chaque frame ne sert à rien (économie
+  // mobile). La RAF reste vivante → reprise instantanée au retour.
   (function travelLoop() {
-    var d = targetX - currentX;
-    currentX = Math.abs(d) < 0.05 ? targetX : currentX + d * 0.08;
-    applyTx(currentX);
+    if (!_subOpen) {
+      var d = targetX - currentX;
+      currentX = Math.abs(d) < 0.05 ? targetX : currentX + d * 0.08;
+      applyTx(currentX);
+    }
     _travelRaf = requestAnimationFrame(travelLoop);
   })();
 
-  // Boucle de tremblement organique
+  // Boucle de tremblement organique. GELÉE pendant une sous-partie (masquée) :
+  // le tremblement y est imperceptible mais son transform CSS sur #chp2-shake
+  // force un recompositing du panorama + des 3 crânes à chaque frame.
   (function shakeLoop() {
-    var t = performance.now();
-    velocity *= 0.92;
-    var target = 1 + Math.min(SHAKE.boost, velocity / SHAKE.velocityRef * SHAKE.boost);
-    target = Math.min(SHAKE.maxBoost, target);
-    shakeMul += (target - shakeMul) * SHAKE.smoothing;
+    if (!_subOpen) {
+      var t = performance.now();
+      velocity *= 0.92;
+      var target = 1 + Math.min(SHAKE.boost, velocity / SHAKE.velocityRef * SHAKE.boost);
+      target = Math.min(SHAKE.maxBoost, target);
+      shakeMul += (target - shakeMul) * SHAKE.smoothing;
 
-    var sx = (Math.sin(t * 0.001 * O.shx1.freq * Math.PI * 2 + O.shx1.phase)
-            + Math.sin(t * 0.001 * O.shx2.freq * Math.PI * 2 + O.shx2.phase) * 0.5
-            + Math.sin(t * 0.001 * O.shx3.freq * Math.PI * 2 + O.shx3.phase) * 0.25) / 1.75;
-    var sy = (Math.sin(t * 0.001 * O.shy1.freq * Math.PI * 2 + O.shy1.phase)
-            + Math.sin(t * 0.001 * O.shy2.freq * Math.PI * 2 + O.shy2.phase) * 0.5
-            + Math.sin(t * 0.001 * O.shy3.freq * Math.PI * 2 + O.shy3.phase) * 0.25) / 1.75;
-    var rot = sx * SHAKE.rotation * shakeMul;
+      var sx = (Math.sin(t * 0.001 * O.shx1.freq * Math.PI * 2 + O.shx1.phase)
+              + Math.sin(t * 0.001 * O.shx2.freq * Math.PI * 2 + O.shx2.phase) * 0.5
+              + Math.sin(t * 0.001 * O.shx3.freq * Math.PI * 2 + O.shx3.phase) * 0.25) / 1.75;
+      var sy = (Math.sin(t * 0.001 * O.shy1.freq * Math.PI * 2 + O.shy1.phase)
+              + Math.sin(t * 0.001 * O.shy2.freq * Math.PI * 2 + O.shy2.phase) * 0.5
+              + Math.sin(t * 0.001 * O.shy3.freq * Math.PI * 2 + O.shy3.phase) * 0.25) / 1.75;
+      var rot = sx * SHAKE.rotation * shakeMul;
 
-    if (shakeEl) {
-      shakeEl.style.transform =
-        "translate(" + (sx * SHAKE.amplitudeX * shakeMul).toFixed(2) + "px,"
-                     + (sy * SHAKE.amplitudeY * shakeMul).toFixed(2) + "px) "
-        + "rotate(" + rot.toFixed(3) + "deg)";
+      if (shakeEl) {
+        shakeEl.style.transform =
+          "translate(" + (sx * SHAKE.amplitudeX * shakeMul).toFixed(2) + "px,"
+                       + (sy * SHAKE.amplitudeY * shakeMul).toFixed(2) + "px) "
+          + "rotate(" + rot.toFixed(3) + "deg)";
+      }
     }
     _shakeRaf = requestAnimationFrame(shakeLoop);
   })();
