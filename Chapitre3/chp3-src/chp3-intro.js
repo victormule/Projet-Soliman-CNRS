@@ -630,6 +630,7 @@ export function createIntro({ container, reduceMotion, _on, onDone }) {
         introActive = true;
         iqIdentityShown = false;                  // chorégraphie : on repart en phase « intro »
         iqEl.overlay.classList.remove('iq-anim-slide');
+        iqEl.overlay.classList.remove('iq-epilogue');
         const T = IQ.timing;
         iqEl.overlay.classList.remove('hidden');
         iqFit();   // calcule --iq-scale + recentre le groupe de gauche (mode large)
@@ -682,6 +683,10 @@ export function createIntro({ container, reduceMotion, _on, onDone }) {
     // mal interpréter la phase (cf. garde sur introActive, plus haut).
     async function iqRunEpilogue() {
         const T = IQ.timing;
+
+        // La carte témoignage se dimensionne sur le viewport (comme chap. 1 & 2) :
+        // on neutralise la contrainte de largeur en --u héritée du quiz.
+        iqEl.overlay.classList.add('iq-epilogue');
 
         // 1) Tout le quiz s'efface d'un coup (pas seulement le bouton) → écran noir nu.
         iqEl.content.style.transition = `opacity ${reduceMotion ? 0 : T.contentFadeOut}ms ease`;

@@ -124,7 +124,7 @@ export async function runSkippableQuoteSequence({
     fontMaxPx: 52,
 
     // Rendu typo — texte en serif italique (couleur ivoire, comme le chapitre 3)
-    lineHeight: 1.7,
+    lineHeight: 1.6,
     letterSpacingEm: 0.006,
     textColor: 'rgba(243, 238, 228, 0.96)',
     cursorColor: 'rgba(243, 238, 228, 0.82)',

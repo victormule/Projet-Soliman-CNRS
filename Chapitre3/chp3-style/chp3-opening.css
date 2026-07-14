@@ -327,27 +327,35 @@
 #chapitre3-root .iq-identity-pct { font-variant-numeric:tabular-nums; color:var(--ivory); min-width:2.6em; }
 
 
-#chapitre3-root .iq-quote { display:none; max-width:calc(var(--iq-quote-maxw, 58) * 1ch); opacity:0; transition:opacity var(--iq-epilogue-fade-dur, 700ms) ease; }
+/* ── Témoignage final : dimensionné sur le VIEWPORT, exactement comme les
+   chapitres 1 & 2 (QuoteSequence.js). Formule partagée : texte
+   clamp(12px, 2.75vmin, 52px), label/crédit ~0.34× · À GARDER SYNCHRONISÉ
+   avec QuoteSequence (fontScale 2.75, min 12, max 52, metaScale 0.34).
+   Indépendant de --iq-scale/--u du quiz → plus de « tailles bizarres ». */
+#chapitre3-root .iq-quote { display:none; max-width:clamp(260px, 68vw, 920px); opacity:0; transition:opacity var(--iq-epilogue-fade-dur, 700ms) ease; }
 #chapitre3-root .iq-quote.show { opacity:1; }
 #chapitre3-root .iq-quote-label {
-    font-family:var(--sans); font-size:calc(var(--iq-quote-label-size, 10) * var(--u));
-    letter-spacing:.24em; text-transform:uppercase; color:var(--ivory-faint);
-    margin:0 0 calc(8 * var(--u));
+    font-family:var(--sans); font-size:clamp(11px, 0.94vmin, 22px);
+    letter-spacing:.28em; text-transform:uppercase; color:var(--ivory-faint);
+    margin:0 0 clamp(10px, 2.3vmin, 44px);
 }
 #chapitre3-root .iq-quote-text {
     margin:0; font-family:var(--serif); font-style:italic;
-    font-size:calc(var(--iq-quote-text-size, 23) * var(--u)); line-height:1.6; color:var(--ivory);
+    font-size:clamp(12px, 2.75vmin, 52px); line-height:1.6; color:var(--ivory);
     text-align:justify; text-justify:inter-word;
 }
 #chapitre3-root .iq-quote-credit {
-    display:block; margin-top:calc(8 * var(--u));
-    font-family:var(--sans); font-size:calc(var(--iq-quote-credit-size, 11) * var(--u));
-    letter-spacing:.18em; text-transform:uppercase; color:var(--ivory-faint);
+    display:block; margin-top:clamp(10px, 2.3vmin, 44px);
+    font-family:var(--sans); font-size:clamp(11px, 0.94vmin, 22px);
+    letter-spacing:.2em; text-transform:uppercase; color:var(--ivory-faint);
     opacity:0; transition:opacity .5s ease;
 }
 #chapitre3-root .iq-quote-credit.show { opacity:1; }
+/* Pendant l'épilogue, la largeur du bloc ne doit plus dépendre de --iq-scale
+   (sinon la colonne se resserre au gré du quiz). */
+#chapitre3-root .iq-overlay.iq-epilogue .iq-content { max-width:min(94vw, 960px); }
 #chapitre3-root .iq-quote-text.typing::after {
-    content:''; display:inline-block; width:calc(2 * var(--u)); height:1em; margin-left:2px;
+    content:''; display:inline-block; width:clamp(2px, 0.35vmin, 4px); height:1em; margin-left:2px;
     background:var(--gilt-bright); vertical-align:-0.15em;
     animation:iqCaret .8s step-end infinite;
 }
