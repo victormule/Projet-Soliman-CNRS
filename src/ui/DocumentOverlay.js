@@ -3,7 +3,9 @@
  * -----------------------------------------------------------------------------
  * Affichage des contenus de la colonne haut-droite (scène phrénologie) :
  *
- *   'about'  → texte « À Propos », ajusté pour tenir SANS ascenseur
+ *   'about'  → mise en scène « À Propos » (AboutReveal.js) : accroche
+ *              calligraphiée lettre à lettre puis corps révélé — sans
+ *              ascenseur sur grand écran, défilement toléré sur tactile
  *   'doc-1'  → deux cadres tracés côte à côte, puis deux images en fondu
  *   'doc-2'  → un cadre tracé, puis une image en fondu
  *   'doc-3'  → un cadre tracé, puis un site incrusté (image fixe sur tactile)
@@ -33,6 +35,7 @@
  */
 
 import { DocumentLoupe } from './DocumentLoupe.js';
+import { AboutReveal }   from './AboutReveal.js';
 
 const OVERLAY_ID = 'doc-overlay';
 
@@ -65,7 +68,9 @@ export class DocumentOverlay {
     this._frames   = [];   // { el, ratio } — ratio = largeur / hauteur
     this._row      = null;
     this._text     = null;
-    this._textBody = null;  // corps mesurable du texte « À Propos »
+    this._textBody = null;  // corps mesurable d'un contenu 'text'
+    this._about    = null;  // article « À Propos » (mise en scène AboutReveal)
+    this._aboutFx  = null;  // moteur de la mise en scène « À Propos »
     this._caption  = null;  // légende (colonne gauche)
     this._ro       = null;  // ResizeObserver
     this._roRaf    = null;
@@ -86,19 +91,23 @@ export class DocumentOverlay {
     this._disconnectObserver();
 
     this.currentKey = key;
+    this._aboutFx?.destroy();
     this.inner.innerHTML = '';
     this._frames   = [];
     this._row      = null;
     this._text     = null;
     this._textBody = null;
+    this._about    = null;
+    this._aboutFx  = null;
     this._caption  = null;
     this._revealed = false;   // la révélation (tracé) rejoue à CHAQUE ouverture
     this._drawing  = false;
 
     this._loupe.disable();
 
-    if (data.type === 'text') this._buildText(data);
-    else                      this._buildDocument(data);
+    if (data.type === 'about')     this._buildAbout(data);
+    else if (data.type === 'text') this._buildText(data);
+    else                           this._buildDocument(data);
 
     this.el.classList.add('visible');
     document.addEventListener('keydown', this._onKeyDown);
@@ -110,6 +119,8 @@ export class DocumentOverlay {
     this.currentKey = null;
     this._clearTimers();
     this._disconnectObserver();
+    this._aboutFx?.destroy();
+    this._aboutFx = null;
     this._loupe.disable();
     this.el.classList.remove('visible');
     document.removeEventListener('keydown', this._onKeyDown);
@@ -120,6 +131,7 @@ export class DocumentOverlay {
         this.inner.innerHTML = '';
         this._frames = [];
         this._row = this._text = this._textBody = this._caption = null;
+        this._about = null;
         this._blurTop = this._blurBot = null;
       }
     }, T.fadeOut + 60);
@@ -129,18 +141,21 @@ export class DocumentOverlay {
   resize() {
     this._applySideColumn();
     if (!this.currentKey) return;
-    if (this._text) this._sizeText();
-    else            this._layoutFrames(false);
+    if (this._about)     this._aboutFx?.resize();
+    else if (this._text) this._sizeText();
+    else                 this._layoutFrames(false);
   }
 
   destroy() {
     this._clearTimers();
     this._disconnectObserver();
+    this._aboutFx?.destroy();
     this._loupe.disable();
     document.removeEventListener('keydown', this._onKeyDown);
     this.currentKey = null;
     this._frames = [];
     this._row = this._text = this._textBody = this._caption = null;
+    this._about = this._aboutFx = null;
     this._blurTop = this._blurBot = null;
     this.el?.remove();
     this.el = this.inner = null;
@@ -212,7 +227,33 @@ export class DocumentOverlay {
 
   _onKeyDown(e) { if (e.key === 'Escape') this.close(); }
 
-  /* ── « À Propos » ──────────────────────────────────────────────────────── */
+  /* ── « À Propos » — mise en scène (AboutReveal) ────────────────────────── */
+
+  /**
+   * Monte l'expérience « À Propos » : accroche calligraphiée (tracé SVG lettre
+   * à lettre, mots-clefs dorés, soulignement), puis remontée et corps révélé
+   * lettre par lettre. Toute la mécanique vit dans AboutReveal ; l'overlay ne
+   * fournit que le cadre (zone entre les colonnes, fermeture, resize).
+   */
+  _buildAbout(data) {
+    const article = document.createElement('article');
+    article.className = 'doc-ov-about';
+    // Un clic sur le texte AVANCE la séquence (fast-forward) — il ne ferme
+    // pas l'overlay. Molette et gestes de lecture restent locaux.
+    article.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._aboutFx?.skip();
+    });
+    article.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
+
+    this.inner.appendChild(article);
+    this._about   = article;
+    this._aboutFx = new AboutReveal(this.config, data);
+    this._aboutFx.mount(article)
+      .catch(err => console.warn('[DocumentOverlay] À Propos :', err));
+  }
+
+  /* ── Contenus 'text' (paragraphes simples) ─────────────────────────────── */
 
   _buildText(data) {
     const article = document.createElement('article');

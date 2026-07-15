@@ -1770,3 +1770,221 @@ body.peine-aim #cursor.aim-hot {
   -webkit-mask: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
           mask: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
    }
+
+/* ══════════════════════════════════════════════════════════════════
+   « À PROPOS » — mise en scène en deux temps (src/ui/AboutReveal.js)
+   ──────────────────────────────────────────────────────────────────
+   1. L'ACCROCHE se trace lettre à lettre (SVG, comme à l'encre), justifiée.
+      Mots-clefs : blanc → embrasement → doré. Soulignement différé.
+   2. Elle REMONTE ; le corps se matérialise lettre par lettre (ordre
+      aléatoire, Inter). Les passages en relief s'éclairent une fois posés.
+
+   Les DÉLAIS par lettre sont posés en style inline par le JS ; ici ne
+   vivent que les DURÉES, les couleurs et les états (survol, skip, reduce).
+   Palette : or du site rgba(210,175,90) et ses éclats.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Zone : mêmes bornes que les autres contenus de l'overlay (entre les deux
+   colonnes latérales). Fermée au défilement en phase 1 ; s'ouvre en phase 2
+   si le contenu déborde (petits écrans / tactile → .is-scroll). */
+.doc-ov-about {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left:  var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  right: var(--doc-ov-side, clamp(140px, 20vw, 300px));
+  /* Marge latérale = 2 % de la fenêtre de chaque côté : le texte respire,
+     jamais collé aux colonnes. Le JS mesure la largeur RÉELLE du contenu
+     (via .ab-stack) pour composer l'accroche, ce padding est donc pris en
+     compte dans la justification. */
+  padding: 0 2vw;
+  overflow: hidden;
+  touch-action: pan-y;     /* lecture au doigt (dérogation au #app) */
+}
+.doc-ov-about.is-scroll.ab-phase2 { overflow-y: auto; }
+
+/* Barre de défilement — même filet doré patiné que le texte « À Propos »
+   d'origine (n'apparaît que si .is-scroll autorise le défilement). */
+.doc-ov-about { scrollbar-width: thin; scrollbar-color: rgba(210, 175, 90, 0.55) transparent; }
+.doc-ov-about::-webkit-scrollbar       { width: 5px; }
+.doc-ov-about::-webkit-scrollbar-track { background: transparent; }
+.doc-ov-about::-webkit-scrollbar-thumb {
+  background: linear-gradient(rgba(210, 175, 90, 0.65), rgba(203, 167, 90, 0.35));
+  border-radius: 3px;
+}
+
+/* La colonne accroche + corps. La REMONTÉE de la phase 2 est portée par la
+   translation de ce bloc (translateY posé en JS : centré puis 0). */
+.ab-stack {
+  width: 100%;
+  transition: transform 1500ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.ab-stack.no-trans { transition: none; }   /* recentrage sec au resize */
+
+/* ── PHASE 1 : l'accroche calligraphiée ───────────────────────────────────── */
+
+.ab-hook {
+  display: block;
+  width: min(100%, 1040px);   /* même plafond que la composition JS (effW) */
+  height: auto;
+  margin: 0 auto clamp(20px, 3.4vh, 44px);
+  overflow: visible;          /* les halos débordent des glyphes */
+}
+
+/* Chaque lettre : un tspan positionné par le JS. Le tracé se révèle par
+   stroke-dashoffset, puis la lettre « s'encre » (fill) et le contour s'efface. */
+.ab-hook tspan {
+  fill: transparent;
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 340;      /* réserve > contour du plus long glyphe */
+  stroke-dashoffset: 340;
+}
+
+/* La fonte de l'accroche : Playfair Display — la voix « titre » du site.
+   La TAILLE (unités logiques du viewBox) est posée en inline par le JS,
+   pour coller exactement aux mesures de composition. */
+.ab-hook text { font-family: 'Playfair Display', Georgia, serif; }
+.ab-t--base   { font-weight: 400; }
+
+/* Lit commun : tracé blanc, encrage blanc cassé.
+   Délais inline (2 valeurs : tracé, encrage). */
+.ab-t--base tspan {
+  stroke: rgba(255, 255, 255, 0.92);
+  animation:
+    abDraw 620ms cubic-bezier(0.3, 0, 0.4, 1) both,
+    abFillBase 900ms ease-in both;
+}
+
+/* Mots-clefs : tracé et encrage BLANCS, puis embrasement → doré.
+   Délais inline (3 valeurs : tracé, encrage, embrasement). L'italique gras
+   Playfair est composé tel quel par le JS (mesures faites dans cette fonte). */
+.ab-t--kw {
+  font-style: italic;
+  font-weight: 700;
+  animation: abKwGlow 1800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+.ab-t--kw tspan {
+  stroke: rgba(255, 255, 255, 0.95);
+  animation:
+    abDraw 620ms cubic-bezier(0.3, 0, 0.4, 1) both,
+    abFillWhite 700ms ease-in both,
+    abToGold 1500ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Une fois déposé en doré (classe .is-set posée par le JS), le mot-clef vit :
+   halo au survol. (Pendant l'animation, le filter est verrouillé par
+   fill-mode:forwards — d'où cette bascule en fin de séquence.) */
+.ab-t--kw.is-set {
+  animation: none;
+  filter: drop-shadow(0 0 7px rgba(210, 175, 90, 0.45));
+  transition: filter 500ms ease;
+}
+.ab-t--kw.is-set:hover {
+  filter: drop-shadow(0 0 16px rgba(231, 206, 142, 0.9));
+}
+
+/* Soulignement (« condamnation à mort ») : se trace après l'écriture.
+   dasharray/offset et délai posés en inline (longueur exacte du trait). */
+.ab-underline {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1.6;
+  animation: abDraw 950ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes abDraw     { to { stroke-dashoffset: 0; } }
+@keyframes abFillBase { to { fill: rgba(255, 255, 255, 0.96); stroke: transparent; } }
+@keyframes abFillWhite{ to { fill: #ffffff; stroke: transparent; } }
+
+/* Blanc incandescent → or déposé. */
+@keyframes abToGold {
+  0%   { fill: #ffffff; }
+  35%  { fill: #fff3d6; }
+  100% { fill: rgba(224, 192, 116, 1); }
+}
+
+/* L'éclat du mot-clef : halo blanc éclatant qui se dépose en lueur dorée. */
+@keyframes abKwGlow {
+  0%   { filter: drop-shadow(0 0 0px  rgba(255, 255, 255, 0)); }
+  22%  { filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.95)); }
+  55%  { filter: drop-shadow(0 0 14px rgba(231, 206, 142, 0.8)); }
+  100% { filter: drop-shadow(0 0 7px  rgba(210, 175, 90, 0.45)); }
+}
+
+/* ── PHASE 2 : le corps du texte ──────────────────────────────────────────── */
+
+.ab-body {
+  width: min(100%, 1040px);   /* bords alignés sur l'accroche */
+  margin: 0 auto;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 300;
+  line-height: 1.68;
+  letter-spacing: 0.012em;
+  color: rgba(228, 226, 218, 0.92);
+  text-align: justify;        /* écho au bloc justifié de l'accroche */
+  -webkit-hyphens: auto;
+          hyphens: auto;
+  text-shadow: 0 0 22px rgba(0, 0, 0, 0.85);
+}
+.ab-body p { margin: 0 0 1.05em; }
+.ab-body p:last-child { margin-bottom: 0; }
+
+/* Pluie de lettres : chaque span porte son délai (inline, ordre aléatoire) ;
+   l'animation ne part qu'à la pose de .ab-live (pendant la remontée).
+
+   PERFORMANCE — on n'anime QUE l'opacité. C'est la seule propriété (avec
+   transform, inapplicable à un <span> inline) que le compositeur gère SANS
+   repaint. Un `filter: blur()` par lettre était magnifique mais rédhibitoire :
+   des centaines de filtres maintenus pendant toute la phase 1, puis animés en
+   parallèle en phase 2 → repaint continu, tout ralentit. L'apparition
+   aléatoire suffit à évoquer le décodage d'archive ; la lenteur fait le reste. */
+.ab-body span { opacity: 0; }
+.ab-body.ab-live span { animation: abLetter 640ms ease forwards; }
+@keyframes abLetter { from { opacity: 0; } to { opacity: 1; } }
+
+/* Passages en relief (*…* dans la config). Graisse posée dès le départ
+   (aucun décalage de mise en page), lumière donnée une fois le texte posé. */
+.ab-em {
+  font-style: normal;
+  font-weight: 500;
+  color: inherit;
+  transition: color 900ms ease, text-shadow 900ms ease;
+}
+.ab-done .ab-em {
+  color: rgba(255, 252, 244, 1);
+  text-shadow: 0 0 16px rgba(210, 175, 90, 0.30);
+}
+.ab-done .ab-em:hover {
+  color: rgba(255, 230, 160, 1);
+  text-shadow: 0 0 20px rgba(231, 206, 142, 0.65);
+}
+
+/* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
+.doc-ov-about.ab-skip .ab-hook tspan,
+.doc-ov-about.ab-skip .ab-underline,
+.doc-ov-about.ab-skip .ab-t--kw {
+  animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
+}
+.doc-ov-about.ab-skip .ab-stack { transition-duration: 550ms; }
+.doc-ov-about.ab-skip .ab-body.ab-live span { animation-duration: 420ms; }
+
+/* ── Mouvement réduit : état final direct, sans chorégraphie ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .doc-ov-about .ab-hook tspan {
+    animation: none;
+    stroke: transparent;
+    stroke-dashoffset: 0;
+  }
+  .doc-ov-about .ab-t--base tspan { fill: rgba(255, 255, 255, 0.96); }
+  .doc-ov-about .ab-t--kw   tspan { fill: rgba(224, 192, 116, 1); }
+  .doc-ov-about .ab-t--kw {
+    animation: none;
+    filter: drop-shadow(0 0 7px rgba(210, 175, 90, 0.45));
+  }
+  .doc-ov-about .ab-underline { animation: none; stroke-dashoffset: 0 !important; }
+  .doc-ov-about .ab-stack     { transition: none; }
+  .doc-ov-about .ab-body span { opacity: 1; filter: none; animation: none !important; }
+}

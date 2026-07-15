@@ -289,14 +289,31 @@ window.CONFIG = {
 
   DOCUMENTS: {
 
+    /* « À Propos » — mise en scène en deux temps (src/ui/AboutReveal.js).
+       ┌─ hook : la PHRASE D'ACCROCHE, calligraphiée lettre à lettre (SVG).
+       │    Chaque segment : t = texte ; options :
+       │      style: 'gold'    → mot-clef : s'écrit en blanc, s'embrase,
+       │                         se dépose en doré (italique gras)
+       │      underline: true  → souligné une fois écrit
+       │    Les lignes et la justification sont composées automatiquement.
+       └─ paragraphs : le CORPS, révélé lettre par lettre (ordre aléatoire).
+            *…* met un passage en relief (blanc chaud + halo, survol doré). */
     about: {
-      type: 'text',
+      type: 'about',
+      hook: [
+        { t: 'Que faire du corps de ' },
+        { t: 'Soliman al-Halabi', style: 'gold' },
+        { t: ', assassin présumé du ' },
+        { t: 'général Kléber', style: 'gold' },
+        { t: ', qui demeure sans sépulture depuis sa ' },
+        { t: 'condamnation à mort', underline: true },
+        { t: ' par la justice française en 1800 ?' },
+      ],
       paragraphs: [
-        'Que faire du corps de Soliman al-Halabi, assassin présumé du général Kléber, qui demeure sans sépulture depuis sa condamnation à mort par la justice française en 1800 ?',
-        'Le corps de cet écrivain public originaire d\u2019Alep a été ramené en France dans les bagages de l\u2019expédition d\u2019Égypte (1798-1801). Il a été remis au Muséum national d\u2019Histoire naturelle qui l\u2019a exposé dans ses vitrines jusque dans les années 1980.',
-        'Entretemps, le corps de Soliman al-Halabi a été érigé en représentant d\u2019une nation ou une religion.',
-        'En France, il a intégré les collections publiques en tant que spécimen de « Syrien fanatique ». De l\u2019autre côté de la Méditerranée, il a été élevé au rang de relique de héros national ou martyr religieux.',
-        'Que faire de ce corps à l\u2019état de squelette qui se tient au travers de la commune humanité ? Telle est la question soulevée par le présent site qui est né d\u2019une recherche collaborative réunissant des chercheurs, lycéens et étudiants français. Et cela à l\u2019initiative du collectif syrien Abounaddara, avec le soutien de l\u2019Agence Nationale de la Recherche, et France-Berkeley Fund.',
+        'Le corps de cet écrivain public originaire d\u2019Alep a été ramené en France dans les bagages de l\u2019*expédition d\u2019Égypte* (1798-1801). Il a été remis au *Muséum national d\u2019Histoire naturelle* qui l\u2019a exposé dans ses vitrines jusque dans les années 1980.',
+        'Entretemps, le corps de Soliman al-Halabi a été érigé en représentant d\u2019*une nation ou une religion*.',
+        'En France, il a intégré les collections publiques en tant que spécimen de *« Syrien fanatique »*. De l\u2019autre côté de la Méditerranée, il a été élevé au rang de relique de *héros national* ou *martyr religieux*.',
+        'Que faire de ce corps à l\u2019état de squelette qui se tient au travers de la *commune humanité* ? Telle est la question soulevée par le présent site qui est né d\u2019une recherche collaborative réunissant des chercheurs, lycéens et étudiants français. Et cela à l\u2019initiative du collectif syrien *Abounaddara*, avec le soutien de l\u2019Agence Nationale de la Recherche, et France-Berkeley Fund.',
       ],
     },
 

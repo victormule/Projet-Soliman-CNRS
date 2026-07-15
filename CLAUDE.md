@@ -41,7 +41,8 @@ src/
   systems/                AudioManager, TorchSystem, BackgroundManager,
                           Chapter1LightSystem, OrientationLock, TouchHover
   ui/                     Flèches (ArrowBase + variantes), MediaPlayer,
-                          DocumentOverlay/Loupe, NavigationBar, Title…
+                          DocumentOverlay/Loupe, AboutReveal (mise en scène
+                          « À Propos »), NavigationBar, Title…
   scenes/                 Une classe par scène (contrat Scene : enter/exit)
 Chapitre1/
   chp1-config.js          Config du chapitre (source unique)
@@ -101,6 +102,11 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 - Diapos de « La violence et ses traces » : `chp2-data-violence-et-trace.js`
 - Quiz d'intro chapitre 3 (question, stats, témoignage) : `chp3-config.js` (section `intro`)
 - Citation de sortie du chapitre 2 : `Chapitre2Scene.js` (`_outroQuoteText`)
+- Texte « À Propos » (scène phrénologie) : `config.js` (`DOCUMENTS.about`) —
+  `hook` = accroche calligraphiée (segments `style:'gold'` / `underline`),
+  `paragraphs` = corps (`*…*` met un passage en relief). Moteur :
+  `src/ui/AboutReveal.js` (cadences dans la constante `T`), styles dans
+  `style.css` (section « À PROPOS »).
 
 ## Événements window (pont scène ↔ modules)
 
