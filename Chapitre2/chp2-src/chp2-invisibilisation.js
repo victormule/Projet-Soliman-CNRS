@@ -519,8 +519,12 @@ function fadeOutAndReturn() {
         if (e.target === root && e.propertyName === 'opacity') finish();
     }
     root.addEventListener('transitionend', onEnd);
-    // Filet de sécurité : si transitionend ne se déclenche pas, on ferme quand même.
-    setT(finish, EXIT_FADE + 250);
+    // Filet de sécurité si transitionend ne vient pas. ⚠️ Marge LARGE : sous
+    // charge (mobile), le rAF qui lance le fondu peut partir en retard ; avec
+    // un filet serré (+250ms), finish() retirait is-open (display:none) AU
+    // MILIEU du fondu → coupure sèche au lieu du fondu au noir. Le filet ne
+    // sert qu'en secours réel : il peut être généreux.
+    setT(finish, EXIT_FADE + 1200);
 
     // Lancer le fondu à la frame suivante (baseline déjà committée).
     rafT(() => {
@@ -530,8 +534,14 @@ function fadeOutAndReturn() {
 }
 
 // Retour déclenché par la flèche harmonisée (Chapitre2Scene) via event global.
+// ⚠️ Pendant le DÉZOOM (~1,8 s), la flèche est déjà réapparue (la classe
+// body.invisibilisation-media est retirée dès le début de doUnzoom) mais
+// `zoomed` est encore true : ignorer la demande en silence « avalait » le clic
+// → sortie qui ne part pas. On MÉMORISE la demande et doUnzoom la rejoue à la
+// fin du dézoom.
+let _pendingReturn = false;
 on(window, 'chp2:request-return', () => {
-    if (zoomed || videoPlaying) return;
+    if (zoomed || videoPlaying) { _pendingReturn = true; return; }
     fadeOutAndReturn();
 });
 
@@ -1167,6 +1177,14 @@ function doUnzoom(eye) {
     zoomedEye     = null;
     _unzooming    = false;
     eye.tx = 0; eye.ty = 0;
+    // Demande de retour reçue PENDANT le dézoom (flèche déjà visible mais
+    // `zoomed` encore true → l'événement avait été mémorisé) : on sort
+    // maintenant, proprement (fondu au noir → son → rallumage opening).
+    if (_pendingReturn) {
+      _pendingReturn = false;
+      fadeOutAndReturn();
+      return;
+    }
     wakeRAF();
     // Sortie du média : si la flèche n'était pas encore apparue (clic très
     // rapide à l'ouverture), on la dessine maintenant. Idempotent sinon.
@@ -1219,9 +1237,10 @@ function doUnzoom(eye) {
     wakeRAF();
 
     // Légende latérale : réapparaît après le dézoom (filet + texte en fondu, CSS).
-    // Guard : ne pas afficher si un nouveau zoom/média a démarré entre-temps.
+    // Guard : ni nouveau zoom/média entre-temps, ni sortie en cours (le fondu
+    // au noir de fadeOutAndReturn ne doit pas voir la légende resurgir).
     setTimeout(() => {
-      if (zoomed || videoPlaying) return;
+      if (zoomed || videoPlaying || isReturning()) return;
       positionCaption();
       captionWrapEl.classList.add('visible');
     }, 500);
