@@ -95,8 +95,12 @@ export class PhrenologieScene extends Scene {
      * Posé en z-index 7 : sous #nav-bar (8) et #doc-btns (9), donc les boutons
      * restent cliquables pendant qu'un document est ouvert, et un clic ailleurs
      * referme. L'overlay crée son DOM à la première ouverture seulement.
+     *
+     * On lui confie la torche : tant qu'un document est ouvert, son fond opaque
+     * recouvre la scène, l'overlay met donc le rendu de la torche en pause (voir
+     * TorchSystem.pause/resume) — tout le budget de frame revient à l'animation.
      */
-    this._docOverlay = new DocumentOverlay(window.CONFIG);
+    this._docOverlay = new DocumentOverlay(window.CONFIG, this.torch);
   }
 
   /**

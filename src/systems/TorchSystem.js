@@ -25,10 +25,26 @@ export class TorchSystem {
 
     this._fadeAnimId = null;  // ← Séparé de growAnimId pour éviter collision
 
+    /**
+     * Gel du rendu. Quand un overlay PLEIN ÉCRAN et OPAQUE recouvre la scène
+     * (documents / « À Propos »), la torche est invisible : inutile de repeindre
+     * 6 dégradés radiaux plein écran à chaque frame. On libère ainsi tout le
+     * budget de frame pour l'animation de l'overlay. Le dernier cadre reste tel
+     * quel sur le canvas (masqué par le fond de l'overlay), et le suivi de la
+     * souris reprend naturellement à la reprise.
+     */
+    this._paused = false;
+
     this.initCanvas();
     this.initMouse();
     this.startRenderLoop();
   }
+
+  /** Gèle le rendu de la torche (overlay opaque ouvert). Idempotent. */
+  pause()  { this._paused = true; }
+
+  /** Reprend le rendu de la torche (overlay fermé). Idempotent. */
+  resume() { this._paused = false; }
 
   /* ─────────────────────────────────────── Canvas ── */
 
@@ -208,6 +224,11 @@ export class TorchSystem {
   }
 
   render(t) {
+    // Rendu gelé : la torche est cachée sous un overlay opaque. On saute tout le
+    // travail (clear + 6 dégradés plein écran). Le callback rAF reste vivant mais
+    // ne coûte rien → reprise instantanée à resume().
+    if (this._paused) return;
+
     const W = this.canvas.width;
     const H = this.canvas.height;
 

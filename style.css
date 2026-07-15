@@ -1926,7 +1926,11 @@ body.peine-aim #cursor.aim-hot {
   text-align: justify;        /* écho au bloc justifié de l'accroche */
   -webkit-hyphens: auto;
           hyphens: auto;
-  text-shadow: 0 0 22px rgba(0, 0, 0, 0.85);
+  /* Ombre resserrée : le coût de peinture d'un text-shadow croît avec le rayon
+     de flou, et il est peint une fois PAR LETTRE (en rafales pendant la pluie).
+     Un rayon court + une alpha forte donnent la même lisibilité sur le fond
+     sombre pour une fraction du coût. */
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.92);
 }
 .ab-body p { margin: 0 0 1.05em; }
 .ab-body p:last-child { margin-bottom: 0; }

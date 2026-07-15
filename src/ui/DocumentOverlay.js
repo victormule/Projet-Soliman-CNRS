@@ -52,8 +52,17 @@ const TEXT_MIN_PX = 11;
 const TEXT_MAX_PX = 30;
 
 export class DocumentOverlay {
-  constructor(config) {
+  constructor(config, torch = null) {
     this.config = config;
+
+    /**
+     * Torche (optionnelle). Tant qu'un document est ouvert, son fond opaque
+     * recouvre entièrement la scène : on gèle alors le rendu de la torche pour
+     * rendre tout le budget de frame à l'animation de l'overlay (le canvas de la
+     * torche est en z-index 1, donc invisible sous le fond). Repris à la
+     * fermeture. Sans torche fournie, l'overlay fonctionne à l'identique.
+     */
+    this.torch = torch;
 
     /** Clé affichée, ou null. */
     this.currentKey = null;
@@ -86,6 +95,11 @@ export class DocumentOverlay {
     if (!data) { console.warn(`[DocumentOverlay] Contenu inconnu : ${key}`); return; }
     if (this.currentKey === key) { this.close(); return; }
 
+    // Le fond opaque de l'overlay va recouvrir la scène → on gèle la torche
+    // (rendu par frame inutile tant que c'est masqué). Idempotent si on passe
+    // d'un document à l'autre sans fermer.
+    this.torch?.pause();
+
     this._ensureDOM();
     this._clearTimers();
     this._disconnectObserver();
@@ -115,6 +129,10 @@ export class DocumentOverlay {
 
   close() {
     if (!this.el || !this.currentKey) return;
+
+    // La torche redevient visible pendant le fondu de sortie : on la relance
+    // tout de suite pour qu'elle reprenne son suivi au moment où le fond s'efface.
+    this.torch?.resume();
 
     this.currentKey = null;
     this._clearTimers();
@@ -147,6 +165,9 @@ export class DocumentOverlay {
   }
 
   destroy() {
+    // Sécurité : si l'overlay est détruit alors qu'un document est ouvert
+    // (sortie de scène), la torche ne doit pas rester gelée.
+    this.torch?.resume();
     this._clearTimers();
     this._disconnectObserver();
     this._aboutFx?.destroy();
