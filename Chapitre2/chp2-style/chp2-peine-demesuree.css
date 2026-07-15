@@ -660,3 +660,9 @@
 body.peine-demesuree-open #app {
     touch-action: pan-y;
 }
+
+/* Tactile : hauteur STABLE (cf. style.css, bloc « TACTILE — HAUTEUR STABLE »).
+   La barre du navigateur ne fait plus « respirer » la sous-partie. */
+@supports (height: 100svh) {
+    body.is-touch #peine-demesuree-root.is-open { height: 100svh; }
+}

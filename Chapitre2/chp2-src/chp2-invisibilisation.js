@@ -206,8 +206,12 @@ function clearTransition(el) {
 let rect = buildRect();
 
 function buildRect() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  // Mesurer le ROOT et non window.inner* : sur tactile le root est calé sur
+  // 100svh (hauteur stable), alors qu'innerHeight « respire » avec la barre du
+  // navigateur. La géométrie JS (yeux, zoom, légende) reste ainsi ALIGNÉE sur
+  // ce que le CSS affiche réellement. Desktop : les deux sont identiques.
+  const vw = root.clientWidth  || window.innerWidth;
+  const vh = root.clientHeight || window.innerHeight;
   const ir = IMG_W / IMG_H;
   const vr = vw / vh;
   if (vr > ir) {
@@ -1392,6 +1396,19 @@ on(window, 'resize', () => {
     wakeRAF();
   }, 60);
 }, { passive: true });
+
+/* Plein écran : vrai changement de hauteur (largeur intacte) que la garde
+   ci-dessus ignorerait sur tactile → relayout forcé, après stabilisation. */
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => {
+  on(document, ev, () => {
+    setT(() => {
+      rect = buildRect();
+      positionCaption();
+      if (zoomed && zoomedEye) applyZoomTransforms(zoomedEye, false);
+      wakeRAF();
+    }, 150);
+  });
+});
 
 let _rafId      = 0;
 let _rafActive  = false;

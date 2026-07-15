@@ -31,6 +31,26 @@ body {
   cursor: none;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   TACTILE — HAUTEUR STABLE (100svh)
+   ──────────────────────────────────────────────────────────────────
+   Sur téléphone, la barre du navigateur apparaît/disparaît AU TOUCHER et
+   fait varier la hauteur du viewport : tout ce qui est calé dessus
+   (height:100 %, fixed inset:0) « respire » → l'UI saute/clignote et le
+   bas de l'image passe sous la barre. svh = hauteur du PETIT viewport
+   (barres visibles), qui ne varie JAMAIS : les conteneurs deviennent
+   stables et le bas est toujours visible. Quand la barre se masque, il
+   reste un bandeau noir en bas — invisible sur ce site au fond noir.
+   body.is-touch est posée par app.js. Desktop : svh = vh → aucun effet,
+   et la classe n'est de toute façon pas posée.
+   ══════════════════════════════════════════════════════════════════ */
+@supports (height: 100svh) {
+  body.is-touch #app            { height: 100svh; }
+  /* #chapitre2-root est fixed top:0 + inset inline : top+height priment
+     sur bottom (sur-contrainte CSS) → le root se cale sur svh. */
+  body.is-touch #chapitre2-root { height: 100svh; }
+}
+
 body:not(.experience-started) * {
   cursor: auto !important;
 }

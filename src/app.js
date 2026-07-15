@@ -70,6 +70,15 @@ if (cursorEl) {
   }, { passive: true });
 }
 
+/* ── Appareil tactile : détection UNIQUE + classe body.is-touch ──────────────
+   La classe permet au CSS de basculer sur une hauteur STABLE (100svh) : sur
+   téléphone, la barre du navigateur apparaît/disparaît au toucher et fait
+   « respirer » le viewport — tout ce qui est calé dessus (fixed/inset:0,
+   height:100%) saute. svh = zone toujours visible → plus aucun mouvement. */
+const IS_TOUCH_DEVICE = window.matchMedia?.('(pointer: coarse)').matches
+                     || 'ontouchstart' in window;
+if (IS_TOUCH_DEVICE) document.body.classList.add('is-touch');
+
 /* ── 3. Systèmes partagés ────────────────────────────────────── */
 const audio      = new AudioManager(C);
 
@@ -168,8 +177,6 @@ window.addEventListener('touchend', e => {
    clignotement + saut de la flèche, du bouton plein écran et de la légende.
    On coalesce à un rendu par frame, et on ignore les 'resize' fantômes (mêmes
    dimensions). fullscreen.resize() ne reconstruit que si la taille a changé. */
-const _isTouchDevice = window.matchMedia?.('(pointer: coarse)').matches
-                    || 'ontouchstart' in window;
 let _resizeQueued = false;
 let _lastVW = window.innerWidth;
 let _lastVH = window.innerHeight;
@@ -186,7 +193,7 @@ window.addEventListener('resize', () => {
     // bouge. Recalculer les positions là-dessus fait « sauter » flèche, plein
     // écran, légende et installation. On l'ignore : seul un vrai changement (la
     // rotation, qui modifie la LARGEUR) déclenche le repositionnement.
-    if (_isTouchDevice && vw === _lastVW) { _lastVH = vh; return; }
+    if (IS_TOUCH_DEVICE && vw === _lastVW) { _lastVH = vh; return; }
 
     _lastVW = vw; _lastVH = vh;
     torch.resize();
@@ -195,6 +202,21 @@ window.addEventListener('resize', () => {
     fullscreen.resize();
   });
 }, { passive: true });
+
+/* Le passage plein écran est un VRAI changement de hauteur (largeur intacte) que
+   la garde ci-dessus ignorerait sur tactile : on force le relayout ici, après un
+   court délai (le temps que le viewport se stabilise). */
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev =>
+  document.addEventListener(ev, () => {
+    setTimeout(() => {
+      _lastVW = window.innerWidth;
+      _lastVH = window.innerHeight;
+      torch.resize();
+      manager.onResize();
+      player.resize();
+      fullscreen.resize();
+    }, 150);
+  }));
 
 /* ── 12. Fullscreen au démarrage ─────────────────────────────── */
 function _requestFullscreen() {

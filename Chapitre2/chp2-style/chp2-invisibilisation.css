@@ -41,6 +41,13 @@
   cursor: auto; /* annule le `cursor:none` global du travelling */
 }
 
+/* Tactile : hauteur STABLE (cf. style.css, bloc « TACTILE — HAUTEUR STABLE »).
+   La barre du navigateur ne fait plus « respirer » l'installation : l'image,
+   la légende et l'UI restent immobiles, le bas n'est jamais coupé. */
+@supports (height: 100svh) {
+  body.is-touch #invisibilisation-root.is-open { height: 100svh; }
+}
+
 /* Toutes les règles ci-dessous présupposent que #invisibilisation-root est dans le DOM */
 
 /* ─── sr-only (accessibilité) ─── */
@@ -169,11 +176,12 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 #invisibilisation-root #gf4 { opacity: 1; }
 
 /*
-  sk-play* : ils étaient en `position:fixed` dans l'original, ce qui les
-  ancrait sur le viewport. Comme #invisibilisation-root est lui-même en
-  position:fixed quand ouvert, on peut conserver position:fixed sans
-  changement de comportement : le sous-arbre est un descendant direct
-  du viewport via le root fixed.
+  sk-play* (et tous les enfants plein écran du root) : `absolute` et non `fixed`.
+  Un enfant fixed est ancré sur le VIEWPORT, qui « respire » sur mobile quand la
+  barre du navigateur bascule au toucher → désalignement avec l'image (elle, calée
+  sur le root) et clignotements. En absolute, tout se cale sur le root — stable
+  (100svh sur tactile). Au repos, root = plein écran top-left : coordonnées
+  identiques au fixed → aucun changement desktop.
 */
 #invisibilisation-root #sk-play1,
 #invisibilisation-root #sk-play2,
@@ -183,7 +191,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 #invisibilisation-root #sk-play-final2,
 #invisibilisation-root #sk-play-final3,
 #invisibilisation-root #sk-play-final4 {
-  position: fixed;
+  position: absolute;
   z-index: 14;
   opacity: 0;
   pointer-events: none;
@@ -194,7 +202,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 
 /* ─── Bouton de fermeture ─── */
 #invisibilisation-root #btn-close {
-  position: fixed;
+  position: absolute;   /* calé sur le root stable (cf. note sk-play) */
   top: 32px;
   right: 36px;
   z-index: 200;
@@ -236,7 +244,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 
 /* ─── Overlay vidéo ─── */
 #invisibilisation-root #video-overlay {
-  position: fixed;
+  position: absolute;   /* calé sur le root stable (cf. note sk-play) */
   inset: 0;
   z-index: 15;
   background: #000;
@@ -259,7 +267,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
    masque entièrement la scène zoomée 120x. Affiche un témoignage
    en italique Cormorant Garamond. */
 #invisibilisation-root #text-overlay {
-  position: fixed;
+  position: absolute;   /* calé sur le root stable (cf. note sk-play) */
   inset: 0;
   z-index: 15;
   background: #000;
@@ -310,7 +318,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 
 /* ─── Sous-titres SRT ─── */
 #invisibilisation-root #srt-subtitles {
-  position: fixed;
+  position: absolute;   /* calé sur le root stable (cf. note sk-play) */
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -354,7 +362,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
    (posée par le module quand la sous-partie est prête, retirée pendant un média).
    Plus de languette, plus de --menu-h, plus de reconstruction au resize. */
 #invisibilisation-root #caption-wrap {
-  position: fixed;
+  position: absolute;   /* calé sur le root stable (cf. note sk-play) */
   top:   clamp(18px, 9vh, 96px);
   /* left / right / width sont posés en JS (positionCaption) pour caler le filet
      contre le bord droit RÉEL de l'image. Ces valeurs ne servent que de repli
@@ -468,7 +476,7 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important;
 
 /* ─── Bouton retour (flèche) ─── */
 #invisibilisation-root #btn-return {
-  position: fixed;
+  position: absolute;   /* calé sur le root stable (cf. note sk-play) */
   bottom: 32px;
   left: 36px;
   z-index: 200;
