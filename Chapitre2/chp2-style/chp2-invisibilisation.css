@@ -165,6 +165,33 @@ body.invisibilisation-touch #invisibilisation-root #gf2,
 body.invisibilisation-touch #invisibilisation-root #gf3,
 body.invisibilisation-touch #invisibilisation-root #gf4 { opacity: 0 !important; }
 
+/* ═══ TACTILE — DÉ-PROMOTION DES COUCHES GPU (anti-clignotement) ═════════════
+   Cette scène force ~30 couches de compositing (translateZ(0) + backface sur
+   17 images plein cadre, wraps, scales, sk-play) ≈ 300 Mo de textures à DPR 3.
+   Sur téléphone, le compositeur évince des tuiles sous pression mémoire → la
+   flèche, le plein écran et la légende (au-dessus d'une scène invalidée à
+   chaque frame par le suivi du doigt) CLIGNOTENT, et les tuiles du bas de
+   l'image restent parfois non peintes. Aucune autre partie du site ne force de
+   couches (0 translateZ ailleurs) — d'où l'instabilité propre à cette scène.
+   → Au tactile, seuls #scene (zoom) et les .globe-wrap (suivi du doigt, JS
+   inline) restent des couches : les images statiques peignent dans la couche
+   de leur parent. Les transforms inline posés par le JS (zoom, sk-play)
+   priment sur ces règles quand ils existent → la séquence de zoom garde ses
+   couches le temps de l'animation. Desktop : classe jamais posée, zéro effet. */
+body.invisibilisation-touch #invisibilisation-root .layer,
+body.invisibilisation-touch #invisibilisation-root .globe-scale,
+body.invisibilisation-touch #invisibilisation-root img[id^="sk-play"] {
+  transform: none;
+  backface-visibility: visible;
+}
+
+/* Images de repos (globe-fixe) : jamais visibles en tactile (opacity 0 ci-dessus)
+   → retirées entièrement du rendu (plus de couche, plus de peinture). */
+body.invisibilisation-touch #invisibilisation-root #gf1,
+body.invisibilisation-touch #invisibilisation-root #gf2,
+body.invisibilisation-touch #invisibilisation-root #gf3,
+body.invisibilisation-touch #invisibilisation-root #gf4 { display: none !important; }
+
 #invisibilisation-root #sk {
   z-index: 13;
   pointer-events: none;

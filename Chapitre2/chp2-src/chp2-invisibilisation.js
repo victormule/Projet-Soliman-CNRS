@@ -1561,8 +1561,12 @@ function tick(timestamp) {
 
 wakeRAF();
 
+// Tactile : les images de repos (gf1-4) sont display:none (mode léger) → on ne
+// les décode pas (4 images plein cadre de RAM en moins, loader plus rapide).
 const criticalImages = Array.from(
-  $$('img.layer:not(.globe-play)')
+  $$(_isTouch
+    ? 'img.layer:not(.globe-play):not(#gf1):not(#gf2):not(#gf3):not(#gf4)'
+    : 'img.layer:not(.globe-play)')
 );
 // MODE LÉGER TACTILE : les globes « play » sont affichés EN PERMANENCE dès la
 // révélation → ils doivent être décodés AVANT le fondu du loader, sinon les yeux
