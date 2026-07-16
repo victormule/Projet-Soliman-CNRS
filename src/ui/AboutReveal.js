@@ -10,10 +10,12 @@
  *      (stroke SVG), comme à l'encre. Le texte est JUSTIFIÉ : les lignes sont
  *      composées ICI, en JS, par mesure réelle des glyphes (canvas 2D) — le
  *      nombre de lignes s'adapte au texte et à la largeur, rien n'est codé en
- *      dur. Les mots-clefs (style 'gold' dans la config) s'écrivent en blanc,
- *      s'embrasent, puis se déposent en doré. Le passage `underline: true` se
- *      souligne une fois écrit. La cadence ménage des temps d'arrêt :
- *      virgules, entrée et sortie des mots-clefs.
+ *      dur. Les mots-clefs (style 'gold') s'écrivent en blanc, s'embrasent,
+ *      puis se déposent en doré — en ITALIQUE (la main, la personne) ou en
+ *      ROMAIN GRAS si `engraved` (la pierre, l'institution) : la typographie
+ *      distingue Soliman al-Halabi du général Kléber. Le passage
+ *      `underline: true` reçoit LE COUP (voir T.strike_*). La cadence ménage
+ *      des temps d'arrêt : virgules, entrée et sortie des mots-clefs.
  *
  *   2. LE CORPS — l'accroche remonte en haut de la zone et le reste du texte
  *      se matérialise lettre par lettre dans un ordre aléatoire (décodage
@@ -58,8 +60,14 @@ const SVG_W = 1000;
 
 /* Polices. L'accroche est composée en Playfair Display — la voix « titre » du
    site (écran d'accueil) ; le corps en Inter — la linéale déjà chargée.
-   ⚠️ La variante italic 700 de Playfair est chargée par index.html. */
+   ⚠️ index.html charge Playfair en romain ET italique, 400 ET 700 : les quatre
+   combinaisons utilisées ici (base 400 romain, mot-clef 700 italique, mot-clef
+   `engraved` 700 romain) sont donc de vraies fontes, jamais synthétisées. */
 const HOOK_FONT = '"Playfair Display", Georgia, serif';
+
+/* Rayon des halos (clones flous), en unités logiques du viewBox — converti en
+   px écran à la taille de composition. Voir _makeGlow. */
+const GLOW_R = { white: 9, gold: 8, strike: 10 };
 
 /* ── Chronologie (ms) — les délais par lettre sont CUMULÉS à la composition ──
    Régler ici le souffle général : cadences, temps d'arrêt, respirations. */
@@ -76,8 +84,23 @@ const T = {
   fill:        900,   // durée de l'encrage           (= CSS abFill*)
   gold_lag:    650,   // l'embrasement part une fois le mot entièrement encré
   gold:       1500,   // blanc → doré                 (= CSS abToGold)
-  under_lag:   300,   // le soulignement part après le dernier mot souligné
-  underline:   950,   // tracé du soulignement        (= CSS .ab-underline)
+
+  /* ── LE COUP (passage `underline: true`) — quatre temps ──────────────────
+     1. LE SILENCE  : l'écriture s'arrête net (strike_hold). C'est LUI qui fait
+        la violence, pas le trait : depuis 15 s le texte s'écrit à cadence
+        métronomique, et soudain plus rien. Ne pas le raboter.
+     2. LE COUP     : la barre s'abat (strike) — brève, donc portée, pas tracée.
+     3. L'ONDE      : la plaque encaisse (strike_shock) et le mot blanchit
+        (strike_flash), décalés de strike_wave — le temps que la barre arrive.
+     4. LA RÉSONANCE: strike_after, puis la phrase REPREND. Le coup tombe au
+        milieu de la phrase et la phrase continue quand même. */
+  strike_hold:  520,  // silence après la dernière lettre soulignée
+  strike:       130,  // la barre s'abat              (= CSS .ab-underline)
+  strike_wave:   90,  // retard de l'onde : la barre est en train d'arriver
+  strike_flash: 340,  // éclat blanc sur le mot       (= CSS abStrikeFlash)
+  strike_shock: 280,  // secousse de la plaque        (= CSS abShock)
+  strike_after: 620,  // résonance avant que la phrase reprenne
+
   breath:      950,   // respiration après l'accroche, avant la remontée
   body_lag:    550,   // la pluie de lettres démarre PENDANT la remontée
   body_spread: 4200,  // encre totale de la pluie, RÉPARTIE entre paragraphes
@@ -164,8 +187,9 @@ export class AboutReveal {
     // secours faussent la justification).
     try {
       await Promise.all([
-        document.fonts.load(`400 32px ${HOOK_FONT}`),
-        document.fonts.load(`italic 700 32px ${HOOK_FONT}`),
+        document.fonts.load(`400 32px ${HOOK_FONT}`),          // base
+        document.fonts.load(`italic 700 32px ${HOOK_FONT}`),   // mot-clef (main)
+        document.fonts.load(`700 32px ${HOOK_FONT}`),          // mot-clef gravé
         document.fonts.load('300 16px Inter'),
         document.fonts.load('500 16px Inter'),
       ]);
@@ -177,7 +201,10 @@ export class AboutReveal {
 
     // Fast-forward demandé pendant le chargement des polices : on saute
     // directement à l'état final (les animations sont écrasées par .ab-skip).
-    if (this._skipped) { this._markKwSet(); return; }
+    // ⚠️ Le skip() a eu lieu AVANT que _buildHook ne pose ses timers (coup,
+    // mots-clefs) : son _clearTimers() n'a rien pu annuler. On purge donc ici,
+    // sinon la plaque tremblerait toute seule sur un texte déjà posé.
+    if (this._skipped) { this._clearTimers(); this._markKwSet(); return; }
 
     this._start();
   }
@@ -315,14 +342,20 @@ export class AboutReveal {
   /**
    * Aplatit les segments de la config en un flux de caractères portant leur
    * style. `kw` identifie chaque mot-clef (un id par segment 'gold') pour
-   * grouper son embrasement ; `u` marque les caractères à souligner.
+   * grouper son embrasement ; `u` identifie de même le passage à frapper ;
+   * `eng` demande le romain gras plutôt que l'italique (la pierre).
    */
   _hookChars() {
     const chars = [];
     (this.data.hook ?? []).forEach((seg, idx) => {
       const gold = seg.style === 'gold';
       for (const ch of String(seg.t ?? '')) {
-        chars.push({ ch, gold, kw: gold ? idx + 1 : 0, u: !!seg.underline });
+        chars.push({
+          ch, gold,
+          kw:  gold ? idx + 1 : 0,
+          u:   seg.underline ? idx + 1 : 0,
+          eng: gold && !!seg.engraved,
+        });
       }
     });
     return chars;
@@ -340,25 +373,44 @@ export class AboutReveal {
     return words;
   }
 
-  /** Groupe les caractères consécutifs d'un mot par style (base / mot-clef). */
+  /**
+   * Groupe les caractères consécutifs d'un mot par style (base / mot-clef /
+   * passage frappé). La clef sépare les runs ET, plus loin, leur donne chacun
+   * son <text> : c'est ce qui permet de cloner le passage frappé SEUL pour son
+   * éclat. Un mot-clef prime sur le soulignement (cas non utilisé aujourd'hui).
+   */
   _wordRuns(word) {
     const runs = [];
     word.forEach(c => {
-      const key = c.gold ? 'kw' + c.kw : 'base';
+      const key = c.gold ? 'kw' + c.kw : (c.u ? 'u' + c.u : 'base');
       const last = runs[runs.length - 1];
       if (last && last.key === key) last.chars.push(c);
-      else runs.push({ key, gold: c.gold, kw: c.kw, chars: [c] });
+      else runs.push({ key, gold: c.gold, kw: c.kw, u: c.u, engraved: c.eng, chars: [c] });
     });
     return runs;
   }
 
-  _font(gold, size) {
-    return (gold ? `italic 700 ${size}px ` : `400 ${size}px `) + HOOK_FONT;
+  /**
+   * Fonte d'un run, pour la MESURE canvas.
+   *
+   * ⚠️ RÈGLE D'OR : elle doit correspondre EXACTEMENT à ce qui rendra le glyphe
+   * — le CSS du <text> (.ab-t--kw / .ab-t--engraved / .ab-t--base) et celui du
+   * clone de halo (.ab-g--*). Mesurer en italique ce qui sera rendu en romain
+   * décale toute la justification. Trois endroits, un seul accord.
+   */
+  _font(run, size) {
+    if (!run.gold) return `400 ${size}px ${HOOK_FONT}`;
+    return `${run.engraved ? '' : 'italic '}700 ${size}px ${HOOK_FONT}`;
+  }
+
+  /** Nom de la fonte d'un run, pour la classe du clone de halo (.ab-g--*). */
+  _fontKey(run) {
+    return !run.gold ? 'base' : (run.engraved ? 'engraved' : 'hand');
   }
 
   /** Largeur cumulée des `i` premières lettres d'un run (crénage préservé). */
   _prefix(run, i, size) {
-    this._ctx.font = this._font(run.gold, size);
+    this._ctx.font = this._font(run, size);
     return this._ctx.measureText(run.chars.slice(0, i).map(c => c.ch).join('')).width;
   }
 
@@ -386,7 +438,7 @@ export class AboutReveal {
       return { runs, w: runs.reduce((s, r) => s + r.w, 0) };
     });
 
-    this._ctx.font = this._font(false, size);
+    this._ctx.font = this._font({ gold: false }, size);
     const spaceW = this._ctx.measureText(' ').width;
 
     // ── Composition des lignes (glouton) ──
@@ -417,9 +469,13 @@ export class AboutReveal {
     let d = T.lead_in;         // curseur temporel (délai de la prochaine lettre)
     let endMax = 0;            // fin de la dernière animation de l'accroche
     let prevKw = 0;            // mot-clef en cours (0 = aucun)
+    let prevU  = 0;            // passage frappé en cours (0 = aucun)
+    let uLastD = 0;            // délai de la dernière lettre du passage frappé
+    let strikeAt = 0;          // instant du coup (0 = pas de passage frappé)
     let maxY = 0;
-    const underByLine = new Map();   // li → { x1, x2, y, d }
-    const kwRecs      = new Map();   // kwId → { texts, tspans, delays, end }
+    const underByLine = new Map();   // li → { x1, x2, y }
+    const kwRecs      = new Map();   // kwId → { texts, tspans, delays, end, font }
+    const uRec = { texts: [], font: 'base' };   // <text> du passage frappé
 
     lines.forEach((L, li) => {
       const isLast  = li === lines.length - 1;
@@ -433,17 +489,21 @@ export class AboutReveal {
 
       const lineTexts = {};    // key → <text> (un par style et par ligne)
       const textFor = (run) => {
-        const key = run.gold ? 'kw' + run.kw : 'base';
-        if (lineTexts[key]) return lineTexts[key];
+        if (lineTexts[run.key]) return lineTexts[run.key];
         const t = document.createElementNS(NS, 'text');
-        t.setAttribute('class', run.gold ? 'ab-t ab-t--kw' : 'ab-t ab-t--base');
+        t.setAttribute('class', run.gold
+          ? ('ab-t ab-t--kw' + (run.engraved ? ' ab-t--engraved' : ''))
+          : 'ab-t ab-t--base');
         svg.appendChild(t);
-        lineTexts[key] = t;
+        lineTexts[run.key] = t;
         if (run.gold) {
           const rec = kwRecs.get(run.kw)
-                   ?? { texts: [], tspans: [], delays: [], end: 0 };
+                   ?? { texts: [], tspans: [], delays: [], end: 0,
+                        font: this._fontKey(run) };
           rec.texts.push(t);
           kwRecs.set(run.kw, rec);
+        } else if (run.u) {
+          uRec.texts.push(t);
         }
         return t;
       };
@@ -456,6 +516,19 @@ export class AboutReveal {
             if (prevKw) d += T.kw_after;
             if (run.kw) d += T.kw_before;
             prevKw = run.kw;
+          }
+
+          // LE COUP — à la SORTIE du passage frappé : l'écriture s'arrête, la
+          // barre s'abat, la plaque encaisse, puis seulement la phrase reprend.
+          // Le curseur `d` saute donc par-dessus tout l'événement : c'est ce qui
+          // fait tomber le coup AU MILIEU de la phrase, sans que la suite ne
+          // s'écrive par-dessus.
+          if (run.u !== prevU) {
+            if (prevU) {
+              strikeAt = uLastD + T.draw + T.strike_hold;
+              d = Math.max(d, strikeAt + T.strike + T.strike_after);
+            }
+            prevU = run.u;
           }
 
           const parent = textFor(run);
@@ -483,12 +556,15 @@ export class AboutReveal {
               }
 
               if (c.u) {
+                // Emprise du passage sur CETTE ligne (il peut se replier), et
+                // délai de sa dernière lettre — tous confondus : le coup est
+                // UN seul geste, même si le passage tient sur deux lignes.
                 const u = underByLine.get(li)
-                       ?? { x1: Infinity, x2: -Infinity, y: baseY, d: 0 };
+                       ?? { x1: Infinity, x2: -Infinity, y: baseY };
                 u.x1 = Math.min(u.x1, cx);
                 u.x2 = Math.max(u.x2, cx + cw);
-                u.d  = Math.max(u.d, d);
                 underByLine.set(li, u);
+                uLastD = Math.max(uLastD, d);
               }
 
               endMax = Math.max(endMax, d + T.fill_lag + T.fill);
@@ -505,6 +581,9 @@ export class AboutReveal {
       });
     });
     if (prevKw) d += T.kw_after;
+    // Passage frappé en fin de phrase : rien à reprendre après, mais le coup
+    // doit tomber quand même.
+    if (prevU && !strikeAt) strikeAt = uLastD + T.draw + T.strike_hold;
 
     // ── Post-passe mots-clefs : encrage blanc, puis embrasement groupé ──
     // (l'embrasement lui-même est porté par les CLONES FLOUS montés plus bas,
@@ -520,23 +599,30 @@ export class AboutReveal {
       this._kwTexts.push(...rec.texts);
     });
 
-    // ── Soulignement(s) : tracés une fois le passage écrit ──
+    // ── LA BARRE — un seul geste, à un seul instant (strikeAt) ──
+    // Elle déborde du mot des deux côtés et penche imperceptiblement : une main
+    // frappe, elle ne pose pas une règle. Toutes les lignes du passage sont
+    // barrées ENSEMBLE — un coup, pas une par ligne.
     underByLine.forEach(u => {
       const lineEl = document.createElementNS(NS, 'line');
-      const y   = u.y + size * 0.34;
-      const len = Math.max(1, u.x2 - u.x1);
+      const y    = u.y + size * 0.34;
+      const over = size * 0.16;                    // débord de part et d'autre
+      const x1   = u.x1 - over;
+      const x2   = u.x2 + over;
+      const y1   = y;
+      const y2   = y + (x2 - x1) * 0.012;          // ~0,7° : le geste n'est pas droit
+      const len  = Math.max(1, Math.hypot(x2 - x1, y2 - y1));  // vraie longueur
       lineEl.setAttribute('class', 'ab-underline');
-      lineEl.setAttribute('x1', u.x1.toFixed(2));
-      lineEl.setAttribute('x2', u.x2.toFixed(2));
-      lineEl.setAttribute('y1', y.toFixed(2));
-      lineEl.setAttribute('y2', y.toFixed(2));
+      lineEl.setAttribute('x1', x1.toFixed(2));
+      lineEl.setAttribute('x2', x2.toFixed(2));
+      lineEl.setAttribute('y1', y1.toFixed(2));
+      lineEl.setAttribute('y2', y2.toFixed(2));
       lineEl.style.strokeDasharray  = String(Math.ceil(len));
       lineEl.style.strokeDashoffset = String(Math.ceil(len));
-      const at = u.d + T.draw + T.under_lag;
-      lineEl.style.animationDelay = `${at}ms`;
+      lineEl.style.animationDelay   = `${strikeAt}ms`;
       svg.appendChild(lineEl);
-      endMax = Math.max(endMax, at + T.underline);
-      maxY   = Math.max(maxY, y + size * 0.2);
+      endMax = Math.max(endMax, strikeAt + T.strike + T.strike_flash);
+      maxY   = Math.max(maxY, Math.max(y1, y2) + size * 0.2);
     });
 
     svg.setAttribute('viewBox', `0 0 ${SVG_W} ${Math.ceil(maxY)}`);
@@ -578,6 +664,25 @@ export class AboutReveal {
       });
     });
 
+    // ── L'ONDE ET L'ÉCLAT ──
+    // L'éclat réutilise exactement la mécanique des halos : un clone flou dont
+    // seule l'opacité flambe. La secousse est un transform sur .ab-hookwrap —
+    // qui n'a AUCUN transform propre : .ab-stack porte la remontée de la phase 2
+    // et ne doit surtout pas être touchée ici (les deux se contrarieraient).
+    // Les deux partent avec strike_wave de retard : le temps que la barre arrive.
+    if (strikeAt && uRec.texts.length && !this._reduced) {
+      const flash = this._makeGlow(svg, uRec, scale, 'strike');
+      flash.style.animationDelay = `${strikeAt + T.strike_wave}ms`;
+      wrap.appendChild(flash);
+
+      this._addTimer(() => wrap.classList.add('is-shock'),
+                     strikeAt + T.strike_wave);
+      // La classe est retirée : l'animation finie, un transform résiduel
+      // maintiendrait une couche GPU pour rien (cf. règles de perf du module).
+      this._addTimer(() => wrap.classList.remove('is-shock'),
+                     strikeAt + T.strike_wave + T.strike_shock + 40);
+    }
+
     this.stack.insertBefore(wrap, this.body);
     this._hookWrap = wrap;
     this.svg = svg;
@@ -585,14 +690,15 @@ export class AboutReveal {
   }
 
   /**
-   * Clone flou d'un mot-clef (halo). Un <svg> superposé au principal — même
+   * Clone flou d'un passage (halo). Un <svg> superposé au principal — même
    * viewBox, même taille → alignement exact des glyphes — portant un blur CSS
    * FIXE : le navigateur calcule le flou une fois, le met en cache, et seule
    * l'opacité de la couche est ensuite animée (compositeur, coût quasi nul).
+   * Sert aussi bien à l'embrasement des mots-clefs qu'à l'éclat du coup.
    * @param {SVGSVGElement} svg    SVG principal (référence de clonage)
-   * @param {Object}        rec    entrée kwRecs ({ texts })
+   * @param {Object}        rec    { texts, font } — passage à faire luire
    * @param {number}        scale  px écran par unité logique (effW / SVG_W)
-   * @param {'white'|'gold'} kind  couche embrasement / lueur déposée
+   * @param {'white'|'gold'|'strike'} kind  embrasement / lueur déposée / éclat
    */
   _makeGlow(svg, rec, scale, kind) {
     const g = svg.cloneNode(false);        // recopie viewBox + font-size inline
@@ -602,14 +708,17 @@ export class AboutReveal {
     g.setAttribute('aria-hidden', 'true');
     rec.texts.forEach(t => {
       const c = t.cloneNode(true);
-      c.removeAttribute('class');
+      // La classe d'origine cède la place à une classe de FONTE seule : le clone
+      // ne doit hériter d'AUCUNE animation de tracé/encrage (il est une forme
+      // pleine dès le départ), mais il doit être composé dans exactement la même
+      // fonte que le glyphe qu'il double — sinon le halo se décale de lui.
+      c.setAttribute('class', `ab-g--${rec.font}`);
       c.style.animationDelay = '';
       c.querySelectorAll('tspan').forEach(ts => { ts.style.animationDelay = ''; });
       g.appendChild(c);
     });
-    // Rayon accordé aux anciens drop-shadow (18/16 unités logiques ≈ σ 9/8),
-    // converti en px écran à la taille de composition.
-    const r = Math.max(2, (kind === 'white' ? 9 : 8) * scale);
+    // Rayon en unités logiques → px écran à la taille de composition.
+    const r = Math.max(2, (GLOW_R[kind] ?? 8) * scale);
     g.style.filter = `blur(${r.toFixed(1)}px)`;
     return g;
   }

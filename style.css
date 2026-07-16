@@ -1935,10 +1935,17 @@ body.peine-aim #cursor.aim-hot {
    ⚠️ AUCUN filtre ici : l'embrasement et la lueur sont portés par les couches
    .ab-hook-glow (clones flous), jamais par le SVG principal — un drop-shadow
    animé sur <text> re-rastérisait le mot à chaque frame (cause du lag). */
+/* ITALIQUE par défaut : la main, l'écriture, la personne (Soliman al-Halabi).
+   ⚠️ Toute modification de fonte ici doit être répercutée dans _font() (mesure
+   canvas) ET sur .ab-g--hand (clone de halo), sinon la justification se décale. */
 .ab-t--kw {
   font-style: italic;
   font-weight: 700;
 }
+/* ROMAIN GRAS (`engraved` en config) : la pierre, le monument, l'institution
+   (le général Kléber). Même or, autre voix. */
+.ab-t--kw.ab-t--engraved { font-style: normal; }
+
 .ab-t--kw tspan {
   stroke: rgba(255, 255, 255, 0.95);
   animation:
@@ -1961,13 +1968,17 @@ body.peine-aim #cursor.aim-hot {
   pointer-events: none;
   opacity: 0;
 }
-.ab-hook-glow text {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-style: italic;
-  font-weight: 700;
-}
-.ab-hook-glow--white text { fill: #ffffff; }
-.ab-hook-glow--gold  text { fill: rgba(224, 192, 116, 1); }
+/* La fonte du clone doit être EXACTEMENT celle du glyphe qu'il double (posée
+   par _makeGlow d'après _fontKey) : un halo composé dans une autre fonte se
+   décale du mot. Ces trois classes répondent à _font() une pour une. */
+.ab-hook-glow text            { font-family: 'Playfair Display', Georgia, serif; }
+.ab-hook-glow .ab-g--hand     { font-style: italic; font-weight: 700; }
+.ab-hook-glow .ab-g--engraved { font-style: normal; font-weight: 700; }
+.ab-hook-glow .ab-g--base     { font-style: normal; font-weight: 400; }
+
+.ab-hook-glow--white  text { fill: #ffffff; }
+.ab-hook-glow--strike text { fill: #ffffff; }
+.ab-hook-glow--gold   text { fill: rgba(224, 192, 116, 1); }
 
 /* Délais inline (posés par le JS, calés sur la fin de l'encrage du mot). */
 .ab-hook-glow--white { animation: abGlowFlash 1800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
@@ -1992,12 +2003,43 @@ body.peine-aim #cursor.aim-hot {
 /* …pendant que la lueur dorée se dépose. */
 @keyframes abGlowSettle { from { opacity: 0; } to { opacity: 0.45; } }
 
-/* Soulignement (« condamnation à mort ») : se trace après l'écriture.
-   dasharray/offset et délai posés en inline (longueur exacte du trait). */
+/* ── LE COUP (« condamnation à mort ») ──────────────────────────────────────
+   La barre n'est PAS dessinée, elle est PORTÉE : 130 ms au lieu de 950, et une
+   courbe qui accélère jusqu'à s'arrêter net (le contraire d'un ease-out, qui
+   ralentit en arrivant et raconte une calligraphie). Épaisse, elle déborde du
+   mot et penche : géométrie et délai posés en inline par le JS. */
 .ab-underline {
-  stroke: rgba(255, 255, 255, 0.9);
-  stroke-width: 1.6;
-  animation: abDraw 950ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  stroke: rgba(255, 255, 255, 0.96);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  animation: abDraw 130ms cubic-bezier(0.55, 0, 0.9, 0.35) both;
+}
+
+/* L'ÉCLAT — le mot blanchit à l'impact. Même mécanique que les halos : un clone
+   flou dont SEULE l'opacité est animée. Montée quasi verticale (le coup), puis
+   extinction lente (la brûlure rétinienne). Délai inline. */
+.ab-hook-glow--strike { animation: abStrikeFlash 340ms cubic-bezier(0.2, 0, 0.4, 1) both; }
+@keyframes abStrikeFlash {
+  0%   { opacity: 0; }
+  9%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* L'ONDE — la plaque encaisse. transform SEUL (compositeur), sur .ab-hookwrap
+   qui n'a pas de transform propre : .ab-stack porte la remontée de la phase 2,
+   y toucher ferait se contrarier les deux. Amplitude décroissante sur 280 ms :
+   une secousse sèche qui retombe, pas un tremblement.
+   Pas de fill-mode : l'animation finie, l'élément retrouve son état de base et
+   ne garde aucune couche GPU (le JS retire la classe par surcroît). */
+.ab-hookwrap.is-shock { animation: abShock 280ms cubic-bezier(0.3, 0, 0.2, 1); }
+@keyframes abShock {
+  0%   { transform: translate3d(0, 0, 0); }
+  12%  { transform: translate3d(-5px, 2px, 0); }
+  26%  { transform: translate3d(4px, -2px, 0); }
+  42%  { transform: translate3d(-3px, 1px, 0); }
+  58%  { transform: translate3d(2px, -1px, 0); }
+  74%  { transform: translate3d(-1px, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 @keyframes abDraw     { to { stroke-dashoffset: 0; } }
@@ -2079,7 +2121,8 @@ body.peine-aim #cursor.aim-hot {
   animation: none;
   stroke-dashoffset: 0 !important;
 }
-.doc-ov-about.ab-settled .ab-hook-glow--white { animation: none; }
+.doc-ov-about.ab-settled .ab-hook-glow--white,
+.doc-ov-about.ab-settled .ab-hook-glow--strike { animation: none; opacity: 0; }
 .doc-ov-about.ab-settled .ab-body span { animation: none; opacity: 1; }
 
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
@@ -2089,7 +2132,11 @@ body.peine-aim #cursor.aim-hot {
   animation-duration: 1ms !important;
   animation-delay: 0ms !important;
 }
-.doc-ov-about.ab-skip .ab-hook-glow--white { animation: none; }
+/* Le coup ne se rejoue pas en accéléré : sauter, c'est renoncer à l'événement.
+   La barre est simplement là, l'éclat et la secousse n'ont pas lieu (le JS ne
+   les programme plus — ses timers sont purgés). */
+.doc-ov-about.ab-skip .ab-hook-glow--white,
+.doc-ov-about.ab-skip .ab-hook-glow--strike { animation: none; opacity: 0; }
 .doc-ov-about.ab-skip .ab-stack { transition-duration: 550ms; }
 .doc-ov-about.ab-skip .ab-body.ab-live span { animation-duration: 420ms; }
 
@@ -2102,9 +2149,14 @@ body.peine-aim #cursor.aim-hot {
   }
   .doc-ov-about .ab-t--base tspan { fill: rgba(255, 255, 255, 0.96); }
   .doc-ov-about .ab-t--kw   tspan { fill: rgba(224, 192, 116, 1); }
-  .doc-ov-about .ab-hook-glow--white { animation: none; }
-  .doc-ov-about .ab-hook-glow--gold  { animation: none; opacity: 0.45; }
+  .doc-ov-about .ab-hook-glow--white  { animation: none; }
+  .doc-ov-about .ab-hook-glow--strike { animation: none; opacity: 0; }
+  .doc-ov-about .ab-hook-glow--gold   { animation: none; opacity: 0.45; }
   .doc-ov-about .ab-underline { animation: none; stroke-dashoffset: 0 !important; }
+  /* Ni secousse ni éclat : c'est précisément ce que ce réglage demande. La barre
+     reste, le coup n'a pas lieu. (Le JS ne les programme pas non plus ; cette
+     règle est le filet de sécurité.) */
+  .doc-ov-about .ab-hookwrap { animation: none !important; transform: none !important; }
   .doc-ov-about .ab-stack     { transition: none; }
   .doc-ov-about .ab-body span { opacity: 1; filter: none; animation: none !important; }
 }
