@@ -128,11 +128,18 @@ const T = {
                       // (la cadence par lettre reste constante d'un bout à
                       //  l'autre : chaque paragraphe reçoit une fenêtre
                       //  proportionnelle à sa longueur)
-  body_gap:    620,   // respiration entre deux paragraphes. Comptée depuis le
-                      // DÉPART de la dernière lettre du paragraphe : elle
-                      // absorbe donc le fondu de celle-ci (body_char, 640) et
-                      // le suivant s'ouvre pile quand le précédent est posé.
-                      // La creuser au-delà de body_char ménage un vrai silence.
+  /* ── LE BATTEMENT — ce qui sépare deux paragraphes ───────────────────────
+     Un filet doré s'ouvre du CENTRE vers ses deux extrémités, tient, puis
+     s'efface pendant que le paragraphe suivant commence à pleuvoir. C'est la
+     ponctuation propre au site (le filet vertical des légendes de documents,
+     .doc-ov-caption::after, fait exactement ce geste) — reprise à l'horizontale.
+     Il s'EFFACE : le battement est un événement dans le temps, pas un ornement.
+     Le texte posé reste net. */
+  body_gap:    820,   // le silence, une fois le paragraphe posé (le filet le
+                      // remplit — il n'est donc jamais du temps mort)
+  beat_lead:   120,   // le filet part DANS la traîne du paragraphe qui s'achève :
+                      // il mène l'œil vers la suite au lieu d'attendre son tour
+  beat:       1400,   // durée du battement           (= CSS abBeat)
   body_char:   640,   // fondu d'une lettre du corps  (= CSS abLetter)
   settle:      600,   // marge avant l'éclairage des passages en relief
 };
@@ -293,9 +300,10 @@ export class AboutReveal {
    *
    * CHAQUE PARAGRAPHE PLEUT À SON TOUR : l'ordre est tiré au hasard À
    * L'INTÉRIEUR d'un paragraphe (Fisher-Yates — le décodage d'archive), mais
-   * les paragraphes se succèdent, séparés par T.body_gap. La fenêtre d'un
-   * paragraphe est proportionnelle à sa longueur : la cadence par lettre est
-   * donc la même partout (un paragraphe court ne pleut pas au ralenti).
+   * les paragraphes se succèdent, séparés par un BATTEMENT (le filet doré, voir
+   * T.beat). La fenêtre d'un paragraphe est proportionnelle à sa longueur : la
+   * cadence par lettre est donc la même partout (un paragraphe court ne pleut
+   * pas au ralenti).
    *
    * L'animation ne part qu'à la pose de la classe .ab-live (phase 2).
    */
@@ -303,8 +311,11 @@ export class AboutReveal {
     const body = document.createElement('div');
     body.className = 'ab-body';
     const paras = [];                           // un lot de spans par <p>
+    const beats = [];                           // le filet qui SUIT chaque lot
+                                                // (null pour le dernier)
+    const texts = this.data.paragraphs ?? [];
 
-    (this.data.paragraphs ?? []).forEach(txt => {
+    texts.forEach((txt, pi) => {
       const p = document.createElement('p');
       const spans = [];
       String(txt).split('*').forEach((part, i) => {
@@ -326,25 +337,50 @@ export class AboutReveal {
         }
       });
       body.appendChild(p);
-      if (spans.length) paras.push(spans);
+      if (!spans.length) return;    // paragraphe vide : ni lot, ni battement
+      paras.push(spans);
+
+      // Le battement PREND la marge du paragraphe qu'il suit (has-beat) au lieu
+      // de s'y ajouter : l'écart entre deux paragraphes ne bouge pas d'un pixel,
+      // et _fit() mesure la même hauteur qu'avant.
+      if (pi < texts.length - 1) {
+        p.classList.add('has-beat');
+        const b = document.createElement('div');
+        b.className = 'ab-beat';
+        b.setAttribute('aria-hidden', 'true');   // une respiration, pas du texte
+        body.appendChild(b);
+        beats.push(b);
+      } else {
+        beats.push(null);
+      }
     });
 
     const total = paras.reduce((n, s) => n + s.length, 0);
     const step  = T.body_spread / Math.max(1, total);   // cadence par lettre
     const all   = [];
-    let at = 0;                                 // ouverture du paragraphe courant
+    let at  = 0;                                // ouverture du paragraphe courant
+    let end = 0;                                // délai de la toute dernière lettre
 
-    paras.forEach(spans => {
+    paras.forEach((spans, i) => {
       this._shuffle(spans);
-      spans.forEach((s, i) => {
-        s.style.animationDelay = Math.round(at + i * step) + 'ms';
+      spans.forEach((s, j) => {
+        s.style.animationDelay = Math.round(at + j * step) + 'ms';
       });
-      at += spans.length * step + T.body_gap;
+      // Dernière lettre du paragraphe : c'est d'ELLE que se compte la suite —
+      // le filet part dans sa traîne, et le silence ne commence qu'une fois la
+      // lettre posée (+ body_char).
+      const lastAt = at + Math.max(0, spans.length - 1) * step;
+      end = lastAt;
       all.push(...spans);
+
+      if (beats[i]) {
+        beats[i].style.animationDelay = Math.round(lastAt + T.beat_lead) + 'ms';
+        at = lastAt + T.body_char + T.body_gap;
+      }
     });
 
     this._bodySpans = all;
-    this._bodyEnd   = Math.round(Math.max(0, at - T.body_gap));
+    this._bodyEnd   = Math.round(end);
     this.stack.appendChild(body);
     this.body = body;
   }

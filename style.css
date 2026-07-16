@@ -2112,6 +2112,52 @@ body.peine-aim #cursor.aim-hot {
 .ab-body p { margin: 0 0 1.05em; }
 .ab-body p:last-child { margin-bottom: 0; }
 
+/* ── LE BATTEMENT — la ponctuation entre deux paragraphes ────────────────────
+   Un filet doré qui s'ouvre DU CENTRE vers ses deux extrémités : c'est le geste
+   signature du site (.doc-ov-caption::after trace ainsi la barre verticale des
+   légendes de documents), repris à l'horizontale — un fleuron de manuscrit.
+
+   Il ne s'AJOUTE pas à la mise en page : le paragraphe qu'il suit lui cède sa
+   marge (.has-beat) et le battement en reprend exactement la hauteur. L'écart
+   entre deux paragraphes est donc inchangé, et _fit() mesure la même chose.
+   Une hauteur explicite plutôt qu'un élément vide de hauteur nulle : les marges
+   s'effondreraient au travers, et sa position deviendrait affaire de navigateur. */
+.ab-body p.has-beat { margin-bottom: 0; }
+.ab-beat {
+  position: relative;
+  height: 1.05em;             /* = la marge cédée par .has-beat */
+}
+.ab-beat::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(48px, 7%, 96px);
+  height: 1px;
+  transform-origin: center;
+  transform: translate(-50%, -50%) scaleX(0);
+  opacity: 0;
+  background: linear-gradient(
+      to right,
+      rgba(210, 175, 90, 0) 0%,
+      rgba(210, 175, 90, 0.7) 28%,
+      rgba(210, 175, 90, 0.7) 72%,
+      rgba(210, 175, 90, 0) 100%);
+}
+
+/* Il s'ouvre, tient, puis S'EFFACE pendant que le paragraphe suivant se pose :
+   le battement est un événement dans le temps, pas un ornement — le texte lu
+   reste net. transform + opacité : compositeur, coût nul. Délai inline. */
+.ab-body.ab-live .ab-beat::before {
+  animation: abBeat 1400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes abBeat {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scaleX(0); }
+  22%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+  60%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1); }
+}
+
 /* Pluie de lettres : chaque span porte son délai (inline — ordre aléatoire
    dans le paragraphe, les paragraphes se succédant) ; l'animation ne part
    qu'à la pose de .ab-live (pendant la remontée).
@@ -2162,6 +2208,10 @@ body.peine-aim #cursor.aim-hot {
 /* Le brouillon a été effacé : il ne doit RIEN laisser (le mot corrigé occupe
    sa place). L'opacité du groupe l'emporte sur l'état de ses lettres. */
 .doc-ov-about.ab-settled .ab-draft { animation: none; opacity: 0; }
+/* Le battement a eu lieu : il ne reste rien. (Sélecteur volontairement plus
+   spécifique que .ab-body.ab-live .ab-beat::before, qui pèse autant — sinon la
+   règle gagnante ne dépendrait que de l'ordre du fichier.) */
+.doc-ov-about.ab-settled .ab-body .ab-beat::before { animation: none; opacity: 0; }
 .doc-ov-about.ab-settled .ab-body span { animation: none; opacity: 1; }
 
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
@@ -2178,6 +2228,8 @@ body.peine-aim #cursor.aim-hot {
 .doc-ov-about.ab-skip .ab-hook-glow--strike { animation: none; opacity: 0; }
 /* Sauter, c'est aller au texte corrigé : le raté n'a pas lieu. */
 .doc-ov-about.ab-skip .ab-draft { animation: none; opacity: 0; }
+/* Ni les battements : le corps se pose d'un bloc, il n'y a plus rien à ponctuer. */
+.doc-ov-about.ab-skip .ab-body .ab-beat::before { animation: none; opacity: 0; }
 .doc-ov-about.ab-skip .ab-stack { transition-duration: 550ms; }
 .doc-ov-about.ab-skip .ab-body.ab-live span { animation-duration: 420ms; }
 
@@ -2204,4 +2256,7 @@ body.peine-aim #cursor.aim-hot {
   .doc-ov-about .ab-hookwrap { animation: none !important; transform: none !important; }
   .doc-ov-about .ab-stack     { transition: none; }
   .doc-ov-about .ab-body span { opacity: 1; filter: none; animation: none !important; }
+  /* Le battement est une chorégraphie : il n'a pas lieu. (!important comme les
+     règles voisines — .ab-body.ab-live .ab-beat::before pèse autant.) */
+  .doc-ov-about .ab-beat::before { animation: none !important; opacity: 0; }
 }
