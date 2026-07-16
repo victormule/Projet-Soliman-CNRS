@@ -30,6 +30,15 @@
  *   - un clic sur le texte AVANCE la séquence (fast-forward), il ne ferme pas ;
  *   - prefers-reduced-motion : état final direct, sans chorégraphie.
  *
+ * PERFORMANCE (règles tenues ici et dans le CSS associé) :
+ *   - AUCUN filtre dans le SVG principal : les halos des mots-clefs sont des
+ *     CLONES FLOUS superposés (_makeGlow) dont seule l'OPACITÉ est animée —
+ *     le flou est calculé une fois, le reste est de la composition GPU ;
+ *   - la pluie de lettres n'anime QUE l'opacité, sans text-shadow (posé en
+ *     fin de séquence seulement), et les espaces ne sont pas animés ;
+ *   - séquence posée → .ab-settled : toutes les animations sont remplacées
+ *     par leur état final statique, la couche GPU du stack est rendue.
+ *
  * Les DURÉES d'animation vivent dans style.css (section « À PROPOS ») ; ici ne
  * vivent que les DÉLAIS par lettre (posés en style inline) et la chronologie.
  */
@@ -85,13 +94,19 @@ export class AboutReveal {
 
     this.host  = null;   // article .doc-ov-about (fourni par l'overlay)
     this.stack = null;   // colonne accroche + corps (portée par la remontée)
-    this.svg   = null;   // accroche calligraphiée
+    this.svg   = null;   // accroche calligraphiée (SVG principal, sans filtre)
     this.body  = null;   // corps du texte
 
     this._timers    = [];
     this._raf       = null;
     this._bodySpans = null;
     this._kwTexts   = [];     // <text> des mots-clefs (survol après pose)
+    this._kwGolds   = [];     // <svg> halos dorés (clones flous, un par mot-clef)
+    this._hoverFns  = [];     // [el, type, fn] — listeners de survol à défaire
+    this._hookWrap  = null;   // cadre positionnant SVG principal + halos
+    this._blurTop   = null;   // bandes de flou haut/bas (indice de défilement)
+    this._blurBot   = null;
+    this._onScroll  = null;
     this._phase2At  = 0;      // instant de la remontée (depuis mount)
     this._phase2    = false;
     this._done      = false;
@@ -108,10 +123,26 @@ export class AboutReveal {
   async mount(host) {
     this.host = host;
 
+    // Bandes de flou haut/bas (indice de défilement) : collées aux bords de
+    // la fenêtre de lecture par position:sticky, opacité pilotée par
+    // _updateFade() selon la position de défilement.
+    const blurTop = document.createElement('div');
+    blurTop.className = 'ab-scrollblur top';
+    host.appendChild(blurTop);
+    this._blurTop = blurTop;
+
     const stack = document.createElement('div');
     stack.className = 'ab-stack';
     host.appendChild(stack);
     this.stack = stack;
+
+    const blurBot = document.createElement('div');
+    blurBot.className = 'ab-scrollblur bot';
+    host.appendChild(blurBot);
+    this._blurBot = blurBot;
+
+    this._onScroll = () => this._updateFade();
+    host.addEventListener('scroll', this._onScroll, { passive: true });
 
     // Le corps est construit d'abord : il participe à la mesure « tenir sans
     // ascenseur » (_fit) même s'il reste invisible pendant la phase 1.
@@ -172,16 +203,25 @@ export class AboutReveal {
       });
       this.body.classList.add('ab-live');
     }
-    this._addTimer(() => this._setDone(), 1100);
+    // Après la dernière lettre (délai max 700 + fondu 420) : état posé.
+    this._addTimer(() => this._setDone(), 1250);
   }
 
-  /** Démonte timers et références. Le DOM est purgé par DocumentOverlay. */
+  /** Démonte timers, listeners et références. Le DOM est purgé par l'overlay. */
   destroy() {
     this._clearTimers();
     if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+    if (this.host && this._onScroll) {
+      this.host.removeEventListener('scroll', this._onScroll);
+    }
+    this._onScroll = null;
+    this._hoverFns.forEach(([el, type, fn]) => el.removeEventListener(type, fn));
+    this._hoverFns = [];
     this.host = this.stack = this.svg = this.body = null;
+    this._hookWrap = this._blurTop = this._blurBot = null;
     this._bodySpans = null;
     this._kwTexts   = [];
+    this._kwGolds   = [];
   }
 
   /* ── Corps du texte (phase 2) ──────────────────────────────────────────── */
@@ -208,6 +248,9 @@ export class AboutReveal {
           p.appendChild(holder);
         }
         for (const ch of part) {
+          // Un espace n'a rien à révéler : texte brut, pas de span — autant
+          // d'animations (et de nœuds) en moins pendant la pluie.
+          if (/\s/.test(ch)) { holder.append(ch); continue; }
           const s = document.createElement('span');
           s.textContent = ch;
           holder.appendChild(s);
@@ -429,17 +472,16 @@ export class AboutReveal {
     if (prevKw) d += T.kw_after;
 
     // ── Post-passe mots-clefs : encrage blanc, puis embrasement groupé ──
+    // (l'embrasement lui-même est porté par les CLONES FLOUS montés plus bas,
+    // jamais par un filtre dans CE svg — voir _makeGlow.)
     kwRecs.forEach(rec => {
       const goldAt = rec.end + T.gold_lag;
+      rec.goldAt = goldAt;
       rec.tspans.forEach((ts, i) => {
         const d0 = rec.delays[i];
         ts.style.animationDelay = `${d0}ms, ${d0 + T.fill_lag}ms, ${goldAt}ms`;
       });
-      rec.texts.forEach(t => { t.style.animationDelay = `${goldAt - 120}ms`; });
       endMax = Math.max(endMax, goldAt + T.gold);
-      // Une fois déposé en doré, le mot devient sensible au survol (halo).
-      this._addTimer(() => rec.texts.forEach(t => t.classList.add('is-set')),
-                     goldAt + T.gold + 100);
       this._kwTexts.push(...rec.texts);
     });
 
@@ -463,9 +505,78 @@ export class AboutReveal {
     });
 
     svg.setAttribute('viewBox', `0 0 ${SVG_W} ${Math.ceil(maxY)}`);
-    this.stack.insertBefore(svg, this.body);
+
+    // ── Montage : cadre + halos des mots-clefs (clones flous superposés) ──
+    // Chaque mot-clef reçoit deux couches alignées sur le SVG principal (même
+    // viewBox) : blanche (l'embrasement) et dorée (la lueur déposée). Leur
+    // flou est FIXE, seule l'opacité est animée → composition GPU pure, là où
+    // l'ancien drop-shadow animé re-rastérisait le mot à chaque frame.
+    const wrap = document.createElement('div');
+    wrap.className = 'ab-hookwrap';
+    wrap.appendChild(svg);
+
+    const scale = effW / SVG_W;    // px écran par unité logique du viewBox
+    kwRecs.forEach(rec => {
+      const white = this._makeGlow(svg, rec, scale, 'white');
+      const gold  = this._makeGlow(svg, rec, scale, 'gold');
+      white.style.animationDelay = `${rec.goldAt - 120}ms`;
+      gold.style.animationDelay  = `${rec.goldAt + 200}ms`;
+      wrap.appendChild(white);
+      wrap.appendChild(gold);
+      this._kwGolds.push(gold);
+
+      // Une fois déposé en doré, le mot devient sensible au survol : le halo
+      // se renforce (opacité seule, donc compositeur — voir .is-hover en CSS).
+      this._addTimer(() => {
+        rec.texts.forEach(t => t.classList.add('is-set'));
+        gold.classList.add('is-set');
+      }, rec.goldAt + T.gold + 100);
+
+      rec.texts.forEach(t => {
+        const over = () => {
+          if (t.classList.contains('is-set')) gold.classList.add('is-hover');
+        };
+        const out = () => gold.classList.remove('is-hover');
+        t.addEventListener('pointerenter', over);
+        t.addEventListener('pointerleave', out);
+        this._hoverFns.push([t, 'pointerenter', over], [t, 'pointerleave', out]);
+      });
+    });
+
+    this.stack.insertBefore(wrap, this.body);
+    this._hookWrap = wrap;
     this.svg = svg;
     this._phase2At = endMax + T.breath;
+  }
+
+  /**
+   * Clone flou d'un mot-clef (halo). Un <svg> superposé au principal — même
+   * viewBox, même taille → alignement exact des glyphes — portant un blur CSS
+   * FIXE : le navigateur calcule le flou une fois, le met en cache, et seule
+   * l'opacité de la couche est ensuite animée (compositeur, coût quasi nul).
+   * @param {SVGSVGElement} svg    SVG principal (référence de clonage)
+   * @param {Object}        rec    entrée kwRecs ({ texts })
+   * @param {number}        scale  px écran par unité logique (effW / SVG_W)
+   * @param {'white'|'gold'} kind  couche embrasement / lueur déposée
+   */
+  _makeGlow(svg, rec, scale, kind) {
+    const g = svg.cloneNode(false);        // recopie viewBox + font-size inline
+    g.setAttribute('class', `ab-hook-glow ab-hook-glow--${kind}`);
+    g.removeAttribute('role');
+    g.removeAttribute('aria-label');
+    g.setAttribute('aria-hidden', 'true');
+    rec.texts.forEach(t => {
+      const c = t.cloneNode(true);
+      c.removeAttribute('class');
+      c.style.animationDelay = '';
+      c.querySelectorAll('tspan').forEach(ts => { ts.style.animationDelay = ''; });
+      g.appendChild(c);
+    });
+    // Rayon accordé aux anciens drop-shadow (18/16 unités logiques ≈ σ 9/8),
+    // converti en px écran à la taille de composition.
+    const r = Math.max(2, (kind === 'white' ? 9 : 8) * scale);
+    g.style.filter = `blur(${r.toFixed(1)}px)`;
+    return g;
   }
 
   /* ── Mise en page : tenir sans ascenseur, centrer l'accroche ───────────── */
@@ -486,17 +597,41 @@ export class AboutReveal {
     const maxPx = ov.about_max_px ?? 30;
     const minPx = Math.max(this._coarse ? 15 : 12, ov.about_min_px ?? 12);
 
-    let px = Math.max(minPx, Math.min(maxPx, Math.round(window.innerHeight * 0.023)));
+    // Taille visée, puis ajustement en un nombre BORNÉ de mesures : l'accroche
+    // a une hauteur fixe (indépendante de la fonte du corps), la taille qui
+    // tient se déduit donc proportionnellement puis se vérifie à ± 1 px —
+    // au lieu de l'ancienne descente px par px (une mise en page forcée par
+    // pixel d'écart, sur un DOM de ~1000 nœuds).
+    const cap = Math.max(minPx, Math.min(maxPx, Math.round(window.innerHeight * 0.023)));
+    let px = cap;
     this.body.style.fontSize = px + 'px';
-    while (stack.offsetHeight > zoneH && px > minPx) {
-      px -= 1;
+
+    if (stack.offsetHeight > zoneH && px > minPx) {
+      const hookH = this._hookWrap ? this._hookWrap.offsetHeight : 0;
+      const bodyH = Math.max(1, stack.offsetHeight - hookH);
+      px = Math.max(minPx, Math.min(cap,
+        Math.floor(px * (zoneH - hookH) / bodyH)));
       this.body.style.fontSize = px + 'px';
+      while (px > minPx && stack.offsetHeight > zoneH) {
+        px -= 1;
+        this.body.style.fontSize = px + 'px';
+      }
+      while (px < cap && stack.offsetHeight <= zoneH) {
+        px += 1;
+        this.body.style.fontSize = px + 'px';
+        if (stack.offsetHeight > zoneH) {          // un cran de trop
+          px -= 1;
+          this.body.style.fontSize = px + 'px';
+          break;
+        }
+      }
     }
     host.classList.toggle('is-scroll', stack.offsetHeight > zoneH + 1);
+    this._updateFade();
 
     // Centrage de l'accroche tant que la remontée n'a pas eu lieu.
-    if (!this._phase2 && this.svg) {
-      const hookH = this.svg.getBoundingClientRect().height;
+    if (!this._phase2 && this._hookWrap) {
+      const hookH = this._hookWrap.getBoundingClientRect().height;
       const startY = Math.max(0, Math.round((zoneH - hookH) / 2));
       if (isResize) stack.classList.add('no-trans');
       stack.style.transform = `translateY(${startY}px)`;
@@ -522,6 +657,10 @@ export class AboutReveal {
     this._phase2 = true;
     this.host.classList.add('ab-phase2');
     this.stack.style.transform = 'translateY(0px)';
+    this._updateFade();
+    // La remontée (1500 ms) déplace l'emprise mesurable du stack : on recale
+    // les fondus une fois le mouvement posé.
+    this._addTimer(() => this._updateFade(), 1600);
     this._addTimer(() => {
       this.body?.classList.add('ab-live');
       this._addTimer(() => this._setDone(),
@@ -529,10 +668,17 @@ export class AboutReveal {
     }, T.body_lag);
   }
 
-  /** Texte posé : relief des passages *…* et survols actifs. */
+  /**
+   * Texte posé : relief des passages *…*, survols actifs — et DÉSARMEMENT.
+   * .ab-settled remplace toutes les animations par leur état final statique
+   * (plus d'objets d'animation vivants pendant la lecture), et la couche GPU
+   * réservée à la remontée du stack est rendue.
+   */
   _setDone() {
     this._done = true;
-    this.host?.classList.add('ab-done');
+    this.host?.classList.add('ab-done', 'ab-settled');
+    if (this.stack) this.stack.style.willChange = 'auto';
+    this._updateFade();
   }
 
   /** prefers-reduced-motion : état final immédiat, sans chorégraphie. */
@@ -547,6 +693,29 @@ export class AboutReveal {
 
   _markKwSet() {
     this._kwTexts.forEach(t => t.classList.add('is-set'));
+    this._kwGolds.forEach(g => g.classList.add('is-set'));
+  }
+
+  /* ── Fondus de défilement (mask + bandes de flou) ──────────────────────── */
+
+  /**
+   * Ajuste le fondu haut/bas (--fade-top / --fade-bot, mask du host) et les
+   * bandes de flou selon la position de défilement : l'indice n'apparaît que
+   * du côté où il RESTE du texte. Actif seulement en phase 2 défilable —
+   * mêmes seuils que les contenus 'text' de l'overlay.
+   */
+  _updateFade() {
+    const el = this.host;
+    if (!el) return;
+    const FADE = 68;                       // hauteur du dégradé (px)
+    const max  = el.scrollHeight - el.clientHeight;
+    const on   = this._phase2 && max > 1 && el.classList.contains('is-scroll');
+    const top  = on ? Math.min(FADE, el.scrollTop) : 0;
+    const bot  = on ? Math.min(FADE, max - el.scrollTop) : 0;
+    el.style.setProperty('--fade-top', top.toFixed(1) + 'px');
+    el.style.setProperty('--fade-bot', bot.toFixed(1) + 'px');
+    if (this._blurTop) this._blurTop.style.opacity = (top / FADE).toFixed(2);
+    if (this._blurBot) this._blurBot.style.opacity = (bot / FADE).toFixed(2);
   }
 
   /* ── Timers (annulables par destroy) ───────────────────────────────────── */

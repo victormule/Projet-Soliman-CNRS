@@ -1784,24 +1784,84 @@ body.peine-aim #cursor.aim-hot {
    Palette : or du site rgba(210,175,90) et ses éclats.
    ══════════════════════════════════════════════════════════════════ */
 
-/* Zone : mêmes bornes que les autres contenus de l'overlay (entre les deux
-   colonnes latérales). Fermée au défilement en phase 1 ; s'ouvre en phase 2
-   si le contenu déborde (petits écrans / tactile → .is-scroll). */
+/* Zone : entre les deux colonnes latérales, mais la boîte est CALÉE SUR LE
+   TEXTE (max-width = corps 1040px + marges) et recentrée par margin:auto :
+   l'ascenseur, porté par cette boîte, tombe ainsi CONTRE le texte avec une
+   petite marge (le padding), jamais au bord lointain de la zone.
+   Fermée au défilement en phase 1 ; s'ouvre en phase 2 si le contenu déborde
+   (petits écrans / tactile → .is-scroll). */
 .doc-ov-about {
   position: absolute;
   top: 0;
   bottom: 0;
   left:  var(--doc-ov-side, clamp(140px, 20vw, 300px));
   right: var(--doc-ov-side, clamp(140px, 20vw, 300px));
-  /* Marge latérale = 2 % de la fenêtre de chaque côté : le texte respire,
-     jamais collé aux colonnes. Le JS mesure la largeur RÉELLE du contenu
-     (via .ab-stack) pour composer l'accroche, ce padding est donc pris en
-     compte dans la justification. */
-  padding: 0 2vw;
+  max-width: calc(1040px + 2 * clamp(12px, 2vw, 24px));
+  margin: 0 auto;
+  /* Marge latérale : le texte respire, jamais collé aux colonnes — et côté
+     gauche c'est elle qui sépare le texte de l'ascenseur. Le JS mesure la
+     largeur RÉELLE du contenu (via .ab-stack) pour composer l'accroche, ce
+     padding est donc pris en compte dans la justification. */
+  padding: 0 clamp(12px, 2vw, 24px);
   overflow: hidden;
+  /* La place de l'ascenseur est réservée des DEUX côtés dès la phase 1 :
+     aucun changement de largeur (donc aucune recomposition du SVG) quand le
+     défilement s'ouvre en phase 2. */
+  scrollbar-gutter: stable both-edges;
   touch-action: pan-y;     /* lecture au doigt (dérogation au #app) */
+
+  /* Barre de défilement à GAUCHE du texte : on inverse le sens d'écriture du
+     conteneur (la barre se place alors du côté "début" = gauche), comme pour
+     .doc-ov-text. Le contenu (.ab-stack) est remis en ltr juste en dessous —
+     glyphes SVG et bidi latin ne dépendent pas de cette bascule, seule la
+     position de l'ascenseur en dépend. */
+  direction: rtl;
+
+  /* Fondu haut/bas pendant le défilement (vars pilotées par AboutReveal). */
+  --fade-top: 0px;
+  --fade-bot: 0px;
 }
-.doc-ov-about.is-scroll.ab-phase2 { overflow-y: auto; }
+.doc-ov-about.is-scroll.ab-phase2 {
+  overflow-y: auto;
+  -webkit-mask: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--fade-top),
+      #000 calc(100% - var(--fade-bot)),
+      transparent 100%);
+          mask: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--fade-top),
+      #000 calc(100% - var(--fade-bot)),
+      transparent 100%);
+}
+
+/* Bandes de flou haut/bas (indice de défilement, en plus du fondu) : collées
+   aux bords de la fenêtre de lecture par position:sticky, sans emprise dans
+   le flux (marges négatives). Opacité pilotée par AboutReveal._updateFade. */
+.ab-scrollblur {
+  position: sticky;
+  height: 74px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+}
+.ab-scrollblur.top {
+  top: 0;
+  margin-bottom: -74px;
+  -webkit-mask: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+          mask: linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%);
+}
+.ab-scrollblur.bot {
+  bottom: 0;
+  margin-top: -74px;
+  -webkit-mask: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
+          mask: linear-gradient(to top, #000 0%, #000 35%, transparent 100%);
+}
 
 /* Barre de défilement — même filet doré patiné que le texte « À Propos »
    d'origine (n'apparaît que si .is-scroll autorise le défilement). */
@@ -1814,8 +1874,11 @@ body.peine-aim #cursor.aim-hot {
 }
 
 /* La colonne accroche + corps. La REMONTÉE de la phase 2 est portée par la
-   translation de ce bloc (translateY posé en JS : centré puis 0). */
+   translation de ce bloc (translateY posé en JS : centré puis 0).
+   direction:ltr — annule le rtl du conteneur (posé pour la barre à gauche) :
+   le contenu reste dans le sens normal. */
 .ab-stack {
+  direction: ltr;
   width: 100%;
   transition: transform 1500ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
@@ -1824,11 +1887,19 @@ body.peine-aim #cursor.aim-hot {
 
 /* ── PHASE 1 : l'accroche calligraphiée ───────────────────────────────────── */
 
+/* Cadre de positionnement : porte le SVG principal et, superposées, les
+   couches de halo des mots-clefs (clones flous — voir plus bas). */
+.ab-hookwrap {
+  position: relative;
+  width: min(100%, 1040px);   /* même plafond que la composition JS (effW) */
+  margin: 0 auto clamp(20px, 3.4vh, 44px);
+}
+
 .ab-hook {
   display: block;
-  width: min(100%, 1040px);   /* même plafond que la composition JS (effW) */
+  width: 100%;
   height: auto;
-  margin: 0 auto clamp(20px, 3.4vh, 44px);
+  margin: 0;
   overflow: visible;          /* les halos débordent des glyphes */
 }
 
@@ -1858,13 +1929,15 @@ body.peine-aim #cursor.aim-hot {
     abFillBase 900ms ease-in both;
 }
 
-/* Mots-clefs : tracé et encrage BLANCS, puis embrasement → doré.
-   Délais inline (3 valeurs : tracé, encrage, embrasement). L'italique gras
-   Playfair est composé tel quel par le JS (mesures faites dans cette fonte). */
+/* Mots-clefs : tracé et encrage BLANCS, puis dépôt doré (abToGold sur le
+   fill). Délais inline (3 valeurs : tracé, encrage, embrasement). L'italique
+   gras Playfair est composé tel quel par le JS (mesures dans cette fonte).
+   ⚠️ AUCUN filtre ici : l'embrasement et la lueur sont portés par les couches
+   .ab-hook-glow (clones flous), jamais par le SVG principal — un drop-shadow
+   animé sur <text> re-rastérisait le mot à chaque frame (cause du lag). */
 .ab-t--kw {
   font-style: italic;
   font-weight: 700;
-  animation: abKwGlow 1800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 .ab-t--kw tspan {
   stroke: rgba(255, 255, 255, 0.95);
@@ -1874,17 +1947,50 @@ body.peine-aim #cursor.aim-hot {
     abToGold 1500ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-/* Une fois déposé en doré (classe .is-set posée par le JS), le mot-clef vit :
-   halo au survol. (Pendant l'animation, le filter est verrouillé par
-   fill-mode:forwards — d'où cette bascule en fin de séquence.) */
-.ab-t--kw.is-set {
+/* ── HALOS des mots-clefs — clones flous composés par le GPU ────────────────
+   Deux <svg> par mot-clef, superposés au SVG principal (même viewBox →
+   alignement exact) : blanc = l'embrasement, or = la lueur déposée. Le blur
+   (posé en inline par le JS, rayon accordé à la taille de composition) est
+   FIXE : le navigateur met le résultat en cache et n'anime que l'OPACITÉ. */
+.ab-hook-glow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+}
+.ab-hook-glow text {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+}
+.ab-hook-glow--white text { fill: #ffffff; }
+.ab-hook-glow--gold  text { fill: rgba(224, 192, 116, 1); }
+
+/* Délais inline (posés par le JS, calés sur la fin de l'encrage du mot). */
+.ab-hook-glow--white { animation: abGlowFlash 1800ms cubic-bezier(0.25, 0.46, 0.45, 0.94) both; }
+.ab-hook-glow--gold  { animation: abGlowSettle 1300ms ease-out both; }
+
+/* Une fois déposé (classe .is-set posée par le JS) : lueur au repos, halo
+   renforcé au survol du mot (.is-hover, relayé par le JS) — opacité seule. */
+.ab-hook-glow--gold.is-set {
   animation: none;
-  filter: drop-shadow(0 0 7px rgba(210, 175, 90, 0.45));
-  transition: filter 500ms ease;
+  opacity: 0.45;
+  transition: opacity 500ms ease;
 }
-.ab-t--kw.is-set:hover {
-  filter: drop-shadow(0 0 16px rgba(231, 206, 142, 0.9));
+.ab-hook-glow--gold.is-set.is-hover { opacity: 0.95; }
+
+/* L'éclat : le halo blanc flambe puis s'éteint… */
+@keyframes abGlowFlash {
+  0%   { opacity: 0; }
+  25%  { opacity: 0.9; }
+  60%  { opacity: 0.35; }
+  100% { opacity: 0; }
 }
+/* …pendant que la lueur dorée se dépose. */
+@keyframes abGlowSettle { from { opacity: 0; } to { opacity: 0.45; } }
 
 /* Soulignement (« condamnation à mort ») : se trace après l'écriture.
    dasharray/offset et délai posés en inline (longueur exacte du trait). */
@@ -1905,14 +2011,6 @@ body.peine-aim #cursor.aim-hot {
   100% { fill: rgba(224, 192, 116, 1); }
 }
 
-/* L'éclat du mot-clef : halo blanc éclatant qui se dépose en lueur dorée. */
-@keyframes abKwGlow {
-  0%   { filter: drop-shadow(0 0 0px  rgba(255, 255, 255, 0)); }
-  22%  { filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.95)); }
-  55%  { filter: drop-shadow(0 0 14px rgba(231, 206, 142, 0.8)); }
-  100% { filter: drop-shadow(0 0 7px  rgba(210, 175, 90, 0.45)); }
-}
-
 /* ── PHASE 2 : le corps du texte ──────────────────────────────────────────── */
 
 .ab-body {
@@ -1926,10 +2024,11 @@ body.peine-aim #cursor.aim-hot {
   text-align: justify;        /* écho au bloc justifié de l'accroche */
   -webkit-hyphens: auto;
           hyphens: auto;
-  /* Ombre resserrée : le coût de peinture d'un text-shadow croît avec le rayon
-     de flou, et il est peint une fois PAR LETTRE (en rafales pendant la pluie).
-     Un rayon court + une alpha forte donnent la même lisibilité sur le fond
-     sombre pour une fraction du coût. */
+  /* PAS de text-shadow pendant la pluie : l'ombre serait peinte par lettre,
+     à chaque frame, pendant ~5 s — pour un effet invisible sur le fond noir à
+     82-94 %. Elle est posée en une fois, la séquence finie (.ab-done). */
+}
+.doc-ov-about.ab-done .ab-body {
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.92);
 }
 .ab-body p { margin: 0 0 1.05em; }
@@ -1965,13 +2064,31 @@ body.peine-aim #cursor.aim-hot {
   text-shadow: 0 0 20px rgba(231, 206, 142, 0.65);
 }
 
+/* ── SÉQUENCE POSÉE (.ab-settled, fin de chorégraphie) ──────────────────────
+   Toutes les animations sont remplacées par leur état final statique : plus
+   aucun objet d'animation vivant pendant la lecture et le défilement. */
+.doc-ov-about.ab-settled .ab-hook tspan {
+  animation: none;
+  stroke: transparent;
+  stroke-dashoffset: 0;
+}
+.doc-ov-about.ab-settled .ab-t--base tspan { fill: rgba(255, 255, 255, 0.96); }
+.doc-ov-about.ab-settled .ab-t--kw   tspan { fill: rgba(224, 192, 116, 1); }
+.doc-ov-about.ab-settled .ab-underline {
+  animation: none;
+  stroke-dashoffset: 0 !important;
+}
+.doc-ov-about.ab-settled .ab-hook-glow--white { animation: none; }
+.doc-ov-about.ab-settled .ab-body span { animation: none; opacity: 1; }
+
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
 .doc-ov-about.ab-skip .ab-hook tspan,
 .doc-ov-about.ab-skip .ab-underline,
-.doc-ov-about.ab-skip .ab-t--kw {
+.doc-ov-about.ab-skip .ab-hook-glow--gold {
   animation-duration: 1ms !important;
   animation-delay: 0ms !important;
 }
+.doc-ov-about.ab-skip .ab-hook-glow--white { animation: none; }
 .doc-ov-about.ab-skip .ab-stack { transition-duration: 550ms; }
 .doc-ov-about.ab-skip .ab-body.ab-live span { animation-duration: 420ms; }
 
@@ -1984,10 +2101,8 @@ body.peine-aim #cursor.aim-hot {
   }
   .doc-ov-about .ab-t--base tspan { fill: rgba(255, 255, 255, 0.96); }
   .doc-ov-about .ab-t--kw   tspan { fill: rgba(224, 192, 116, 1); }
-  .doc-ov-about .ab-t--kw {
-    animation: none;
-    filter: drop-shadow(0 0 7px rgba(210, 175, 90, 0.45));
-  }
+  .doc-ov-about .ab-hook-glow--white { animation: none; }
+  .doc-ov-about .ab-hook-glow--gold  { animation: none; opacity: 0.45; }
   .doc-ov-about .ab-underline { animation: none; stroke-dashoffset: 0 !important; }
   .doc-ov-about .ab-stack     { transition: none; }
   .doc-ov-about .ab-body span { opacity: 1; filter: none; animation: none !important; }
