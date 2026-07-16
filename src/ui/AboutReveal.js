@@ -13,9 +13,11 @@
  *      dur. Les mots-clefs (style 'gold') s'écrivent en blanc, s'embrasent,
  *      puis se déposent en doré — en ITALIQUE (la main, la personne) ou en
  *      ROMAIN GRAS si `engraved` (la pierre, l'institution) : la typographie
- *      distingue Soliman al-Halabi du général Kléber. Le passage
- *      `underline: true` reçoit LE COUP (voir T.strike_*). La cadence ménage
- *      des temps d'arrêt : virgules, entrée et sortie des mots-clefs.
+ *      distingue Soliman al-Halabi du général Kléber. Un segment `draft` est
+ *      d'abord écrit sous un AUTRE mot, qui se fait raturer puis effacer avant
+ *      que la main ne reprenne (voir T.draft_*) ; le passage `underline: true`
+ *      reçoit LE COUP (voir T.strike_*). La cadence ménage des temps d'arrêt :
+ *      virgules, entrée et sortie des mots-clefs.
  *
  *   2. LE CORPS — l'accroche remonte en haut de la zone et le reste du texte
  *      se matérialise lettre par lettre dans un ordre aléatoire (décodage
@@ -84,6 +86,19 @@ const T = {
   fill:        900,   // durée de l'encrage           (= CSS abFill*)
   gold_lag:    650,   // l'embrasement part une fois le mot entièrement encré
   gold:       1500,   // blanc → doré                 (= CSS abToGold)
+
+  /* ── LE RATÉ (segment `draft`) — la main se corrige ──────────────────────
+     Le brouillon s'écrit à la cadence ORDINAIRE (T.char) et dans la fonte de
+     base : il doit avoir l'air d'être le bon mot, sinon il n'y a pas de
+     correction, juste une décoration. Registre volontairement plus bas que le
+     coup — une plume qui hésite, pas une sentence. Si le raté frappait aussi
+     fort que « condamnation à mort », le coup ne frapperait plus. */
+  draft_lead:    420, // hésitation avant le mot que l'on va reprendre
+  draft_read:    480, // le mot tient : on a le temps de le lire avant la rature
+  scratch:       190, // la rature                    (= CSS .ab-scratch)
+  scratch_after: 300, // la main s'est arrêtée
+  erase:         460, // le brouillon s'efface        (= CSS abDraftErase)
+  draft_after:   240, // silence avant la reprise (kw_before le prolonge)
 
   /* ── LE COUP (passage `underline: true`) — quatre temps ──────────────────
      1. LE SILENCE  : l'écriture s'arrête net (strike_hold). C'est LUI qui fait
@@ -354,6 +369,7 @@ export class AboutReveal {
           ch, gold,
           kw:  gold ? idx + 1 : 0,
           u:   seg.underline ? idx + 1 : 0,
+          dr:  seg.draft ? idx + 1 : 0,
           eng: gold && !!seg.engraved,
         });
       }
@@ -385,7 +401,8 @@ export class AboutReveal {
       const key = c.gold ? 'kw' + c.kw : (c.u ? 'u' + c.u : 'base');
       const last = runs[runs.length - 1];
       if (last && last.key === key) last.chars.push(c);
-      else runs.push({ key, gold: c.gold, kw: c.kw, u: c.u, engraved: c.eng, chars: [c] });
+      else runs.push({ key, gold: c.gold, kw: c.kw, u: c.u, dr: c.dr,
+                      engraved: c.eng, chars: [c] });
     });
     return runs;
   }
@@ -466,12 +483,20 @@ export class AboutReveal {
     // le rendu correspond ainsi exactement aux mesures canvas ci-dessus.
     svg.style.fontSize = size.toFixed(2) + 'px';
 
+    // Brouillons (`draft`) : drId → texte d'abord écrit, puis raturé et effacé.
+    const drafts = new Map();
+    (this.data.hook ?? []).forEach((seg, idx) => {
+      if (seg.draft) drafts.set(idx + 1, String(seg.draft));
+    });
+
     let d = T.lead_in;         // curseur temporel (délai de la prochaine lettre)
     let endMax = 0;            // fin de la dernière animation de l'accroche
     let prevKw = 0;            // mot-clef en cours (0 = aucun)
     let prevU  = 0;            // passage frappé en cours (0 = aucun)
+    let prevDr = 0;            // segment corrigé en cours (0 = aucun)
     let uLastD = 0;            // délai de la dernière lettre du passage frappé
     let strikeAt = 0;          // instant du coup (0 = pas de passage frappé)
+    let draftRec = null;       // { text, x0, y0, at, scratchAt, eraseAt }
     let maxY = 0;
     const underByLine = new Map();   // li → { x1, x2, y }
     const kwRecs      = new Map();   // kwId → { texts, tspans, delays, end, font }
@@ -511,6 +536,29 @@ export class AboutReveal {
       let x = 0;
       L.words.forEach(word => {
         word.runs.forEach(run => {
+          // LE RATÉ — à l'ENTRÉE d'un segment corrigé, AVANT toute suspension
+          // de mot-clef : la main hésite, écrit le brouillon, le rature,
+          // l'efface. `d` saute par-dessus tout l'événement ; le kw_before qui
+          // suit devient le temps d'arrêt d'où sort le mot juste.
+          // On ne retient ici que la GÉOMÉTRIE et les INSTANTS : le calque
+          // lui-même est monté en post-passe (les mesures sont faites là-bas).
+          if (run.dr !== prevDr) {
+            if (run.dr && drafts.has(run.dr)) {
+              const text = drafts.get(run.dr);
+              const n    = [...text].length;
+              const at   = d;
+              // Dernière lettre du brouillon, puis son tracé, puis le temps de
+              // le lire : la rature ne tombe pas sur un mot encore en train de
+              // s'écrire (même règle que le coup, cf. strikeAt).
+              const lastD     = at + T.draft_lead + Math.max(0, n - 1) * T.char;
+              const scratchAt = lastD + T.draw + T.draft_read;
+              const eraseAt   = scratchAt + T.scratch + T.scratch_after;
+              draftRec = { text, x0: x, y0: baseY, at, scratchAt, eraseAt };
+              d = eraseAt + T.erase + T.draft_after;
+            }
+            prevDr = run.dr;
+          }
+
           // Temps d'arrêt à l'entrée / à la sortie d'un mot-clef.
           if (run.kw !== prevKw) {
             if (prevKw) d += T.kw_after;
@@ -598,6 +646,72 @@ export class AboutReveal {
       endMax = Math.max(endMax, goldAt + T.gold);
       this._kwTexts.push(...rec.texts);
     });
+
+    // ── LE RATÉ — le brouillon, en CALQUE par-dessus la case du mot juste ──
+    // La composition est celle du texte FINAL : rien n'a bougé, rien ne bougera.
+    // Le brouillon s'écrit à l'emplacement exact où le mot corrigé s'écrira, et
+    // c'est jouable parce qu'à cet instant RIEN de ce qui suit n'existe encore :
+    // il n'y a rien à repousser. (Le mot corrigé est bien là, dans le DOM, mais
+    // ses lettres sont figées à leur état initial par animation-fill-mode: both
+    // — tracé nul, remplissage transparent : invisibles.)
+    if (draftRec) {
+      const { text, x0, y0, at, scratchAt, eraseAt } = draftRec;
+      // Run synthétique : le brouillon se mesure dans la fonte de BASE, comme
+      // il se rendra (règle d'or : mesurer ce que l'on rend).
+      const dRun = { gold: false, engraved: false,
+                     chars: [...text].map(ch => ({ ch })) };
+      const dW = this._prefix(dRun, dRun.chars.length, size);
+
+      // ⚠️ LA garantie de fiabilité. Le brouillon n'a AUCUN repère à l'écran (le
+      // mot qu'il remplace n'est pas encore écrit) : son x exact n'engage rien.
+      // On le cale donc pour qu'il tienne toujours dans la ligne, quelle que
+      // soit la largeur d'écran — le décalage vaut au plus la différence de
+      // largeur entre les deux mots, soit une fraction de signe, invisible.
+      // Sans cela, un brouillon plus large que le mot corrigé déborderait dans
+      // la marge dès que celui-ci tombe en fin de ligne : un bug qu'on ne voit
+      // qu'à certaines tailles de fenêtre.
+      const xd = Math.max(0, Math.min(x0, SVG_W - dW));
+
+      const g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'ab-draft');
+      g.setAttribute('aria-hidden', 'true');   // l'accroche lue est la corrigée
+      g.style.animationDelay = `${eraseAt}ms`;
+
+      const dt = document.createElementNS(NS, 'text');
+      dt.setAttribute('class', 'ab-t ab-t--base');
+      let dd = at + T.draft_lead;
+      dRun.chars.forEach((c, i) => {
+        const ts = document.createElementNS(NS, 'tspan');
+        ts.textContent = c.ch;
+        ts.setAttribute('x', (xd + this._prefix(dRun, i, size)).toFixed(2));
+        ts.setAttribute('y', y0.toFixed(2));
+        ts.style.animationDelay = `${dd}ms, ${dd + T.fill_lag}ms`;
+        dt.appendChild(ts);
+        dd += T.char;
+      });
+      g.appendChild(dt);
+
+      // La rature : à mi-hauteur d'x (elle BARRE le mot, elle ne le souligne
+      // pas), débordante et plus penchée que la barre du coup — une plume.
+      const sx1 = xd - size * 0.10;
+      const sx2 = xd + dW + size * 0.10;
+      const sy1 = y0 - size * 0.26;
+      const sy2 = sy1 + (sx2 - sx1) * 0.028;
+      const sLen = Math.max(1, Math.hypot(sx2 - sx1, sy2 - sy1));
+      const sc = document.createElementNS(NS, 'line');
+      sc.setAttribute('class', 'ab-scratch');
+      sc.setAttribute('x1', sx1.toFixed(2));
+      sc.setAttribute('x2', sx2.toFixed(2));
+      sc.setAttribute('y1', sy1.toFixed(2));
+      sc.setAttribute('y2', sy2.toFixed(2));
+      sc.style.strokeDasharray  = String(Math.ceil(sLen));
+      sc.style.strokeDashoffset = String(Math.ceil(sLen));
+      sc.style.animationDelay   = `${scratchAt}ms`;
+      g.appendChild(sc);
+
+      svg.appendChild(g);
+      endMax = Math.max(endMax, eraseAt + T.erase);
+    }
 
     // ── LA BARRE — un seul geste, à un seul instant (strikeAt) ──
     // Elle déborde du mot des deux côtés et penche imperceptiblement : une main

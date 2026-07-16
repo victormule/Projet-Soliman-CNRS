@@ -299,6 +299,10 @@ window.CONFIG = {
        │                         la pierre, le monument, l'institution (Kléber).
        │                         La typographie porte ainsi la distinction : un
        │                         homme d'un côté, une figure nationale de l'autre.
+       │      draft: 'mot'     → LE RATÉ : ce mot-là s'écrit D'ABORD, se fait
+       │                         raturer, s'efface — puis la main reprend avec
+       │                         `t`. Le texte se corrige devant le lecteur.
+       │                         Registre de la PLUME qui hésite, jamais du coup.
        │      underline: true  → LE COUP : l'écriture s'arrête net, la barre
        │                         s'abat, la plaque encaisse (éclat + secousse),
        │                         puis la phrase reprend. Réservé au passage le
@@ -312,7 +316,9 @@ window.CONFIG = {
       hook: [
         { t: 'Que faire du corps de ' },
         { t: 'Soliman al-Halabi', style: 'gold' },
-        { t: ', assassin présumé du ' },
+        { t: ', ' },
+        { t: 'assassin', style: 'gold', draft: 'meurtrier' },
+        { t: ' présumé du ' },
         { t: 'général Kléber', style: 'gold', engraved: true },
         { t: ', qui demeure sans sépulture depuis sa ' },
         { t: 'condamnation à mort', underline: true },

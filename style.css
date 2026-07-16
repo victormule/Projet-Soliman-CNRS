@@ -2003,6 +2003,26 @@ body.peine-aim #cursor.aim-hot {
 /* …pendant que la lueur dorée se dépose. */
 @keyframes abGlowSettle { from { opacity: 0; } to { opacity: 0.45; } }
 
+/* ── LE RATÉ (`draft` en config) — la main se corrige ───────────────────────
+   Le brouillon s'écrit dans la fonte de BASE et à la cadence ordinaire : il
+   doit avoir l'air d'être le bon mot, sinon il n'y a pas de correction, juste
+   une décoration. Ses tspans héritent donc de .ab-t--base — rien à faire ici.
+   Puis le calque entier s'efface : une opacité, un élément.
+   L'effacement est TOTAL, et pas seulement par goût — le mot corrigé s'écrit
+   exactement au même endroit, un fantôme se superposerait à lui. */
+.ab-draft { animation: abDraftErase 460ms ease-in both; }
+@keyframes abDraftErase { from { opacity: 1; } to { opacity: 0; } }
+
+/* La rature : un geste de plume, PAS le coup. Elle raye, elle ne frappe pas —
+   ni secousse ni éclat. La violence reste à « condamnation à mort » : si le
+   raté frappait aussi fort, le coup ne frapperait plus. */
+.ab-scratch {
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  animation: abDraw 190ms cubic-bezier(0.4, 0, 0.7, 0.5) both;
+}
+
 /* ── LE COUP (« condamnation à mort ») ──────────────────────────────────────
    La barre n'est PAS dessinée, elle est PORTÉE : 130 ms au lieu de 950, et une
    courbe qui accélère jusqu'à s'arrêter net (le contraire d'un ease-out, qui
@@ -2123,6 +2143,9 @@ body.peine-aim #cursor.aim-hot {
 }
 .doc-ov-about.ab-settled .ab-hook-glow--white,
 .doc-ov-about.ab-settled .ab-hook-glow--strike { animation: none; opacity: 0; }
+/* Le brouillon a été effacé : il ne doit RIEN laisser (le mot corrigé occupe
+   sa place). L'opacité du groupe l'emporte sur l'état de ses lettres. */
+.doc-ov-about.ab-settled .ab-draft { animation: none; opacity: 0; }
 .doc-ov-about.ab-settled .ab-body span { animation: none; opacity: 1; }
 
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
@@ -2137,6 +2160,8 @@ body.peine-aim #cursor.aim-hot {
    les programme plus — ses timers sont purgés). */
 .doc-ov-about.ab-skip .ab-hook-glow--white,
 .doc-ov-about.ab-skip .ab-hook-glow--strike { animation: none; opacity: 0; }
+/* Sauter, c'est aller au texte corrigé : le raté n'a pas lieu. */
+.doc-ov-about.ab-skip .ab-draft { animation: none; opacity: 0; }
 .doc-ov-about.ab-skip .ab-stack { transition-duration: 550ms; }
 .doc-ov-about.ab-skip .ab-body.ab-live span { animation-duration: 420ms; }
 
@@ -2153,6 +2178,10 @@ body.peine-aim #cursor.aim-hot {
   .doc-ov-about .ab-hook-glow--strike { animation: none; opacity: 0; }
   .doc-ov-about .ab-hook-glow--gold   { animation: none; opacity: 0.45; }
   .doc-ov-about .ab-underline { animation: none; stroke-dashoffset: 0 !important; }
+  /* ⚠️ La règle ci-dessus rend les lettres du brouillon visibles (tracé nul,
+     remplissage plein) : sans ceci, « meurtrier » resterait affiché PAR-DESSUS
+     « assassin ». L'opacité du groupe tranche. */
+  .doc-ov-about .ab-draft { animation: none; opacity: 0; }
   /* Ni secousse ni éclat : c'est précisément ce que ce réglage demande. La barre
      reste, le coup n'a pas lieu. (Le JS ne les programme pas non plus ; cette
      règle est le filet de sécurité.) */
