@@ -105,8 +105,12 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 - Texte « À Propos » (scène phrénologie) : `config.js` (`DOCUMENTS.about`) —
   `hook` = accroche calligraphiée (segments `style:'gold'` / `underline`),
   `paragraphs` = corps (`*…*` met un passage en relief). Moteur :
-  `src/ui/AboutReveal.js` (cadences dans la constante `T`), styles dans
-  `style.css` (section « À PROPOS »).
+  `src/ui/AboutReveal.js` (cadences : `T` pour l'écriture, `OUT` pour la fumée
+  de sortie), styles dans `style.css` (section « À PROPOS »).
+  ⚠️ La fumée ajourne la fermeture de l'overlay de ~1 s : `close()` attend le
+  délai rendu par `smokeOut()` avant `_finishClose()` (fond effacé + torche
+  relancée). Elle ne concerne QUE l'« À Propos » posé — les documents et une
+  lecture interrompue gardent le fondu ordinaire.
 
 ## Événements window (pont scène ↔ modules)
 

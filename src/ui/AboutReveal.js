@@ -4,7 +4,8 @@
  * « À PROPOS » — mise en scène du texte fondateur du site (scène phrénologie).
  * Monté par DocumentOverlay quand le contenu est de type 'about'.
  *
- * Deux temps, comme une plaque que l'on grave puis une archive qui se révèle :
+ * Trois temps : une plaque que l'on grave, une archive qui se révèle, un souffle
+ * qui emporte tout :
  *
  *   1. L'ACCROCHE — la question inaugurale s'écrit lettre à lettre, au tracé
  *      (stroke SVG), comme à l'encre. Le texte est JUSTIFIÉ : les lignes sont
@@ -26,6 +27,13 @@
  *      lecture au lieu de recevoir la page entière d'un bloc. Les passages
  *      *entre astérisques* sont mis en relief et s'éclairent une fois posés.
  *
+ *   3. LA FUMÉE — à la fermeture, un souffle traverse la page de GAUCHE À
+ *      DROITE : les lettres s'effacent à mesure que le front passe, chacune à
+ *      son instant et pour sa durée propre, pendant que le bloc dérive vers la
+ *      droite en s'élevant et en penchant. Les lueurs dorées des noms survivent
+ *      à leurs lettres et s'étirent. Voir smokeOut() : c'est l'overlay qui la
+ *      déclenche et qui attend qu'elle passe avant de rendre le noir.
+ *
  * CONTRAT (règles du site) :
  *   - aucun effet de bord au chargement : tout se crée dans mount(), tout se
  *     défait dans destroy() (timers compris) ; le DOM est purgé par l'overlay ;
@@ -43,10 +51,15 @@
  *   - la pluie de lettres n'anime QUE l'opacité, sans text-shadow (posé en
  *     fin de séquence seulement), et les espaces ne sont pas animés ;
  *   - séquence posée → .ab-settled : toutes les animations sont remplacées
- *     par leur état final statique, la couche GPU du stack est rendue.
+ *     par leur état final statique, la couche GPU du stack est rendue ;
+ *   - la fumée de sortie ne part QUE d'un texte posé : le contenu est alors
+ *     statique, donc chaque calque est rastérisé une fois puis composé. Jamais
+ *     de flou animé nulle part — animer un rayon de flou, c'est re-rastériser
+ *     une gaussienne par glyphe et par frame.
  *
  * Les DURÉES d'animation vivent dans style.css (section « À PROPOS ») ; ici ne
- * vivent que les DÉLAIS par lettre (posés en style inline) et la chronologie.
+ * vivent que les DÉLAIS par lettre (posés en style inline) et la chronologie :
+ * T pour l'écriture (temps 1 et 2), OUT pour la fumée (temps 3).
  */
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -144,6 +157,23 @@ const T = {
   settle:      600,   // marge avant l'éclairage des passages en relief
 };
 
+/* ── LA FUMÉE (ms) — la sortie, voir smokeOut() ──────────────────────────────
+   Un souffle traverse la page de GAUCHE À DROITE. Arithmétique du total :
+     dernière lettre = lead + sweep + jitter + fade + fade_var ≈ 1680 ms
+     fond effacé     = bg_at (1000) + fondu CSS de #doc-overlay (700) = 1700 ms
+   Les deux se rejoignent : la traîne de la fumée se dissout dans le noir qui
+   revient, sans coupure. Toucher à l'un, c'est devoir vérifier l'autre. */
+const OUT = {
+  lead:        60,  // le clic est entendu tout de suite
+  sweep:      700,  // le front traverse la largeur du texte
+  jitter:     140,  // ± par lettre : le front est déchiqueté, pas réglé
+  fade:       520,  // fondu d'une lettre
+  fade_var:   260,  // + jusqu'à : certaines lettres s'accrochent
+  halo_after: 260,  // la lueur d'un nom survit à ses propres lettres
+  halo:      1000,  // puis s'étire et s'éteint      (= CSS abSmokeHalo)
+  bg_at:     1000,  // instant où le fond commence à s'effacer
+};
+
 export class AboutReveal {
   /**
    * @param {Object} config  window.CONFIG (bornes de police du corps, etc.)
@@ -163,7 +193,10 @@ export class AboutReveal {
     this._bodySpans = null;
     this._bodyEnd   = 0;      // fin de la dernière pluie (depuis .ab-live)
     this._kwTexts   = [];     // <text> des mots-clefs (survol après pose)
-    this._kwGolds   = [];     // <svg> halos dorés (clones flous, un par mot-clef)
+    // Halos dorés (clones flous, un par mot-clef) : { el, anchor }. `anchor` est
+    // le <text> du nom — la fumée y lit l'abscisse du mot pour partir avec le
+    // front, et l'origine de son agrandissement (voir smokeOut).
+    this._kwGolds   = [];
     this._hoverFns  = [];     // [el, type, fn] — listeners de survol à défaire
     this._hookWrap  = null;   // cadre positionnant SVG principal + halos
     this._blurTop   = null;   // bandes de flou haut/bas (indice de défilement)
@@ -273,6 +306,98 @@ export class AboutReveal {
     }
     // Après la dernière lettre (délai max 700 + fondu 420) : état posé.
     this._addTimer(() => this._setDone(), 1250);
+  }
+
+  /**
+   * LA FUMÉE — la sortie. Un souffle traverse la page de GAUCHE À DROITE : les
+   * lettres s'effacent à mesure que le front passe, chacune à son instant et
+   * pour sa durée propre, pendant que le bloc entier dérive vers la droite en
+   * s'élevant et en penchant. Les lueurs dorées des noms survivent à leurs
+   * lettres et s'étirent en s'agrandissant.
+   *
+   * NE PART QUE D'UN TEXTE POSÉ (_done) — et cette limite n'est pas un pis-aller,
+   * c'est ce qui rend la fumée gratuite : le contenu est alors STATIQUE, donc
+   * chaque calque est rastérisé une fois puis composé (transform + opacité, rien
+   * d'autre). Et de toute façon, forcer l'état posé pour pouvoir souffler ferait
+   * apparaître le texte entier d'un coup juste avant de l'emporter. Sinon → 0 :
+   * l'appelant fait son fondu ordinaire.
+   *
+   * ⚠️ Le mouvement est porté par le HOST, jamais par .ab-stack : le host est le
+   * cadre qui ROGNE (overflow) et, sur petit écran, le conteneur de défilement.
+   * Le transformer emporte sa propre découpe — le texte ne peut donc pas être
+   * coupé par sa propre dérive. Déplacer .ab-stack obligerait à ouvrir
+   * l'overflow du host, ce qui ferait perdre la position de lecture.
+   *
+   * @returns {number} ms à attendre avant d'effacer le fond (0 = pas de fumée)
+   */
+  smokeOut() {
+    if (!this.host || !this.stack || !this._done || this._reduced) return 0;
+
+    // Tout ce qui a une forme et une place : lettres de l'accroche, barre du
+    // coup, lettres du corps. Le brouillon est déjà effacé — rien à y souffler.
+    const hookEls = this.svg
+      ? [...this.svg.querySelectorAll('tspan, .ab-underline')]
+          .filter(el => !el.closest('.ab-draft'))
+      : [];
+    const els = [...hookEls, ...(this._bodySpans ?? [])];
+
+    /* ── LECTURES D'ABORD, ÉCRITURES ENSUITE ──
+       ~950 mesures pour UN seul calcul de mise en page : la première lecture le
+       force, les suivantes le relisent. Entrelacer lecture et écriture en
+       relancerait un par élément — la fumée partirait sur un à-coup, ce qui est
+       très exactement ce qu'on ne peut pas se permettre à cet instant-là. */
+    const box = this.stack.getBoundingClientRect();
+    const W   = Math.max(1, box.width);
+    const xs  = els.map(el => {
+      const r = el.getBoundingClientRect();
+      return (r.left + r.width / 2 - box.left) / W;      // 0 gauche → 1 droite
+    });
+    const wrapBox = this._hookWrap?.getBoundingClientRect() ?? null;
+    const halos   = this._kwGolds.map(({ el, anchor }) =>
+      ({ el, r: anchor.getBoundingClientRect() }));
+
+    /* ── ÉCRITURES ── */
+    els.forEach((el, i) => {
+      const t = Math.min(1, Math.max(0, xs[i]));
+      // Le front n'est pas une règle : chaque lettre a son instant ET sa durée.
+      // C'est ce désordre, plus le recouvrement de dizaines de fondus, qui fait
+      // un front doux et granuleux là où un masque dégradé donnerait une lame.
+      const at  = Math.max(0, OUT.lead + t * OUT.sweep
+                              + (Math.random() - 0.5) * 2 * OUT.jitter);
+      const dur = OUT.fade + Math.random() * OUT.fade_var;
+      el.style.animationDelay    = Math.round(at)  + 'ms';
+      el.style.animationDuration = Math.round(dur) + 'ms';
+    });
+
+    halos.forEach(({ el, r }) => {
+      const t = Math.min(1, Math.max(0, (r.left + r.width / 2 - box.left) / W));
+      el.style.animationDelay =
+        Math.round(OUT.lead + t * OUT.sweep + OUT.halo_after) + 'ms';
+      // L'agrandissement doit se faire AUTOUR DU NOM, pas autour du cadre :
+      // sinon un nom placé à gauche serait poussé vers la gauche en grandissant
+      // et partirait à contre-vent.
+      if (wrapBox) {
+        const ox = (r.left + r.width  / 2 - wrapBox.left) / Math.max(1, wrapBox.width)  * 100;
+        const oy = (r.top  + r.height / 2 - wrapBox.top)  / Math.max(1, wrapBox.height) * 100;
+        el.style.transformOrigin = `${ox.toFixed(1)}% ${oy.toFixed(1)}%`;
+      }
+    });
+
+    // Les indices de défilement n'ont plus rien à indiquer (transition CSS).
+    if (this._blurTop) this._blurTop.style.opacity = '0';
+    if (this._blurBot) this._blurBot.style.opacity = '0';
+
+    // ⚠️ Le fast-forward est fini — il n'a plus rien à accélérer, et ses règles
+    // sont en !important : elles ÉCRASERAIENT les délais qu'on vient de poser en
+    // inline (une déclaration !important d'auteur bat le style inline). Sans
+    // cela, un lecteur qui a cliqué pour accélérer verrait l'accroche entière
+    // partir d'un bloc pendant que le corps, lui, balaie normalement.
+    // Le retirer ne change rien à l'image : .ab-settled double chacune de ces
+    // règles et tient déjà l'état posé.
+    this.host.classList.remove('ab-skip');
+
+    this.host.classList.add('ab-out');
+    return OUT.bg_at;
   }
 
   /** Démonte timers, listeners et références. Le DOM est purgé par l'overlay. */
@@ -808,7 +933,7 @@ export class AboutReveal {
       gold.style.animationDelay  = `${rec.goldAt + 200}ms`;
       wrap.appendChild(white);
       wrap.appendChild(gold);
-      this._kwGolds.push(gold);
+      this._kwGolds.push({ el: gold, anchor: rec.texts[0] });
 
       // Une fois déposé en doré, le mot devient sensible au survol : le halo
       // se renforce (opacité seule, donc compositeur — voir .is-hover en CSS).
@@ -1011,7 +1136,7 @@ export class AboutReveal {
 
   _markKwSet() {
     this._kwTexts.forEach(t => t.classList.add('is-set'));
-    this._kwGolds.forEach(g => g.classList.add('is-set'));
+    this._kwGolds.forEach(({ el }) => el.classList.add('is-set'));
   }
 
   /* ── Fondus de défilement (mask + bandes de flou) ──────────────────────── */

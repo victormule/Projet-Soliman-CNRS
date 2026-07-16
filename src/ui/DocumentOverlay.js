@@ -80,6 +80,7 @@ export class DocumentOverlay {
     this._textBody = null;  // corps mesurable d'un contenu 'text'
     this._about    = null;  // article « À Propos » (mise en scène AboutReveal)
     this._aboutFx  = null;  // moteur de la mise en scène « À Propos »
+    this._smoking  = false; // fumée de sortie en cours (voir close/_finishClose)
     this._caption  = null;  // légende (colonne gauche)
     this._ro       = null;  // ResizeObserver
     this._roRaf    = null;
@@ -105,6 +106,12 @@ export class DocumentOverlay {
     this._disconnectObserver();
 
     this.currentKey = key;
+    // Ouvrir PENDANT la fumée de l'« À Propos » : elle est simplement remplacée,
+    // sans délai. Le _clearTimers() ci-dessus a déjà annulé le _finishClose en
+    // attente, .visible n'a pas encore été retiré (c'est tout l'intérêt de ne
+    // l'ôter qu'à la fin) — le document demandé s'affiche donc sans clignoter.
+    // Aller voir un document n'est pas un adieu : la fumée ne lui est pas due.
+    this._smoking = false;
     this._aboutFx?.destroy();
     this.inner.innerHTML = '';
     this._frames   = [];
@@ -128,20 +135,49 @@ export class DocumentOverlay {
   }
 
   close() {
-    if (!this.el || !this.currentKey) return;
+    if (!this.el) return;
 
-    // La torche redevient visible pendant le fondu de sortie : on la relance
-    // tout de suite pour qu'elle reprenne son suivi au moment où le fond s'efface.
-    this.torch?.resume();
+    // Deuxième clic PENDANT la fumée : on coupe court. Sans cela close() sortait
+    // ici (currentKey est déjà nul) et l'utilisateur restait ~1,7 s devant un
+    // écran qui ne répond plus. Une mise en scène ne doit jamais piéger.
+    if (!this.currentKey) { if (this._smoking) this._finishClose(); return; }
 
     this.currentKey = null;
     this._clearTimers();
     this._disconnectObserver();
+    this._loupe.disable();
+    document.removeEventListener('keydown', this._onKeyDown);
+
+    // « À Propos » posé → LA FUMÉE : le texte s'en va AVANT le noir. Tant
+    // qu'elle passe, le fond reste opaque et la torche reste GELÉE — elle serait
+    // invisible dessous, et son rendu par frame disputerait le budget à la fumée
+    // (c'est pour cette raison même qu'on la gèle à l'ouverture). Les deux se
+    // réveillent ensemble, dans _finishClose. Tout autre contenu → 0, fondu
+    // ordinaire : rien ne change pour les documents.
+    const wait = this._aboutFx?.smokeOut?.() ?? 0;
+    if (wait > 0) {
+      this._smoking = true;
+      this._addTimer(() => this._finishClose(), wait);
+      return;
+    }
+    this._finishClose();
+  }
+
+  /**
+   * Le noir revient : torche relancée, fond effacé, purge différée. Séparé de
+   * close() parce que la fumée l'ajourne — et qu'un second clic doit pouvoir y
+   * sauter directement.
+   */
+  _finishClose() {
+    this._smoking = false;
+    this._clearTimers();
     this._aboutFx?.destroy();
     this._aboutFx = null;
-    this._loupe.disable();
+    // La torche redevient visible pendant le fondu de sortie : on la relance au
+    // moment où le fond commence à s'effacer, pour qu'elle reprenne son suivi
+    // pile quand la scène réapparaît.
+    this.torch?.resume();
     this.el.classList.remove('visible');
-    document.removeEventListener('keydown', this._onKeyDown);
 
     // Purge différée : libère les images et interrompt toute incrustation.
     this._addTimer(() => {
@@ -174,6 +210,7 @@ export class DocumentOverlay {
     this._loupe.disable();
     document.removeEventListener('keydown', this._onKeyDown);
     this.currentKey = null;
+    this._smoking = false;   // la scène s'en va : aucune fumée à finir
     this._frames = [];
     this._row = this._text = this._textBody = this._caption = null;
     this._about = this._aboutFx = null;
