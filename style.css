@@ -2007,20 +2007,36 @@ body.peine-aim #cursor.aim-hot {
    Le brouillon s'écrit dans la fonte de BASE et à la cadence ordinaire : il
    doit avoir l'air d'être le bon mot, sinon il n'y a pas de correction, juste
    une décoration. Ses tspans héritent donc de .ab-t--base — rien à faire ici.
-   Puis le calque entier s'efface : une opacité, un élément.
-   L'effacement est TOTAL, et pas seulement par goût — le mot corrigé s'écrit
-   exactement au même endroit, un fantôme se superposerait à lui. */
-.ab-draft { animation: abDraftErase 460ms ease-in both; }
+   Puis le calque s'efface : une opacité, un élément.
+   ease-OUT (et non ease-in) : l'opacité chute d'emblée puis traîne. Le mot juste
+   se réécrit PAR-DESSUS pendant ce temps (T.draft_overlap) — il faut donc que le
+   brouillon libère la place tout de suite, sinon les deux mots se superposent en
+   pleine pâte et l'instant devient illisible.
+   L'effacement est TOTAL, et pas seulement par goût — le mot corrigé occupe
+   exactement le même emplacement, un fantôme resterait collé sur lui. */
+.ab-draft { animation: abDraftErase 460ms ease-out both; }
 @keyframes abDraftErase { from { opacity: 1; } to { opacity: 0; } }
 
-/* La rature : un geste de plume, PAS le coup. Elle raye, elle ne frappe pas —
-   ni secousse ni éclat. La violence reste à « condamnation à mort » : si le
-   raté frappait aussi fort, le coup ne frapperait plus. */
+/* La rature : un geste JETÉ — même attaque que la barre du coup (une courbe qui
+   accélère et s'arrête net), épaisse, largement débordante. */
 .ab-scratch {
-  stroke: rgba(255, 255, 255, 0.8);
-  stroke-width: 1.7;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2.4;
   stroke-linecap: round;
-  animation: abDraw 190ms cubic-bezier(0.4, 0, 0.7, 0.5) both;
+  animation: abDraw 140ms cubic-bezier(0.55, 0, 0.9, 0.35) both;
+}
+
+/* La secousse du raté. Amplitude moindre que celle du coup (3 px contre 5) et
+   SANS éclat : la hiérarchie tient à ça. La main rejette un mot ; le tribunal,
+   lui, condamne — et lui seul fait blanchir la page. */
+.ab-hookwrap.is-scratch-shock { animation: abScratchShock 240ms cubic-bezier(0.3, 0, 0.2, 1); }
+@keyframes abScratchShock {
+  0%   { transform: translate3d(0, 0, 0); }
+  14%  { transform: translate3d(-3px, 1px, 0); }
+  30%  { transform: translate3d(2px, -1px, 0); }
+  50%  { transform: translate3d(-2px, 1px, 0); }
+  72%  { transform: translate3d(1px, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 /* ── LE COUP (« condamnation à mort ») ──────────────────────────────────────

@@ -300,9 +300,10 @@ window.CONFIG = {
        │                         La typographie porte ainsi la distinction : un
        │                         homme d'un côté, une figure nationale de l'autre.
        │      draft: 'mot'     → LE RATÉ : ce mot-là s'écrit D'ABORD, se fait
-       │                         raturer, s'efface — puis la main reprend avec
-       │                         `t`. Le texte se corrige devant le lecteur.
-       │                         Registre de la PLUME qui hésite, jamais du coup.
+       │                         raturer (geste jeté + secousse + temps d'arrêt),
+       │                         puis s'efface PENDANT que `t` se réécrit
+       │                         par-dessus. Le texte se corrige devant le
+       │                         lecteur. S'utilise avec ou sans 'gold'.
        │      underline: true  → LE COUP : l'écriture s'arrête net, la barre
        │                         s'abat, la plaque encaisse (éclat + secousse),
        │                         puis la phrase reprend. Réservé au passage le
@@ -317,7 +318,7 @@ window.CONFIG = {
         { t: 'Que faire du corps de ' },
         { t: 'Soliman al-Halabi', style: 'gold' },
         { t: ', ' },
-        { t: 'assassin', style: 'gold', draft: 'meurtrier' },
+        { t: 'assassin', draft: 'meurtrier' },
         { t: ' présumé du ' },
         { t: 'général Kléber', style: 'gold', engraved: true },
         { t: ', qui demeure sans sépulture depuis sa ' },

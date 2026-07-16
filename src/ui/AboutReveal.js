@@ -14,10 +14,10 @@
  *      puis se déposent en doré — en ITALIQUE (la main, la personne) ou en
  *      ROMAIN GRAS si `engraved` (la pierre, l'institution) : la typographie
  *      distingue Soliman al-Halabi du général Kléber. Un segment `draft` est
- *      d'abord écrit sous un AUTRE mot, qui se fait raturer puis effacer avant
- *      que la main ne reprenne (voir T.draft_*) ; le passage `underline: true`
- *      reçoit LE COUP (voir T.strike_*). La cadence ménage des temps d'arrêt :
- *      virgules, entrée et sortie des mots-clefs.
+ *      d'abord écrit sous un AUTRE mot, qui se fait raturer puis s'efface
+ *      tandis que le mot juste se réécrit par-dessus (voir T.draft_*) ; le
+ *      passage `underline: true` reçoit LE COUP (voir T.strike_*). La cadence
+ *      ménage des temps d'arrêt : virgules, entrée et sortie des mots-clefs.
  *
  *   2. LE CORPS — l'accroche remonte en haut de la zone et le reste du texte
  *      se matérialise lettre par lettre dans un ordre aléatoire (décodage
@@ -90,15 +90,21 @@ const T = {
   /* ── LE RATÉ (segment `draft`) — la main se corrige ──────────────────────
      Le brouillon s'écrit à la cadence ORDINAIRE (T.char) et dans la fonte de
      base : il doit avoir l'air d'être le bon mot, sinon il n'y a pas de
-     correction, juste une décoration. Registre volontairement plus bas que le
-     coup — une plume qui hésite, pas une sentence. Si le raté frappait aussi
-     fort que « condamnation à mort », le coup ne frapperait plus. */
+     correction, juste une décoration. La rature est un GESTE JETÉ (même attaque
+     que la barre du coup), suivi d'une secousse et d'un temps d'arrêt.
+     Elle reste néanmoins en-deçà du coup : secousse plus courte et surtout
+     PAS d'éclat — l'incandescence appartient à « condamnation à mort ». Deux
+     mains frappent, une seule condamne. */
   draft_lead:    420, // hésitation avant le mot que l'on va reprendre
   draft_read:    480, // le mot tient : on a le temps de le lire avant la rature
-  scratch:       190, // la rature                    (= CSS .ab-scratch)
-  scratch_after: 300, // la main s'est arrêtée
+  scratch:       140, // la rature — geste jeté       (= CSS .ab-scratch)
+  scratch_wave:   80, // retard de la secousse : le temps que la plume arrive
+  scratch_shock: 240, // la secousse                  (= CSS abScratchShock)
+  scratch_after: 520, // LE TEMPS D'ARRÊT — la main s'est arrêtée net
   erase:         460, // le brouillon s'efface        (= CSS abDraftErase)
-  draft_after:   240, // silence avant la reprise (kw_before le prolonge)
+  draft_overlap: 180, // le mot juste se réécrit PENDANT l'effacement : il
+                      // émerge du brouillon qui s'en va, il ne le remplace
+                      // pas après coup. Doit rester < erase.
 
   /* ── LE COUP (passage `underline: true`) — quatre temps ──────────────────
      1. LE SILENCE  : l'écriture s'arrête net (strike_hold). C'est LUI qui fait
@@ -537,9 +543,10 @@ export class AboutReveal {
       L.words.forEach(word => {
         word.runs.forEach(run => {
           // LE RATÉ — à l'ENTRÉE d'un segment corrigé, AVANT toute suspension
-          // de mot-clef : la main hésite, écrit le brouillon, le rature,
-          // l'efface. `d` saute par-dessus tout l'événement ; le kw_before qui
-          // suit devient le temps d'arrêt d'où sort le mot juste.
+          // de mot-clef : la main hésite, écrit le brouillon, le rature, marque
+          // l'arrêt. `d` saute par-dessus l'événement JUSQU'AU DÉBUT de
+          // l'effacement seulement (+ draft_overlap) : le mot juste se réécrit
+          // PENDANT que le brouillon s'en va, il n'attend pas qu'il ait disparu.
           // On ne retient ici que la GÉOMÉTRIE et les INSTANTS : le calque
           // lui-même est monté en post-passe (les mesures sont faites là-bas).
           if (run.dr !== prevDr) {
@@ -554,7 +561,7 @@ export class AboutReveal {
               const scratchAt = lastD + T.draw + T.draft_read;
               const eraseAt   = scratchAt + T.scratch + T.scratch_after;
               draftRec = { text, x0: x, y0: baseY, at, scratchAt, eraseAt };
-              d = eraseAt + T.erase + T.draft_after;
+              d = eraseAt + T.draft_overlap;
             }
             prevDr = run.dr;
           }
@@ -692,11 +699,12 @@ export class AboutReveal {
       g.appendChild(dt);
 
       // La rature : à mi-hauteur d'x (elle BARRE le mot, elle ne le souligne
-      // pas), débordante et plus penchée que la barre du coup — une plume.
-      const sx1 = xd - size * 0.10;
-      const sx2 = xd + dW + size * 0.10;
+      // pas), largement débordante et plus penchée que la barre du coup — le
+      // geste part de plus loin et ne s'arrête pas au mot.
+      const sx1 = xd - size * 0.14;
+      const sx2 = xd + dW + size * 0.14;
       const sy1 = y0 - size * 0.26;
-      const sy2 = sy1 + (sx2 - sx1) * 0.028;
+      const sy2 = sy1 + (sx2 - sx1) * 0.035;
       const sLen = Math.max(1, Math.hypot(sx2 - sx1, sy2 - sy1));
       const sc = document.createElementNS(NS, 'line');
       sc.setAttribute('class', 'ab-scratch');
@@ -795,6 +803,16 @@ export class AboutReveal {
       // maintiendrait une couche GPU pour rien (cf. règles de perf du module).
       this._addTimer(() => wrap.classList.remove('is-shock'),
                      strikeAt + T.strike_wave + T.strike_shock + 40);
+    }
+
+    // La secousse du RATÉ — même mécanique, amplitude moindre et sans éclat :
+    // la main rejette un mot, elle ne prononce pas une sentence. Montée ici et
+    // non dans la post-passe du brouillon : c'est ici que `wrap` existe.
+    if (draftRec && !this._reduced) {
+      const at = draftRec.scratchAt + T.scratch_wave;
+      this._addTimer(() => wrap.classList.add('is-scratch-shock'), at);
+      this._addTimer(() => wrap.classList.remove('is-scratch-shock'),
+                     at + T.scratch_shock + 40);
     }
 
     this.stack.insertBefore(wrap, this.body);
