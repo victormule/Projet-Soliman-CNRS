@@ -17,8 +17,10 @@
  *
  *   2. LE CORPS — l'accroche remonte en haut de la zone et le reste du texte
  *      se matérialise lettre par lettre dans un ordre aléatoire (décodage
- *      d'archive), en linéale (Inter). Les passages *entre astérisques* sont
- *      mis en relief et s'éclairent doucement une fois le texte posé.
+ *      d'archive), en linéale (Inter), UN PARAGRAPHE À LA FOIS : chacun pleut
+ *      à son tour, séparé du suivant par une respiration — le regard suit la
+ *      lecture au lieu de recevoir la page entière d'un bloc. Les passages
+ *      *entre astérisques* sont mis en relief et s'éclairent une fois posés.
  *
  * CONTRAT (règles du site) :
  *   - aucun effet de bord au chargement : tout se crée dans mount(), tout se
@@ -78,7 +80,15 @@ const T = {
   underline:   950,   // tracé du soulignement        (= CSS .ab-underline)
   breath:      950,   // respiration après l'accroche, avant la remontée
   body_lag:    550,   // la pluie de lettres démarre PENDANT la remontée
-  body_spread: 4200,  // étalement total de la pluie de lettres
+  body_spread: 4200,  // encre totale de la pluie, RÉPARTIE entre paragraphes
+                      // (la cadence par lettre reste constante d'un bout à
+                      //  l'autre : chaque paragraphe reçoit une fenêtre
+                      //  proportionnelle à sa longueur)
+  body_gap:    620,   // respiration entre deux paragraphes. Comptée depuis le
+                      // DÉPART de la dernière lettre du paragraphe : elle
+                      // absorbe donc le fondu de celle-ci (body_char, 640) et
+                      // le suivant s'ouvre pile quand le précédent est posé.
+                      // La creuser au-delà de body_char ménage un vrai silence.
   body_char:   640,   // fondu d'une lettre du corps  (= CSS abLetter)
   settle:      600,   // marge avant l'éclairage des passages en relief
 };
@@ -100,6 +110,7 @@ export class AboutReveal {
     this._timers    = [];
     this._raf       = null;
     this._bodySpans = null;
+    this._bodyEnd   = 0;      // fin de la dernière pluie (depuis .ab-live)
     this._kwTexts   = [];     // <text> des mots-clefs (survol après pose)
     this._kwGolds   = [];     // <svg> halos dorés (clones flous, un par mot-clef)
     this._hoverFns  = [];     // [el, type, fn] — listeners de survol à défaire
@@ -195,7 +206,9 @@ export class AboutReveal {
       if (this.stack) this.stack.style.transform = 'translateY(0px)';
     }
 
-    // Pluie de lettres resserrée : le corps se pose en ~0,8 s.
+    // Pluie de lettres resserrée : le corps se pose en ~0,8 s. Les délais sont
+    // réattribués dans l'ordre de _bodySpans (paragraphe après paragraphe) :
+    // le fast-forward balaie le texte dans le sens de la lecture.
     if (this.body && this._bodySpans) {
       const n = Math.max(1, this._bodySpans.length);
       this._bodySpans.forEach((s, i) => {
@@ -227,18 +240,25 @@ export class AboutReveal {
   /* ── Corps du texte (phase 2) ──────────────────────────────────────────── */
 
   /**
-   * Construit les paragraphes, découpe chaque lettre dans un <span> et tire
-   * l'ordre d'apparition au hasard (Fisher-Yates). Les passages *…* sont
-   * enveloppés dans <em class="ab-em"> (relief + survol).
+   * Construit les paragraphes et découpe chaque lettre dans un <span>. Les
+   * passages *…* sont enveloppés dans <em class="ab-em"> (relief + survol).
+   *
+   * CHAQUE PARAGRAPHE PLEUT À SON TOUR : l'ordre est tiré au hasard À
+   * L'INTÉRIEUR d'un paragraphe (Fisher-Yates — le décodage d'archive), mais
+   * les paragraphes se succèdent, séparés par T.body_gap. La fenêtre d'un
+   * paragraphe est proportionnelle à sa longueur : la cadence par lettre est
+   * donc la même partout (un paragraphe court ne pleut pas au ralenti).
+   *
    * L'animation ne part qu'à la pose de la classe .ab-live (phase 2).
    */
   _buildBody() {
     const body = document.createElement('div');
     body.className = 'ab-body';
-    const spans = [];
+    const paras = [];                           // un lot de spans par <p>
 
     (this.data.paragraphs ?? []).forEach(txt => {
       const p = document.createElement('p');
+      const spans = [];
       String(txt).split('*').forEach((part, i) => {
         if (!part) return;
         let holder = p;
@@ -258,21 +278,36 @@ export class AboutReveal {
         }
       });
       body.appendChild(p);
+      if (spans.length) paras.push(spans);
     });
 
-    const order = spans.slice();
-    for (let i = order.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [order[i], order[j]] = [order[j], order[i]];
-    }
-    const step = T.body_spread / Math.max(1, order.length);
-    order.forEach((s, i) => {
-      s.style.animationDelay = Math.round(i * step) + 'ms';
+    const total = paras.reduce((n, s) => n + s.length, 0);
+    const step  = T.body_spread / Math.max(1, total);   // cadence par lettre
+    const all   = [];
+    let at = 0;                                 // ouverture du paragraphe courant
+
+    paras.forEach(spans => {
+      this._shuffle(spans);
+      spans.forEach((s, i) => {
+        s.style.animationDelay = Math.round(at + i * step) + 'ms';
+      });
+      at += spans.length * step + T.body_gap;
+      all.push(...spans);
     });
 
-    this._bodySpans = order;
+    this._bodySpans = all;
+    this._bodyEnd   = Math.round(Math.max(0, at - T.body_gap));
     this.stack.appendChild(body);
     this.body = body;
+  }
+
+  /** Mélange un tableau EN PLACE (Fisher-Yates). */
+  _shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
   }
 
   /* ── Accroche calligraphiée (phase 1) ──────────────────────────────────── */
@@ -664,7 +699,7 @@ export class AboutReveal {
     this._addTimer(() => {
       this.body?.classList.add('ab-live');
       this._addTimer(() => this._setDone(),
-                     T.body_spread + T.body_char + T.settle);
+                     this._bodyEnd + T.body_char + T.settle);
     }, T.body_lag);
   }
 

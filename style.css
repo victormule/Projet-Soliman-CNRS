@@ -2034,8 +2034,9 @@ body.peine-aim #cursor.aim-hot {
 .ab-body p { margin: 0 0 1.05em; }
 .ab-body p:last-child { margin-bottom: 0; }
 
-/* Pluie de lettres : chaque span porte son délai (inline, ordre aléatoire) ;
-   l'animation ne part qu'à la pose de .ab-live (pendant la remontée).
+/* Pluie de lettres : chaque span porte son délai (inline — ordre aléatoire
+   dans le paragraphe, les paragraphes se succédant) ; l'animation ne part
+   qu'à la pose de .ab-live (pendant la remontée).
 
    PERFORMANCE — on n'anime QUE l'opacité. C'est la seule propriété (avec
    transform, inapplicable à un <span> inline) que le compositeur gère SANS
