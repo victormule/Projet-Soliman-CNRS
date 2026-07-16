@@ -29,11 +29,10 @@
  *
  *   3. LA FUMÉE — avant TOUTE sortie (fermeture, ouverture d'un document
  *      par-dessus, navigation flèche/navbar), un souffle traverse la page de
- *      GAUCHE À DROITE et emporte le texte PAR MOTS : chaque fragment s'envole
- *      sur sa trajectoire propre (translate + rotation + cisaillement + flou),
- *      LIBRE DE DÉBORDER du cadre de lecture. Les lueurs dorées des noms
- *      survivent à leurs lettres et s'étirent. Voir smokeOut() : l'appelant
- *      attend le délai rendu avant de continuer (noir, document, navigation).
+ *      GAUCHE À DROITE et emporte le texte PAR MOTS, hors du cadre de lecture,
+ *      sur UN SEUL CANVAS (l'outil de la torche). Les lueurs dorées des noms
+ *      survivent à leurs lettres. Voir smokeOut() : l'appelant attend le délai
+ *      rendu avant de continuer (noir, document, navigation).
  *
  * CONTRAT (règles du site) :
  *   - aucun effet de bord au chargement : tout se crée dans mount(), tout se
@@ -53,14 +52,11 @@
  *     fin de séquence seulement), et les espaces ne sont pas animés ;
  *   - séquence posée → .ab-settled : toutes les animations sont remplacées
  *     par leur état final statique, la couche GPU du stack est rendue ;
- *   - la fumée de sortie ne part QUE d'un texte posé, et RIEN de ce qui reste
- *     dans le flux ne s'anime : le texte réel du corps est caché en UNE frame
- *     et remplacé au pixel près par ~180 fragments-mots ABSOLUS, animés en
- *     transform/opacity/filter par le compositeur (Web Animations API).
- *     Animer l'opacité de ~950 lettres inline = repaint plein cadre par frame,
- *     et un transform de conteneur par-dessus = re-raster de toute la couche
- *     par frame : c'était le lag de la première version de la fumée. Jamais de
- *     flou animé DANS le SVG (les halos, flous fixes, portent les lueurs).
+ *   - la fumée de sortie ne part QUE d'un texte posé, et RIEN du DOM ne
+ *     s'anime pendant qu'elle passe : le texte réel se cache en UNE frame et
+ *     un canvas unique redessine les mots aux positions mesurées — une couche,
+ *     zéro style/layout/paint, ~1000 glyphes en cache par frame (voir le bloc
+ *     STRATÉGIE de smokeOut, avec l'autopsie des deux versions mortes).
  *
  * Les DURÉES d'animation vivent dans style.css (section « À PROPOS ») ; ici ne
  * vivent que les DÉLAIS par lettre (posés en style inline) et la chronologie :
@@ -203,9 +199,9 @@ export class AboutReveal {
     this._smokeEndsAt = 0;    // instant de fin de la fumée (0 = pas partie)
     this._bodyEnd   = 0;      // fin de la dernière pluie (depuis .ab-live)
     this._kwTexts   = [];     // <text> des mots-clefs (survol après pose)
-    // Halos dorés (clones flous, un par mot-clef) : { el, anchor }. `anchor` est
-    // le <text> du nom — la fumée y lit l'abscisse du mot pour partir avec le
-    // front, et l'origine de son agrandissement (voir smokeOut).
+    // Halos dorés (clones flous, un par mot-clef) : { el, texts }. `texts` sont
+    // les <text> du nom — la fumée y lit les glyphes pour pré-rendre la lueur
+    // qui survivra aux lettres (voir smokeOut).
     this._kwGolds   = [];
     this._hoverFns  = [];     // [el, type, fn] — listeners de survol à défaire
     this._hookWrap  = null;   // cadre positionnant SVG principal + halos
@@ -320,30 +316,42 @@ export class AboutReveal {
 
   /**
    * LA FUMÉE — la sortie. Un souffle traverse la page de GAUCHE À DROITE et
-   * emporte le texte PAR MOTS : chaque fragment s'envole sur sa trajectoire
-   * propre (translate + rotation + cisaillement + flou), à son instant et pour
-   * sa durée propres, LIBRE DE DÉBORDER du cadre de lecture (.ab-out ouvre
-   * l'overflow du host). Les lueurs dorées des noms survivent à leurs lettres.
+   * emporte le texte PAR MOTS : chaque mot s'envole sur sa trajectoire propre
+   * (translation + rotation + cisaillement + croissance), hors du cadre de
+   * lecture. Les lueurs dorées des noms survivent à leurs lettres.
    *
-   * NE PART QUE D'UN TEXTE POSÉ (_done) — et cette limite n'est pas un
-   * pis-aller : forcer l'état posé pour pouvoir souffler ferait apparaître le
-   * texte entier d'un coup juste avant de l'emporter. Sinon → 0 : l'appelant
-   * fait son fondu ordinaire.
+   * NE PART QUE D'UN TEXTE POSÉ (_done) — forcer l'état posé pour pouvoir
+   * souffler ferait apparaître le texte entier d'un coup juste avant de
+   * l'emporter. Sinon → 0 : l'appelant fait son fondu ordinaire.
    *
-   * PERFORMANCE — le texte réel ne s'anime JAMAIS pendant la fumée :
-   *   - le corps est caché en UNE frame (CSS .ab-out, visibility) et remplacé
-   *     au pixel près par des fragments-mots ABSOLUS (calque .ab-smoke), animés
-   *     en transform/opacity/filter par le compositeur (Web Animations API) ;
-   *   - l'accroche s'envole par ses <text> réels (UN PAR MOT depuis _buildHook)
-   *     — transform/opacity seulement, jamais de filtre dans ce SVG : ses
-   *     lueurs sont les halos, déjà flous, qui partent juste après ;
-   *   - AUCUN transform de conteneur : animer le host par-dessus des fragments
-   *     re-rastériserait toute la couche à chaque frame (le lag de la première
-   *     version, avec l'opacité par lettre — repaint plein cadre par frame).
+   * STRATÉGIE — UN SEUL CANVAS (l'outil que le site emploie déjà pour la
+   * torche, à chaque frame, sans broncher) :
+   *   - le texte réel se cache en UNE frame (.ab-out → visibility sur .ab-stack)
+   *     et un canvas unique, posé au niveau de l'overlay (hors du host : la
+   *     fumée n'est rognée que par l'écran), redessine chaque mot LETTRE PAR
+   *     LETTRE aux positions MESURÉES — crénage, justification et interlettrage
+   *     sont ceux du vrai texte, à la sous-unité près ;
+   *   - chaque frame : un clearRect + ~1000 fillText de glyphes en cache —
+   *     UNE couche, ZÉRO style/layout/paint DOM, aucun objet d'animation. Les
+   *     deux versions précédentes sont mortes de leur mécanique DOM : opacité
+   *     par lettre sous un transform de conteneur (repaint + re-raster plein
+   *     cadre par frame), puis ~180 couches WAAPI dont les animations de
+   *     filter:blur() retombaient sur le thread principal ;
+   *   - les lueurs des noms sont PRÉ-RENDUES une fois (leur flou n'est jamais
+   *     recalculé en vol) ; aucun flou par mot par frame — la dissolution
+   *     (fondu + croissance + cisaillement) suffit à dire la fumée ;
+   *   - le fondu final de #doc-overlay (opacity, compositeur) emporte le canvas
+   *     avec le fond : les derniers fantômes meurent dans le noir ;
+   *   - le calque se retire SEUL (fin de course ou déconnexion) : la boucle ne
+   *     dépend pas de l'instance — destroy() peut passer pendant le vol.
+   *
+   * FIDÉLITÉ ASSUMÉE À L'ÉCART PRÈS : l'anticrénelage canvas (niveaux de gris)
+   * diffère un rien du texte DOM (subpixel), et la lueur de repos des passages
+   * en relief n'est pas ré-émulée — deux nuances qu'un texte en train de
+   * s'envoler rend imperceptibles.
    *
    * REJOUABLE : rappelé pendant qu'elle passe (fermer puis naviguer, Escape…),
-   * il ne rejoue rien et renvoie le temps RESTANT — chaque appelant peut donc
-   * enchaîner sa propre suite sans coordonner les autres.
+   * il ne rejoue rien et renvoie le temps RESTANT.
    *
    * @returns {number} ms à attendre avant d'enchaîner (0 = pas de fumée)
    */
@@ -352,185 +360,312 @@ export class AboutReveal {
     if (this._smokeEndsAt) {
       return Math.max(0, Math.round(this._smokeEndsAt - performance.now()));
     }
+    const root = this.host.closest('#doc-overlay');
+    if (!root) return 0;
     this._smokeEndsAt = performance.now() + OUT.bg_at;
 
-    // GEL DU DÉFILEMENT (tactile / petit écran). Ouvrir l'overflow remettrait
-    // brutalement le texte à son sommet : la position de lecture est transposée
-    // dans le transform du stack — visuellement, rien ne bouge, et les mesures
-    // ci-dessous (getBoundingClientRect intègre les transforms) restent justes.
-    const st = this.host.scrollTop;
-    if (st > 0) {
-      this.stack.classList.add('no-trans');
-      this.stack.style.transform = `translateY(${-st}px)`;
-      this.host.scrollTop = 0;
-    }
-    this.host.classList.add('ab-out');
-
-    /* ── LECTURES D'ABORD, ÉCRITURES ENSUITE ── un seul calcul de mise en page
-       pour ~850 mesures ; entrelacer lecture et écriture en relancerait un par
-       fragment — la fumée partirait sur un à-coup. */
+    /* ── LECTURES — tout est mesuré avant la moindre écriture ── */
+    const hostR  = this.host.getBoundingClientRect();
     const stackR = this.stack.getBoundingClientRect();
-    const bodyR  = this.body.getBoundingClientRect();
     const sw     = Math.max(1, stackR.width);
 
-    // Le corps, par mots. Un mot césuré en fin de ligne donne UN fragment par
-    // ligne (groupé par ordonnée) : son rectangle englobant, à cheval sur deux
-    // lignes, placerait le texte dans l'entre-deux. (Le tiret de césure, dessiné
-    // par le moteur de rendu, n'existe pas dans le DOM : il n'est pas emporté —
-    // il disparaît avec le texte réel, une frame avant que son mot s'envole.)
-    const frags = [];
+    // Bandes de fondu du défilement (mêmes seuils que _updateFade) : un mot
+    // pris dans l'estompe doit PARTIR estompé — pas réapparaître entier — et
+    // un mot défilé hors de la fenêtre n'a pas le droit d'apparaître du tout.
+    const FADE = 68;
+    const maxScroll  = this.host.scrollHeight - this.host.clientHeight;
+    const scrollable = maxScroll > 1 && this.host.classList.contains('is-scroll');
+    const fadeTop = scrollable ? Math.min(FADE, this.host.scrollTop) : 0;
+    const fadeBot = scrollable ? Math.min(FADE, maxScroll - this.host.scrollTop) : 0;
+    const alphaAt = (cy) => {
+      let a = 1;
+      if (fadeTop > 0) a = Math.min(a, (cy - hostR.top) / fadeTop);
+      if (fadeBot > 0) a = Math.min(a, (hostR.bottom - cy) / fadeBot);
+      return Math.max(0, Math.min(1, a));
+    };
+
+    const words = [];   // sprites-mots : { font, color, x, y(ligne de base),
+                        //   top/bottom/right, letters:[{ch,dx}], hook }
+
+    // LE CORPS — par mots, par LETTRE : chaque position vient du DOM, donc la
+    // justification et l'interlettrage sont exacts sans dépendre d'aucune API.
+    // Un mot césuré en fin de ligne donne UN sprite par ligne (groupé par
+    // ordonnée). La ligne de base : le haut d'un span inline est le sommet de
+    // la boîte de fonte — le même repère que fontBoundingBoxAscent côté canvas.
+    const bodyPx = parseFloat(getComputedStyle(this.body).fontSize) || 16;
+    const fBase  = `300 ${bodyPx}px Inter, system-ui, sans-serif`;
+    const fEm    = `500 ${bodyPx}px Inter, system-ui, sans-serif`;
+    this._ctx.font = fBase;
+    const ascBase = this._ctx.measureText('Hg').fontBoundingBoxAscent ?? bodyPx * 0.78;
+    this._ctx.font = fEm;
+    const ascEm   = this._ctx.measureText('Hg').fontBoundingBoxAscent ?? bodyPx * 0.78;
+
     for (const w of this._words) {
       let cur = null;
       for (const s of w.spans) {
         const r = s.getBoundingClientRect();
         if (!r.width && !r.height) continue;
-        if (cur && Math.abs(r.top - cur.top) < 2) {
-          cur.right  = Math.max(cur.right,  r.right);
-          cur.bottom = Math.max(cur.bottom, r.bottom);
-          cur.text  += s.textContent;
-        } else {
-          cur = { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
-                  text: s.textContent, em: w.em };
-          frags.push(cur);
+        if (!(cur && Math.abs(r.top - cur.top) < 2)) {
+          cur = { font: w.em ? fEm : fBase,
+                  color: w.em ? 'rgba(255,252,244,1)' : 'rgba(228,226,218,0.92)',
+                  x: r.left, y: r.top + (w.em ? ascEm : ascBase),
+                  top: r.top, bottom: r.bottom, right: r.right,
+                  hook: false, letters: [] };
+          words.push(cur);
+        }
+        cur.letters.push({ ch: s.textContent, dx: r.left - cur.x });
+        cur.right  = Math.max(cur.right,  r.right);
+        cur.bottom = Math.max(cur.bottom, r.bottom);
+      }
+    }
+
+    // L'ACCROCHE — par <text> (un par mot depuis _buildHook), par lettre : les
+    // x/y des tspans SONT la composition, convertis du repère logique au repère
+    // écran par l'échelle du viewBox ; y est déjà la ligne de base. Le brouillon
+    // n'est pas redessiné : le mot raturé ne peut structurellement pas hanter la
+    // fumée — on ne dessine que ce que l'on choisit.
+    let svgR = null, scale = 1, hookPx = 0;
+    const hookFont = (kw, eng) => kw
+      ? `${eng ? '' : 'italic '}700 ${hookPx}px ${HOOK_FONT}`
+      : `400 ${hookPx}px ${HOOK_FONT}`;
+    if (this.svg) {
+      svgR   = this.svg.getBoundingClientRect();
+      scale  = svgR.width / SVG_W;
+      hookPx = (parseFloat(this.svg.style.fontSize) || 32) * scale;
+      for (const t of this.svg.querySelectorAll('text')) {
+        if (t.closest('.ab-draft')) continue;
+        const kw  = t.classList.contains('ab-t--kw');
+        const eng = t.classList.contains('ab-t--engraved');
+        let x0 = Infinity, base = 0;
+        const letters = [];
+        for (const ts of t.querySelectorAll('tspan')) {
+          const ax = svgR.left + parseFloat(ts.getAttribute('x')) * scale;
+          base = svgR.top + parseFloat(ts.getAttribute('y')) * scale;
+          x0 = Math.min(x0, ax);
+          letters.push({ ch: ts.textContent, ax });
+        }
+        if (!letters.length) continue;
+        letters.forEach(l => { l.dx = l.ax - x0; });
+        words.push({ font: hookFont(kw, eng),
+                     color: kw ? 'rgba(224,192,116,1)' : 'rgba(255,255,255,0.96)',
+                     x: x0, y: base,
+                     top: base - hookPx * 0.8, bottom: base + hookPx * 0.26,
+                     right: letters[letters.length - 1].ax + hookPx,
+                     hook: true, letters });
+      }
+    }
+
+    // LA BARRE du coup : un trait, le même vol qu'un mot.
+    let strike = null;
+    const uLine = this.svg?.querySelector('.ab-underline');
+    if (uLine && svgR) {
+      strike = {
+        x1: svgR.left + parseFloat(uLine.getAttribute('x1')) * scale,
+        y1: svgR.top  + parseFloat(uLine.getAttribute('y1')) * scale,
+        x2: svgR.left + parseFloat(uLine.getAttribute('x2')) * scale,
+        y2: svgR.top  + parseFloat(uLine.getAttribute('y2')) * scale,
+        w:  2.8 * scale,
+      };
+    }
+
+    // LES LUEURS des noms — pré-rendues UNE fois chacune. L'astuce du décalage
+    // d'ombre : le texte est peint hors champ (offset 10000), seule son ombre
+    // floue et dorée retombe dans le gabarit — le flou gaussien n'est calculé
+    // qu'ici, jamais pendant le vol. (shadowBlur B ≈ écart-type B/2 : pour
+    // équivaloir au blur(r) CSS des halos DOM, B = 2r.)
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const halos = [];
+    for (const { texts } of this._kwGolds) {
+      if (!texts?.length || !svgR) continue;
+      const glyphs = [];
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const t of texts) {
+        const eng = t.classList.contains('ab-t--engraved');
+        for (const ts of t.querySelectorAll('tspan')) {
+          const ax = svgR.left + parseFloat(ts.getAttribute('x')) * scale;
+          const ay = svgR.top  + parseFloat(ts.getAttribute('y')) * scale;
+          glyphs.push({ ch: ts.textContent, ax, ay, eng });
+          minX = Math.min(minX, ax);
+          maxX = Math.max(maxX, ax + hookPx);
+          minY = Math.min(minY, ay - hookPx);
+          maxY = Math.max(maxY, ay + hookPx * 0.35);
         }
       }
+      if (!glyphs.length) continue;
+      const R   = Math.max(2, GLOW_R.gold * scale);
+      const pad = R * 3;
+      const sx = minX - pad, sy = minY - pad;
+      const sw2 = (maxX - minX) + pad * 2, sh2 = (maxY - minY) + pad * 2;
+      const spr = document.createElement('canvas');
+      spr.width  = Math.max(1, Math.ceil(sw2 * dpr));
+      spr.height = Math.max(1, Math.ceil(sh2 * dpr));
+      const g = spr.getContext('2d');
+      g.scale(dpr, dpr);
+      g.textBaseline  = 'alphabetic';
+      g.shadowColor   = 'rgba(224,192,116,1)';
+      g.shadowBlur    = R * 2;
+      g.shadowOffsetX = 10000;
+      g.fillStyle     = '#000';
+      for (const gl of glyphs) {
+        g.font = hookFont(true, gl.eng);
+        g.fillText(gl.ch, gl.ax - sx - 10000, gl.ay - sy);
+      }
+      halos.push({ img: spr, x: sx, y: sy, w: sw2, h: sh2,
+                   cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 });
     }
 
-    // L'accroche, par <text> — c'est PAR MOT depuis _buildHook. La barre du
-    // coup part avec eux ; le brouillon, déjà effacé, n'a rien à souffler.
-    const hookEls = this.svg
-      ? [...this.svg.querySelectorAll('text, .ab-underline')]
-          .filter(el => !el.closest('.ab-draft'))
-          .map(el => ({ el, r: el.getBoundingClientRect() }))
-      : [];
-    const wrapBox = this._hookWrap?.getBoundingClientRect() ?? null;
-    const halos   = this._kwGolds.map(({ el, anchor }) =>
-      ({ el, r: anchor.getBoundingClientRect() }));
+    /* ── TRAJECTOIRES ── le front n'est pas une règle : chaque mot a son
+       instant (abscisse + désordre), sa durée, son geste. Le recouvrement de
+       dizaines de vols fait un front doux ; le désordre le rend vivant. */
+    const tOf = (cx) => Math.min(1, Math.max(0, (cx - stackR.left) / sw));
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const RAD = Math.PI / 180;
+    const sprites = [];
+    for (const w of words) {
+      if (w.bottom < hostR.top - 4 || w.top > hostR.bottom + 4) continue;
+      const cy = (w.top + w.bottom) / 2;
+      const a0 = alphaAt(cy);
+      if (a0 <= 0.01) continue;
+      const cx  = (w.x + w.right) / 2;
+      const amp = w.hook ? 1.45 : 1;    // les grands glyphes portent plus loin
+      sprites.push(Object.assign(w, {
+        cx, cy, a0,
+        at:  OUT.lead + tOf(cx) * OUT.sweep + rnd(0, OUT.jitter),
+        dur: (OUT.fade + rnd(0, OUT.fade_var)) * (w.hook ? 1.15 : 1),
+        mx:  rnd(30, 115) * amp,
+        my: -rnd(22, 77) * amp,
+        rot: rnd(-9, 5) * RAD,
+        sk: -rnd(5, 18) * RAD,
+        gr:  rnd(0.05, 0.27),
+      }));
+    }
+    // Une seule bascule de fonte par groupe et par frame (ctx.font est lente).
+    sprites.sort((a, b) => (a.font < b.font ? -1 : a.font > b.font ? 1 : 0));
 
-    /* ── ÉCRITURES ── */
-    // Le front n'est pas une règle : chaque fragment a son instant (abscisse +
-    // désordre) ET sa durée. C'est ce désordre, plus le recouvrement de dizaines
-    // de vols, qui fait un front doux et granuleux — un masque dégradé qui
-    // balaierait la boîte donnerait une lame.
-    const tOf   = (r) => Math.min(1, Math.max(0,
-      (r.left + (r.right - r.left) / 2 - stackR.left) / sw));
-    const delay = (t) => OUT.lead + t * OUT.sweep + Math.random() * OUT.jitter;
-    const EASE  = 'cubic-bezier(0.3, 0, 0.6, 1)';
+    if (strike) {
+      const cx = (strike.x1 + strike.x2) / 2, cy = (strike.y1 + strike.y2) / 2;
+      Object.assign(strike, {
+        cx, cy, a0: alphaAt(cy),
+        at:  OUT.lead + tOf(cx) * OUT.sweep + rnd(0, OUT.jitter),
+        dur: OUT.fade * 1.1,
+        mx: rnd(60, 150), my: -rnd(45, 100), rot: rnd(-8, 2) * RAD,
+      });
+    }
+    for (const h of halos) {
+      h.at  = OUT.lead + tOf(h.cx) * OUT.sweep + OUT.halo_after;
+      h.dur = OUT.halo;
+    }
 
-    // Le calque des fragments. Il recouvre .ab-body et hérite de toute sa
-    // typographie ; le CSS de .ab-out cache les lettres réelles dans la MÊME
-    // frame (aucun rendu n'a lieu entre deux mutations synchrones) : le
-    // remplacement est invisible.
-    const smoke = document.createElement('div');
-    smoke.className = 'ab-smoke';
-    smoke.setAttribute('aria-hidden', 'true');
-    this.body.appendChild(smoke);
+    /* ── LE CALQUE — un canvas au niveau de l'overlay, dimensionné sur la zone
+       de vol (pas l'écran entier : autant de texture GPU d'épargnée). Il est
+       DANS #doc-overlay : le fondu final (opacity, compositeur) l'emporte avec
+       le fond — les derniers fantômes meurent dans le noir. */
+    const pad = 300;
+    const bx = Math.max(0, Math.floor(stackR.left - pad));
+    const by = Math.max(0, Math.floor(Math.min(stackR.top, hostR.top) - pad));
+    const bw = Math.min(window.innerWidth,
+                        Math.ceil(Math.max(stackR.right, hostR.right) + pad)) - bx;
+    const bh = Math.min(window.innerHeight,
+                        Math.ceil(Math.max(stackR.bottom, hostR.bottom) + pad * 0.5)) - by;
+    const rootR = root.getBoundingClientRect();
+    const cv = document.createElement('canvas');
+    cv.className = 'ab-smokecanvas';
+    cv.setAttribute('aria-hidden', 'true');
+    cv.width  = Math.max(1, Math.round(bw * dpr));
+    cv.height = Math.max(1, Math.round(bh * dpr));
+    cv.style.left   = (bx - rootR.left) + 'px';
+    cv.style.top    = (by - rootR.top)  + 'px';
+    cv.style.width  = bw + 'px';
+    cv.style.height = bh + 'px';
+    root.appendChild(cv);
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.translate(-bx, -by);            // on dessine en coordonnées écran
+    ctx.textBaseline = 'alphabetic';
 
-    // ÉTALONS — où tombe le texte dans un fragment absolu ? Le décalage entre
-    // la boîte du fragment et celle de ses glyphes (le demi-interligne) dépend
-    // de la fonte, du corps et de la graisse : on le MESURE au lieu de le
-    // prédire. C'est la garantie que le remplacement est exact au pixel, à
-    // toute taille d'écran. Un étalon par graisse (base / relief).
-    const probe = (em) => {
-      const f = document.createElement('span');
-      f.className = 'ab-smokew' + (em ? ' ab-em' : '');
-      f.style.left = '0px';
-      f.style.top  = '0px';
-      const inner = document.createElement('span');
-      inner.textContent = 'Hg';
-      f.appendChild(inner);
-      smoke.appendChild(f);
-      const fr = f.getBoundingClientRect();
-      const ir = inner.getBoundingClientRect();
-      f.remove();
-      return { dx: ir.left - fr.left, dy: ir.top - fr.top };
+    /* ── LA BOUCLE — close over ses données, jamais sur `this` : destroy()
+       peut passer pendant le vol, la fumée finit sa course et se retire seule
+       (fin de la dernière trajectoire, ou canvas déconnecté du DOM). */
+    const T0 = performance.now();
+    const endAt = sprites.reduce((m, s) => Math.max(m, s.at + s.dur),
+                    halos.reduce((m, h) => Math.max(m, h.at + h.dur),
+                      strike ? strike.at + strike.dur : 0)) + 80;
+    const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
+    const smooth  = (e) => e * e * (3 - 2 * e);          // accélère, puis se pose
+    const fall    = (e) => e < 0.3                        // tient, puis s'éteint
+      ? 1 - e * (0.08 / 0.3)
+      : 0.92 * (1 - (e - 0.3) / 0.7);
+
+    const frame = () => {
+      if (!cv.isConnected) return;
+      const t = performance.now() - T0;
+      ctx.clearRect(bx, by, bw, bh);
+
+      // Les lueurs d'abord (sous les lettres) : drawImage d'un flou déjà payé.
+      for (const h of halos) {
+        const e = clamp01((t - h.at) / h.dur);
+        if (e >= 1) continue;
+        const m = smooth(e);
+        ctx.globalAlpha = e < 0.22
+          ? 0.45 + 0.17 * (e / 0.22)                     // un dernier éclat…
+          : 0.62 * (1 - (e - 0.22) / 0.78);              // …puis l'extinction
+        ctx.save();
+        ctx.translate(h.cx + 90 * m, h.cy - 70 * m);
+        ctx.scale(1 + 0.6 * m, 1 + 0.6 * m);
+        ctx.drawImage(h.img, h.x - h.cx, h.y - h.cy, h.w, h.h);
+        ctx.restore();
+      }
+
+      let font = '';
+      for (const s of sprites) {
+        const e = clamp01((t - s.at) / s.dur);
+        if (e >= 1) continue;
+        const a = s.a0 * fall(e);
+        if (a <= 0.004) continue;
+        if (s.font !== font) { ctx.font = font = s.font; }
+        ctx.fillStyle   = s.color;
+        ctx.globalAlpha = a;
+        ctx.save();
+        const m = smooth(e);
+        ctx.translate(s.cx + s.mx * m, s.cy + s.my * m);
+        if (m) {
+          ctx.rotate(s.rot * m);
+          ctx.transform(1, 0, Math.tan(s.sk * m), 1, 0, 0);
+          const k = 1 + s.gr * m;
+          ctx.scale(k, k);
+        }
+        const lx = s.x - s.cx, ly = s.y - s.cy;
+        for (const L of s.letters) ctx.fillText(L.ch, lx + L.dx, ly);
+        ctx.restore();
+      }
+
+      if (strike) {
+        const e = clamp01((t - strike.at) / strike.dur);
+        if (e < 1) {
+          const m = smooth(e);
+          ctx.globalAlpha = strike.a0 * fall(e);
+          ctx.strokeStyle = 'rgba(255,255,255,0.96)';
+          ctx.lineWidth   = strike.w;
+          ctx.lineCap     = 'round';
+          ctx.save();
+          ctx.translate(strike.cx + strike.mx * m, strike.cy + strike.my * m);
+          ctx.rotate(strike.rot * m);
+          ctx.beginPath();
+          ctx.moveTo(strike.x1 - strike.cx, strike.y1 - strike.cy);
+          ctx.lineTo(strike.x2 - strike.cx, strike.y2 - strike.cy);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      ctx.globalAlpha = 1;
+      if (t < endAt) requestAnimationFrame(frame);
+      else cv.remove();                  // la fumée est passée : le calque part
     };
-    const dBase = probe(false);
-    const dEm   = probe(true);
 
-    // Le flou par fragment est composité (le compositeur anime `filter` sans
-    // re-rastériser), mais il a un coût GPU par couche : on l'épargne au
-    // tactile — le mouvement et le fondu y suffisent.
-    const blurOk = !this._coarse;
-
-    for (const fr of frags) {
-      const f = document.createElement('span');
-      f.className = 'ab-smokew' + (fr.em ? ' ab-em' : '');
-      f.textContent = fr.text;
-      const d0 = fr.em ? dEm : dBase;
-      f.style.left = (fr.left - bodyR.left - d0.dx).toFixed(1) + 'px';
-      f.style.top  = (fr.top  - bodyR.top  - d0.dy).toFixed(1) + 'px';
-      smoke.appendChild(f);
-
-      const end = `translate(${(30 + Math.random() * 85).toFixed(0)}px, `
-                + `${-(22 + Math.random() * 55).toFixed(0)}px) `
-                + `rotate(${(-9 + Math.random() * 14).toFixed(1)}deg) `
-                + `skewX(${-(5 + Math.random() * 13).toFixed(1)}deg) `
-                + `scale(${(1.05 + Math.random() * 0.22).toFixed(2)})`;
-      const k0 = { transform: 'none', opacity: 1, offset: 0 };
-      const k1 = { opacity: 0.92, offset: 0.3 };
-      const k2 = { transform: end, opacity: 0, offset: 1 };
-      if (blurOk) {
-        k0.filter = 'blur(0px)';
-        k2.filter = `blur(${(2.5 + Math.random() * 2.5).toFixed(1)}px)`;
-      }
-      f.animate([k0, k1, k2], {
-        delay:    Math.round(delay(tOf(fr))),
-        duration: Math.round(OUT.fade + Math.random() * OUT.fade_var),
-        easing:   EASE,
-        fill:     'both',
-      });
-    }
-
-    // L'accroche : amplitudes plus larges (les glyphes sont plus grands, le
-    // geste doit porter), durées un peu plus longues — elle part avec majesté.
-    // transform-box: fill-box (CSS) fait tourner chaque mot autour de LUI-MÊME ;
-    // sans elle, l'origine serait le coin du viewBox et les mots partiraient en
-    // orbite autour du coin du SVG.
-    for (const { el, r } of hookEls) {
-      el.animate([
-        { transform: 'none', opacity: 1, offset: 0 },
-        { opacity: 0.92, offset: 0.3 },
-        { transform: `translate(${(45 + Math.random() * 105).toFixed(0)}px, `
-                   + `${-(30 + Math.random() * 70).toFixed(0)}px) `
-                   + `rotate(${(-10 + Math.random() * 15).toFixed(1)}deg) `
-                   + `skewX(${-(6 + Math.random() * 14).toFixed(1)}deg) `
-                   + `scale(${(1.08 + Math.random() * 0.25).toFixed(2)})`,
-          opacity: 0, offset: 1 },
-      ], {
-        delay:    Math.round(delay(tOf(r))),
-        duration: Math.round((OUT.fade + Math.random() * OUT.fade_var) * 1.15),
-        easing:   EASE,
-        fill:     'both',
-      });
-    }
-
-    // Les lueurs des noms survivent à leurs lettres : elles partent après,
-    // plus loin, en s'étirant — autour du NOM (transform-origin mesuré), pas
-    // autour du cadre : un nom placé à gauche pousserait vers la gauche en
-    // grandissant et partirait à contre-vent.
-    for (const { el, r } of halos) {
-      if (wrapBox) {
-        const ox = (r.left + r.width  / 2 - wrapBox.left) / Math.max(1, wrapBox.width)  * 100;
-        const oy = (r.top  + r.height / 2 - wrapBox.top)  / Math.max(1, wrapBox.height) * 100;
-        el.style.transformOrigin = `${ox.toFixed(1)}% ${oy.toFixed(1)}%`;
-      }
-      el.animate([
-        { transform: 'none', opacity: 0.45, offset: 0 },
-        { opacity: 0.62, offset: 0.22 },     // un dernier éclat avant de partir
-        { transform: 'translate(90px, -70px) scale(1.6) skewX(-8deg)',
-          opacity: 0, offset: 1 },
-      ], {
-        delay:    Math.round(delay(tOf(r)) + OUT.halo_after),
-        duration: OUT.halo,
-        easing:   'ease-out',
-        fill:     'both',
-      });
-    }
-
-    // Les indices de défilement sont coupés net par le CSS de .ab-out
-    // (display:none — leur backdrop-filter ré-échantillonnerait à chaque frame
-    // tout ce qui bouge dessous). Rien d'autre à écrire ici.
+    frame();                             // frame 0 peinte MAINTENANT…
+    this.host.classList.add('ab-out');   // …et le texte réel se cache dans la
+                                         // même frame : remplacement invisible
     return OUT.bg_at;
   }
 
@@ -1081,7 +1216,7 @@ export class AboutReveal {
       gold.style.animationDelay  = `${rec.goldAt + 200}ms`;
       wrap.appendChild(white);
       wrap.appendChild(gold);
-      this._kwGolds.push({ el: gold, anchor: rec.texts[0] });
+      this._kwGolds.push({ el: gold, texts: rec.texts });
 
       // Une fois déposé en doré, le mot devient sensible au survol : le halo
       // se renforce (opacité seule, donc compositeur — voir .is-hover en CSS).

@@ -1920,17 +1920,6 @@ body.peine-aim #cursor.aim-hot {
 .ab-hook text { font-family: 'Playfair Display', Georgia, serif; }
 .ab-t--base   { font-weight: 400; }
 
-/* Repère des transforms de la FUMÉE de sortie : chaque mot (<text>) et la
-   barre du coup tournent autour d'EUX-MÊMES. Sans transform-box: fill-box,
-   l'origine serait le coin du viewBox — les mots partiraient en orbite autour
-   du coin du SVG. Inerte tant qu'aucun transform n'est posé (seule la fumée,
-   via smokeOut, en pose). */
-.ab-hook text,
-.ab-hook line {
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-}
-
 /* Lit commun : tracé blanc, encrage blanc cassé.
    Délais inline (2 valeurs : tracé, encrage). */
 .ab-t--base tspan {
@@ -2105,7 +2094,6 @@ body.peine-aim #cursor.aim-hot {
 .ab-body {
   width: min(100%, 1040px);   /* bords alignés sur l'accroche */
   margin: 0 auto;
-  position: relative;         /* ancre du calque de fumée (.ab-smoke) */
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 300;
   line-height: 1.68;
@@ -2246,61 +2234,43 @@ body.peine-aim #cursor.aim-hot {
    LA FUMÉE — la sortie (src/ui/AboutReveal.js → smokeOut)
    ──────────────────────────────────────────────────────────────────
    Un souffle traverse la page de GAUCHE À DROITE et emporte le texte PAR MOTS,
-   librement HORS du cadre de lecture : .ab-out ouvre l'overflow du host (la
-   position de lecture a été transposée dans le transform du stack — rien ne
-   saute) et coupe le masque de défilement, qui rognerait la fumée.
+   hors du cadre de lecture, sur UN SEUL CANVAS posé au niveau de l'overlay —
+   l'outil que le site emploie déjà pour la torche. Toute la chorégraphie vit
+   dans smokeOut() ; ici, seulement les ÉTATS : ce qui se cache, où vit le
+   calque. Le texte réel ne s'anime JAMAIS pendant la fumée — il se cache en
+   une frame, le canvas le redessine et l'emporte.
 
-   La chorégraphie vit dans le JS (Web Animations API) : chaque fragment reçoit
-   là-bas sa trajectoire (translate + rotation + cisaillement + flou) et son
-   instant. Ici, seulement les ÉTATS : ce qui s'ouvre, ce qui se cache.
+   (Autopsie des deux versions mortes, pour ne pas y revenir : opacité animée
+   par lettre sous un transform de conteneur = repaint + re-raster plein cadre
+   par frame ; puis ~180 fragments DOM en Web Animations dont les filter:blur()
+   retombaient sur le thread principal, et dont l'ouverture de l'overflow
+   libérait la gouttière d'ascenseur — d'où un reflux de toute la boîte à
+   l'instant du départ.) */
 
-   PERFORMANCE — le texte réel ne s'anime JAMAIS pendant la fumée : il est caché
-   en une frame (visibility) et remplacé au pixel près par ~180 fragments-mots
-   absolus, composités. Animer l'opacité des ~950 lettres inline (repaint plein
-   cadre par frame) sous un transform de conteneur (re-raster de la couche par
-   frame), c'était le lag de la première version. Le « smoky text » d'origine
-   (text-shadow animé par lettre) tient à 21 grosses lettres, pas à 950.
-   ══════════════════════════════════════════════════════════════════ */
+/* Le texte réel disparaît d'un bloc : accroche, corps, halos — le canvas
+   reprend tout. visibility (pas display) : la géométrie reste, la position de
+   défilement et les mesures avec elle. */
+.doc-ov-about.ab-out .ab-stack { visibility: hidden; }
 
-/* Le cadre s'ouvre : la fumée n'appartient plus à la boîte de texte. Elle est
-   rognée par l'écran (#app, overflow:hidden), plus par la boîte. !important :
-   il faut battre .is-scroll.ab-phase2 (overflow-y:auto) et le mask du même
-   sélecteur, quel que soit l'état de défilement au moment de la sortie. */
-.doc-ov-about.ab-out {
-  overflow: visible !important;
-  -webkit-mask: none !important;
-          mask: none !important;
-}
+/* L'ascenseur s'éteint (il flotterait sur une boîte vide) — mais la GOUTTIÈRE
+   reste réservée (scrollbar-gutter: stable both-edges, posé plus haut) : passer
+   de auto à hidden ne rend pas un pixel de largeur, donc AUCUN reflux, et les
+   positions mesurées par smokeOut restent vraies. !important : il faut battre
+   .is-scroll.ab-phase2 (overflow-y: auto). */
+.doc-ov-about.ab-out { overflow: hidden !important; }
 
-/* Les indices de défilement sont coupés NET — pas un fondu : leur
-   backdrop-filter ré-échantillonnerait à chaque frame tout ce qui bouge
-   dessous, précisément pendant les ~180 vols. */
+/* Les indices de défilement, coupés net : leur backdrop-filter n'a plus rien à
+   estomper — et il ré-échantillonnerait ce qui bouge dessous. */
 .doc-ov-about.ab-out .ab-scrollblur { display: none; }
 
-/* Le texte réel du corps disparaît — visibility, pas opacity : elle est
-   orthogonale à l'opacité que .ab-settled fige à 1, aucune spécificité à
-   batailler. Les fragments .ab-smoke prennent sa place dans la MÊME frame :
-   remplacement invisible. (L'accroche, elle, s'envole par ses <text> réels —
-   rien à cacher. Les espaces, nœuds texte nus, restent : ils sont invisibles
-   par nature.) */
-.doc-ov-about.ab-out .ab-body p span { visibility: hidden; }
-
-/* Le calque des fragments : recouvre exactement .ab-body (position:relative
-   posée sur lui plus haut) et HÉRITE de toute sa typographie — Inter, corps,
-   graisse, interlignage, text-shadow — pour que chaque mot cloné soit
-   indiscernable de l'original à la frame du remplacement. */
-.ab-smoke {
+/* Le calque de la fumée : DANS #doc-overlay mais HORS du host — il n'est rogné
+   que par l'écran, jamais par la boîte de texte, et le fondu final de l'overlay
+   (opacity, compositeur) l'emporte avec le fond. Géométrie posée en inline par
+   smokeOut (dimensionné sur la zone de vol, pas l'écran entier). */
+.ab-smokecanvas {
   position: absolute;
-  inset: 0;
+  z-index: 3;
   pointer-events: none;
-}
-/* Un fragment est un mot : il ne se replie jamais (sa position vient d'une
-   mesure, pas du flux). Pas de will-change : les ~180 couches sont promues par
-   le compositeur au démarrage de chaque animation, échelonnées par les délais —
-   les réserver toutes d'avance gonflerait la mémoire GPU pour rien. */
-.ab-smokew {
-  position: absolute;
-  white-space: nowrap;
 }
 
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
