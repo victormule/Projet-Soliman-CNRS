@@ -193,10 +193,9 @@ export class PhrenologieScene extends Scene {
       await this._waitUntil(t0, C.arrow.appear_at);
 
       // La flèche est affichée avec un callback de navigation protégé par le
-      // verrou `_navigationActive`.
-      this._arrow.show(() => {
-        if (this._navigationActive) bus.emit('navigate', { to: 'vitrine' });
-      });
+      // verrou `_navigationActive` (vérifié dans _leaveTo). Si le texte
+      // « À Propos » est posé à l'écran, sa fumée de sortie précède le départ.
+      this._arrow.show(() => this._leaveTo('vitrine'));
 
       // ─────────────────────────────────────────────────────────────────────
       // 6) Apparition programmée des boutons documents
@@ -242,11 +241,12 @@ export class PhrenologieScene extends Scene {
 
         /**
          * Adaptation des actions déclaratives en callbacks concrets.
-         * La scène reste l'unique responsable de la navigation réelle.
+         * La scène reste l'unique responsable de la navigation réelle — via
+         * _leaveTo, qui vérifie le verrou et laisse passer la fumée de
+         * l'« À Propos » avant le départ.
          */
         const navCallbacks = C.navbar.actions.map((action) => () => {
-          if (!this._navigationActive) return;
-          if (action === 'collab') bus.emit('navigate', { to: 'collaboration' });
+          if (action === 'collab') this._leaveTo('collaboration');
         });
 
         this.navBar.show(navCallbacks);
@@ -343,6 +343,30 @@ export class PhrenologieScene extends Scene {
           Math.min(f.size_max, Math.round(vW * f.size_vw / 100))
         ) + 'px';
       }
+    }
+  }
+
+  /**
+   * Navigation sortante UNIFIÉE (flèche, navbar).
+   *
+   * Si le texte « À Propos » est posé à l'écran, sa FUMÉE de sortie passe
+   * d'abord : close() renvoie le temps qu'elle demande (0 pour tout autre
+   * contenu, ou un texte encore en train de s'écrire — fondu ordinaire), et la
+   * navigation part à la fin. Le verrou se referme aussitôt : un seul départ,
+   * pas de double clic pendant que la fumée passe. Le timer passe par
+   * `addTimer` : si la scène est quittée autrement entre-temps, `Scene.exit()`
+   * l'annule.
+   *
+   * @param {string} to - Scène de destination (clé SceneManager).
+   */
+  _leaveTo(to) {
+    if (!this._navigationActive) return;
+    const wait = this._docOverlay.close() || 0;
+    if (wait > 0) {
+      this._navigationActive = false;
+      this.addTimer(() => bus.emit('navigate', { to }), wait);
+    } else {
+      bus.emit('navigate', { to });
     }
   }
 

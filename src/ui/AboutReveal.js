@@ -27,12 +27,13 @@
  *      lecture au lieu de recevoir la page entière d'un bloc. Les passages
  *      *entre astérisques* sont mis en relief et s'éclairent une fois posés.
  *
- *   3. LA FUMÉE — à la fermeture, un souffle traverse la page de GAUCHE À
- *      DROITE : les lettres s'effacent à mesure que le front passe, chacune à
- *      son instant et pour sa durée propre, pendant que le bloc dérive vers la
- *      droite en s'élevant et en penchant. Les lueurs dorées des noms survivent
- *      à leurs lettres et s'étirent. Voir smokeOut() : c'est l'overlay qui la
- *      déclenche et qui attend qu'elle passe avant de rendre le noir.
+ *   3. LA FUMÉE — avant TOUTE sortie (fermeture, ouverture d'un document
+ *      par-dessus, navigation flèche/navbar), un souffle traverse la page de
+ *      GAUCHE À DROITE et emporte le texte PAR MOTS : chaque fragment s'envole
+ *      sur sa trajectoire propre (translate + rotation + cisaillement + flou),
+ *      LIBRE DE DÉBORDER du cadre de lecture. Les lueurs dorées des noms
+ *      survivent à leurs lettres et s'étirent. Voir smokeOut() : l'appelant
+ *      attend le délai rendu avant de continuer (noir, document, navigation).
  *
  * CONTRAT (règles du site) :
  *   - aucun effet de bord au chargement : tout se crée dans mount(), tout se
@@ -52,10 +53,14 @@
  *     fin de séquence seulement), et les espaces ne sont pas animés ;
  *   - séquence posée → .ab-settled : toutes les animations sont remplacées
  *     par leur état final statique, la couche GPU du stack est rendue ;
- *   - la fumée de sortie ne part QUE d'un texte posé : le contenu est alors
- *     statique, donc chaque calque est rastérisé une fois puis composé. Jamais
- *     de flou animé nulle part — animer un rayon de flou, c'est re-rastériser
- *     une gaussienne par glyphe et par frame.
+ *   - la fumée de sortie ne part QUE d'un texte posé, et RIEN de ce qui reste
+ *     dans le flux ne s'anime : le texte réel du corps est caché en UNE frame
+ *     et remplacé au pixel près par ~180 fragments-mots ABSOLUS, animés en
+ *     transform/opacity/filter par le compositeur (Web Animations API).
+ *     Animer l'opacité de ~950 lettres inline = repaint plein cadre par frame,
+ *     et un transform de conteneur par-dessus = re-raster de toute la couche
+ *     par frame : c'était le lag de la première version de la fumée. Jamais de
+ *     flou animé DANS le SVG (les halos, flous fixes, portent les lueurs).
  *
  * Les DURÉES d'animation vivent dans style.css (section « À PROPOS ») ; ici ne
  * vivent que les DÉLAIS par lettre (posés en style inline) et la chronologie :
@@ -158,20 +163,23 @@ const T = {
 };
 
 /* ── LA FUMÉE (ms) — la sortie, voir smokeOut() ──────────────────────────────
-   Un souffle traverse la page de GAUCHE À DROITE. Arithmétique du total :
-     dernière lettre = lead + sweep + jitter + fade + fade_var ≈ 1680 ms
-     fond effacé     = bg_at (1000) + fondu CSS de #doc-overlay (700) = 1700 ms
-   Les deux se rejoignent : la traîne de la fumée se dissout dans le noir qui
-   revient, sans coupure. Toucher à l'un, c'est devoir vérifier l'autre. */
+   Un souffle traverse la page de GAUCHE À DROITE et emporte le texte PAR MOTS.
+   Arithmétique du total :
+     front au bord droit = lead + sweep + jitter        ≈ 1120 ms
+     fond effacé         = bg_at (1500) + fondu CSS de #doc-overlay (700) = 2200
+     dernier fragment    ≈ 2670 ms — il meurt DANS le fondu du fond
+   L'INVARIANT : le front doit avoir entièrement traversé AVANT que le noir ne
+   commence (1120 < 1500), sinon le fond mange la droite du texte et il n'y a
+   plus de gauche-à-droite à voir. Toucher à l'un, c'est vérifier l'autre. */
 const OUT = {
   lead:        60,  // le clic est entendu tout de suite
-  sweep:      700,  // le front traverse la largeur du texte
-  jitter:     140,  // ± par lettre : le front est déchiqueté, pas réglé
-  fade:       520,  // fondu d'une lettre
-  fade_var:   260,  // + jusqu'à : certaines lettres s'accrochent
-  halo_after: 260,  // la lueur d'un nom survit à ses propres lettres
-  halo:      1000,  // puis s'étire et s'éteint      (= CSS abSmokeHalo)
-  bg_at:     1000,  // instant où le fond commence à s'effacer
+  sweep:      900,  // le front traverse la largeur du texte
+  jitter:     160,  // + jusqu'à, par fragment : le front est déchiqueté, pas réglé
+  fade:      1050,  // vol minimal d'un fragment
+  fade_var:   500,  // + jusqu'à : certains mots s'accrochent
+  halo_after: 200,  // la lueur d'un nom survit à ses propres lettres
+  halo:      1300,  // puis s'étire et s'éteint
+  bg_at:     1500,  // instant où le fond commence à s'effacer
 };
 
 export class AboutReveal {
@@ -191,6 +199,8 @@ export class AboutReveal {
     this._timers    = [];
     this._raf       = null;
     this._bodySpans = null;
+    this._words     = [];     // [{ spans, em }] — l'unité de la FUMÉE de sortie
+    this._smokeEndsAt = 0;    // instant de fin de la fumée (0 = pas partie)
     this._bodyEnd   = 0;      // fin de la dernière pluie (depuis .ab-live)
     this._kwTexts   = [];     // <text> des mots-clefs (survol après pose)
     // Halos dorés (clones flous, un par mot-clef) : { el, anchor }. `anchor` est
@@ -309,94 +319,218 @@ export class AboutReveal {
   }
 
   /**
-   * LA FUMÉE — la sortie. Un souffle traverse la page de GAUCHE À DROITE : les
-   * lettres s'effacent à mesure que le front passe, chacune à son instant et
-   * pour sa durée propre, pendant que le bloc entier dérive vers la droite en
-   * s'élevant et en penchant. Les lueurs dorées des noms survivent à leurs
-   * lettres et s'étirent en s'agrandissant.
+   * LA FUMÉE — la sortie. Un souffle traverse la page de GAUCHE À DROITE et
+   * emporte le texte PAR MOTS : chaque fragment s'envole sur sa trajectoire
+   * propre (translate + rotation + cisaillement + flou), à son instant et pour
+   * sa durée propres, LIBRE DE DÉBORDER du cadre de lecture (.ab-out ouvre
+   * l'overflow du host). Les lueurs dorées des noms survivent à leurs lettres.
    *
-   * NE PART QUE D'UN TEXTE POSÉ (_done) — et cette limite n'est pas un pis-aller,
-   * c'est ce qui rend la fumée gratuite : le contenu est alors STATIQUE, donc
-   * chaque calque est rastérisé une fois puis composé (transform + opacité, rien
-   * d'autre). Et de toute façon, forcer l'état posé pour pouvoir souffler ferait
-   * apparaître le texte entier d'un coup juste avant de l'emporter. Sinon → 0 :
-   * l'appelant fait son fondu ordinaire.
+   * NE PART QUE D'UN TEXTE POSÉ (_done) — et cette limite n'est pas un
+   * pis-aller : forcer l'état posé pour pouvoir souffler ferait apparaître le
+   * texte entier d'un coup juste avant de l'emporter. Sinon → 0 : l'appelant
+   * fait son fondu ordinaire.
    *
-   * ⚠️ Le mouvement est porté par le HOST, jamais par .ab-stack : le host est le
-   * cadre qui ROGNE (overflow) et, sur petit écran, le conteneur de défilement.
-   * Le transformer emporte sa propre découpe — le texte ne peut donc pas être
-   * coupé par sa propre dérive. Déplacer .ab-stack obligerait à ouvrir
-   * l'overflow du host, ce qui ferait perdre la position de lecture.
+   * PERFORMANCE — le texte réel ne s'anime JAMAIS pendant la fumée :
+   *   - le corps est caché en UNE frame (CSS .ab-out, visibility) et remplacé
+   *     au pixel près par des fragments-mots ABSOLUS (calque .ab-smoke), animés
+   *     en transform/opacity/filter par le compositeur (Web Animations API) ;
+   *   - l'accroche s'envole par ses <text> réels (UN PAR MOT depuis _buildHook)
+   *     — transform/opacity seulement, jamais de filtre dans ce SVG : ses
+   *     lueurs sont les halos, déjà flous, qui partent juste après ;
+   *   - AUCUN transform de conteneur : animer le host par-dessus des fragments
+   *     re-rastériserait toute la couche à chaque frame (le lag de la première
+   *     version, avec l'opacité par lettre — repaint plein cadre par frame).
    *
-   * @returns {number} ms à attendre avant d'effacer le fond (0 = pas de fumée)
+   * REJOUABLE : rappelé pendant qu'elle passe (fermer puis naviguer, Escape…),
+   * il ne rejoue rien et renvoie le temps RESTANT — chaque appelant peut donc
+   * enchaîner sa propre suite sans coordonner les autres.
+   *
+   * @returns {number} ms à attendre avant d'enchaîner (0 = pas de fumée)
    */
   smokeOut() {
     if (!this.host || !this.stack || !this._done || this._reduced) return 0;
+    if (this._smokeEndsAt) {
+      return Math.max(0, Math.round(this._smokeEndsAt - performance.now()));
+    }
+    this._smokeEndsAt = performance.now() + OUT.bg_at;
 
-    // Tout ce qui a une forme et une place : lettres de l'accroche, barre du
-    // coup, lettres du corps. Le brouillon est déjà effacé — rien à y souffler.
+    // GEL DU DÉFILEMENT (tactile / petit écran). Ouvrir l'overflow remettrait
+    // brutalement le texte à son sommet : la position de lecture est transposée
+    // dans le transform du stack — visuellement, rien ne bouge, et les mesures
+    // ci-dessous (getBoundingClientRect intègre les transforms) restent justes.
+    const st = this.host.scrollTop;
+    if (st > 0) {
+      this.stack.classList.add('no-trans');
+      this.stack.style.transform = `translateY(${-st}px)`;
+      this.host.scrollTop = 0;
+    }
+    this.host.classList.add('ab-out');
+
+    /* ── LECTURES D'ABORD, ÉCRITURES ENSUITE ── un seul calcul de mise en page
+       pour ~850 mesures ; entrelacer lecture et écriture en relancerait un par
+       fragment — la fumée partirait sur un à-coup. */
+    const stackR = this.stack.getBoundingClientRect();
+    const bodyR  = this.body.getBoundingClientRect();
+    const sw     = Math.max(1, stackR.width);
+
+    // Le corps, par mots. Un mot césuré en fin de ligne donne UN fragment par
+    // ligne (groupé par ordonnée) : son rectangle englobant, à cheval sur deux
+    // lignes, placerait le texte dans l'entre-deux. (Le tiret de césure, dessiné
+    // par le moteur de rendu, n'existe pas dans le DOM : il n'est pas emporté —
+    // il disparaît avec le texte réel, une frame avant que son mot s'envole.)
+    const frags = [];
+    for (const w of this._words) {
+      let cur = null;
+      for (const s of w.spans) {
+        const r = s.getBoundingClientRect();
+        if (!r.width && !r.height) continue;
+        if (cur && Math.abs(r.top - cur.top) < 2) {
+          cur.right  = Math.max(cur.right,  r.right);
+          cur.bottom = Math.max(cur.bottom, r.bottom);
+          cur.text  += s.textContent;
+        } else {
+          cur = { left: r.left, top: r.top, right: r.right, bottom: r.bottom,
+                  text: s.textContent, em: w.em };
+          frags.push(cur);
+        }
+      }
+    }
+
+    // L'accroche, par <text> — c'est PAR MOT depuis _buildHook. La barre du
+    // coup part avec eux ; le brouillon, déjà effacé, n'a rien à souffler.
     const hookEls = this.svg
-      ? [...this.svg.querySelectorAll('tspan, .ab-underline')]
+      ? [...this.svg.querySelectorAll('text, .ab-underline')]
           .filter(el => !el.closest('.ab-draft'))
+          .map(el => ({ el, r: el.getBoundingClientRect() }))
       : [];
-    const els = [...hookEls, ...(this._bodySpans ?? [])];
-
-    /* ── LECTURES D'ABORD, ÉCRITURES ENSUITE ──
-       ~950 mesures pour UN seul calcul de mise en page : la première lecture le
-       force, les suivantes le relisent. Entrelacer lecture et écriture en
-       relancerait un par élément — la fumée partirait sur un à-coup, ce qui est
-       très exactement ce qu'on ne peut pas se permettre à cet instant-là. */
-    const box = this.stack.getBoundingClientRect();
-    const W   = Math.max(1, box.width);
-    const xs  = els.map(el => {
-      const r = el.getBoundingClientRect();
-      return (r.left + r.width / 2 - box.left) / W;      // 0 gauche → 1 droite
-    });
     const wrapBox = this._hookWrap?.getBoundingClientRect() ?? null;
     const halos   = this._kwGolds.map(({ el, anchor }) =>
       ({ el, r: anchor.getBoundingClientRect() }));
 
     /* ── ÉCRITURES ── */
-    els.forEach((el, i) => {
-      const t = Math.min(1, Math.max(0, xs[i]));
-      // Le front n'est pas une règle : chaque lettre a son instant ET sa durée.
-      // C'est ce désordre, plus le recouvrement de dizaines de fondus, qui fait
-      // un front doux et granuleux là où un masque dégradé donnerait une lame.
-      const at  = Math.max(0, OUT.lead + t * OUT.sweep
-                              + (Math.random() - 0.5) * 2 * OUT.jitter);
-      const dur = OUT.fade + Math.random() * OUT.fade_var;
-      el.style.animationDelay    = Math.round(at)  + 'ms';
-      el.style.animationDuration = Math.round(dur) + 'ms';
-    });
+    // Le front n'est pas une règle : chaque fragment a son instant (abscisse +
+    // désordre) ET sa durée. C'est ce désordre, plus le recouvrement de dizaines
+    // de vols, qui fait un front doux et granuleux — un masque dégradé qui
+    // balaierait la boîte donnerait une lame.
+    const tOf   = (r) => Math.min(1, Math.max(0,
+      (r.left + (r.right - r.left) / 2 - stackR.left) / sw));
+    const delay = (t) => OUT.lead + t * OUT.sweep + Math.random() * OUT.jitter;
+    const EASE  = 'cubic-bezier(0.3, 0, 0.6, 1)';
 
-    halos.forEach(({ el, r }) => {
-      const t = Math.min(1, Math.max(0, (r.left + r.width / 2 - box.left) / W));
-      el.style.animationDelay =
-        Math.round(OUT.lead + t * OUT.sweep + OUT.halo_after) + 'ms';
-      // L'agrandissement doit se faire AUTOUR DU NOM, pas autour du cadre :
-      // sinon un nom placé à gauche serait poussé vers la gauche en grandissant
-      // et partirait à contre-vent.
+    // Le calque des fragments. Il recouvre .ab-body et hérite de toute sa
+    // typographie ; le CSS de .ab-out cache les lettres réelles dans la MÊME
+    // frame (aucun rendu n'a lieu entre deux mutations synchrones) : le
+    // remplacement est invisible.
+    const smoke = document.createElement('div');
+    smoke.className = 'ab-smoke';
+    smoke.setAttribute('aria-hidden', 'true');
+    this.body.appendChild(smoke);
+
+    // ÉTALONS — où tombe le texte dans un fragment absolu ? Le décalage entre
+    // la boîte du fragment et celle de ses glyphes (le demi-interligne) dépend
+    // de la fonte, du corps et de la graisse : on le MESURE au lieu de le
+    // prédire. C'est la garantie que le remplacement est exact au pixel, à
+    // toute taille d'écran. Un étalon par graisse (base / relief).
+    const probe = (em) => {
+      const f = document.createElement('span');
+      f.className = 'ab-smokew' + (em ? ' ab-em' : '');
+      f.style.left = '0px';
+      f.style.top  = '0px';
+      const inner = document.createElement('span');
+      inner.textContent = 'Hg';
+      f.appendChild(inner);
+      smoke.appendChild(f);
+      const fr = f.getBoundingClientRect();
+      const ir = inner.getBoundingClientRect();
+      f.remove();
+      return { dx: ir.left - fr.left, dy: ir.top - fr.top };
+    };
+    const dBase = probe(false);
+    const dEm   = probe(true);
+
+    // Le flou par fragment est composité (le compositeur anime `filter` sans
+    // re-rastériser), mais il a un coût GPU par couche : on l'épargne au
+    // tactile — le mouvement et le fondu y suffisent.
+    const blurOk = !this._coarse;
+
+    for (const fr of frags) {
+      const f = document.createElement('span');
+      f.className = 'ab-smokew' + (fr.em ? ' ab-em' : '');
+      f.textContent = fr.text;
+      const d0 = fr.em ? dEm : dBase;
+      f.style.left = (fr.left - bodyR.left - d0.dx).toFixed(1) + 'px';
+      f.style.top  = (fr.top  - bodyR.top  - d0.dy).toFixed(1) + 'px';
+      smoke.appendChild(f);
+
+      const end = `translate(${(30 + Math.random() * 85).toFixed(0)}px, `
+                + `${-(22 + Math.random() * 55).toFixed(0)}px) `
+                + `rotate(${(-9 + Math.random() * 14).toFixed(1)}deg) `
+                + `skewX(${-(5 + Math.random() * 13).toFixed(1)}deg) `
+                + `scale(${(1.05 + Math.random() * 0.22).toFixed(2)})`;
+      const k0 = { transform: 'none', opacity: 1, offset: 0 };
+      const k1 = { opacity: 0.92, offset: 0.3 };
+      const k2 = { transform: end, opacity: 0, offset: 1 };
+      if (blurOk) {
+        k0.filter = 'blur(0px)';
+        k2.filter = `blur(${(2.5 + Math.random() * 2.5).toFixed(1)}px)`;
+      }
+      f.animate([k0, k1, k2], {
+        delay:    Math.round(delay(tOf(fr))),
+        duration: Math.round(OUT.fade + Math.random() * OUT.fade_var),
+        easing:   EASE,
+        fill:     'both',
+      });
+    }
+
+    // L'accroche : amplitudes plus larges (les glyphes sont plus grands, le
+    // geste doit porter), durées un peu plus longues — elle part avec majesté.
+    // transform-box: fill-box (CSS) fait tourner chaque mot autour de LUI-MÊME ;
+    // sans elle, l'origine serait le coin du viewBox et les mots partiraient en
+    // orbite autour du coin du SVG.
+    for (const { el, r } of hookEls) {
+      el.animate([
+        { transform: 'none', opacity: 1, offset: 0 },
+        { opacity: 0.92, offset: 0.3 },
+        { transform: `translate(${(45 + Math.random() * 105).toFixed(0)}px, `
+                   + `${-(30 + Math.random() * 70).toFixed(0)}px) `
+                   + `rotate(${(-10 + Math.random() * 15).toFixed(1)}deg) `
+                   + `skewX(${-(6 + Math.random() * 14).toFixed(1)}deg) `
+                   + `scale(${(1.08 + Math.random() * 0.25).toFixed(2)})`,
+          opacity: 0, offset: 1 },
+      ], {
+        delay:    Math.round(delay(tOf(r))),
+        duration: Math.round((OUT.fade + Math.random() * OUT.fade_var) * 1.15),
+        easing:   EASE,
+        fill:     'both',
+      });
+    }
+
+    // Les lueurs des noms survivent à leurs lettres : elles partent après,
+    // plus loin, en s'étirant — autour du NOM (transform-origin mesuré), pas
+    // autour du cadre : un nom placé à gauche pousserait vers la gauche en
+    // grandissant et partirait à contre-vent.
+    for (const { el, r } of halos) {
       if (wrapBox) {
         const ox = (r.left + r.width  / 2 - wrapBox.left) / Math.max(1, wrapBox.width)  * 100;
         const oy = (r.top  + r.height / 2 - wrapBox.top)  / Math.max(1, wrapBox.height) * 100;
         el.style.transformOrigin = `${ox.toFixed(1)}% ${oy.toFixed(1)}%`;
       }
-    });
+      el.animate([
+        { transform: 'none', opacity: 0.45, offset: 0 },
+        { opacity: 0.62, offset: 0.22 },     // un dernier éclat avant de partir
+        { transform: 'translate(90px, -70px) scale(1.6) skewX(-8deg)',
+          opacity: 0, offset: 1 },
+      ], {
+        delay:    Math.round(delay(tOf(r)) + OUT.halo_after),
+        duration: OUT.halo,
+        easing:   'ease-out',
+        fill:     'both',
+      });
+    }
 
-    // Les indices de défilement n'ont plus rien à indiquer (transition CSS).
-    if (this._blurTop) this._blurTop.style.opacity = '0';
-    if (this._blurBot) this._blurBot.style.opacity = '0';
-
-    // ⚠️ Le fast-forward est fini — il n'a plus rien à accélérer, et ses règles
-    // sont en !important : elles ÉCRASERAIENT les délais qu'on vient de poser en
-    // inline (une déclaration !important d'auteur bat le style inline). Sans
-    // cela, un lecteur qui a cliqué pour accélérer verrait l'accroche entière
-    // partir d'un bloc pendant que le corps, lui, balaie normalement.
-    // Le retirer ne change rien à l'image : .ab-settled double chacune de ces
-    // règles et tient déjà l'état posé.
-    this.host.classList.remove('ab-skip');
-
-    this.host.classList.add('ab-out');
+    // Les indices de défilement sont coupés net par le CSS de .ab-out
+    // (display:none — leur backdrop-filter ré-échantillonnerait à chaque frame
+    // tout ce qui bouge dessous). Rien d'autre à écrire ici.
     return OUT.bg_at;
   }
 
@@ -413,6 +547,7 @@ export class AboutReveal {
     this.host = this.stack = this.svg = this.body = null;
     this._hookWrap = this._blurTop = this._blurBot = null;
     this._bodySpans = null;
+    this._words     = [];
     this._kwTexts   = [];
     this._kwGolds   = [];
   }
@@ -446,19 +581,28 @@ export class AboutReveal {
       String(txt).split('*').forEach((part, i) => {
         if (!part) return;
         let holder = p;
-        if (i % 2) {                            // segment *en relief*
+        const em = i % 2 === 1;
+        if (em) {                               // segment *en relief*
           holder = document.createElement('em');
           holder.className = 'ab-em';
           p.appendChild(holder);
         }
+        let word = null;                        // mot en cours — voir ci-dessous
         for (const ch of part) {
           // Un espace n'a rien à révéler : texte brut, pas de span — autant
           // d'animations (et de nœuds) en moins pendant la pluie.
-          if (/\s/.test(ch)) { holder.append(ch); continue; }
+          if (/\s/.test(ch)) { holder.append(ch); word = null; continue; }
           const s = document.createElement('span');
           s.textContent = ch;
           holder.appendChild(s);
           spans.push(s);
+          // La FUMÉE de sortie s'envole PAR MOTS : la découpe est gardée ici,
+          // au moment où elle ne coûte rien — la reconstituer plus tard depuis
+          // le DOM obligerait à deviner les frontières à travers les nœuds
+          // texte. (Un relief en cours de mot ouvre un nouveau fragment : le
+          // flag `em` reste ainsi homogène par fragment.)
+          if (!word) { word = { spans: [], em }; this._words.push(word); }
+          word.spans.push(s);
         }
       });
       body.appendChild(p);
@@ -685,29 +829,33 @@ export class AboutReveal {
       const baseY   = size * 1.08 + li * lineH;
       maxY = Math.max(maxY, baseY + size * 0.55);
 
-      const lineTexts = {};    // key → <text> (un par style et par ligne)
-      const textFor = (run) => {
-        if (lineTexts[run.key]) return lineTexts[run.key];
-        const t = document.createElementNS(NS, 'text');
-        t.setAttribute('class', run.gold
-          ? ('ab-t ab-t--kw' + (run.engraved ? ' ab-t--engraved' : ''))
-          : 'ab-t ab-t--base');
-        svg.appendChild(t);
-        lineTexts[run.key] = t;
-        if (run.gold) {
-          const rec = kwRecs.get(run.kw)
-                   ?? { texts: [], tspans: [], delays: [], end: 0,
-                        font: this._fontKey(run) };
-          rec.texts.push(t);
-          kwRecs.set(run.kw, rec);
-        } else if (run.u) {
-          uRec.texts.push(t);
-        }
-        return t;
-      };
-
       let x = 0;
       L.words.forEach(word => {
+        // UN <text> PAR MOT (et par style) : sans incidence sur le rendu — les
+        // tspans portent leurs x,y absolus, l'appartenance ne déplace rien —
+        // mais c'est L'UNITÉ DE LA FUMÉE de sortie : un mot s'envole d'un bloc ;
+        // un <text> par ligne entière partirait en paquet, comme une planche.
+        const wordTexts = {};    // key → <text> (un par style et par mot)
+        const textFor = (run) => {
+          if (wordTexts[run.key]) return wordTexts[run.key];
+          const t = document.createElementNS(NS, 'text');
+          t.setAttribute('class', run.gold
+            ? ('ab-t ab-t--kw' + (run.engraved ? ' ab-t--engraved' : ''))
+            : 'ab-t ab-t--base');
+          svg.appendChild(t);
+          wordTexts[run.key] = t;
+          if (run.gold) {
+            const rec = kwRecs.get(run.kw)
+                     ?? { texts: [], tspans: [], delays: [], end: 0,
+                          font: this._fontKey(run) };
+            rec.texts.push(t);
+            kwRecs.set(run.kw, rec);
+          } else if (run.u) {
+            uRec.texts.push(t);
+          }
+          return t;
+        };
+
         word.runs.forEach(run => {
           // LE RATÉ — à l'ENTRÉE d'un segment corrigé, AVANT toute suspension
           // de mot-clef : la main hésite, écrit le brouillon, le rature, marque

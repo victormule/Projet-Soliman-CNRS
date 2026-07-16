@@ -107,10 +107,13 @@ timers/listeners posés via `this.on`/`this.addTimer`).
   `paragraphs` = corps (`*…*` met un passage en relief). Moteur :
   `src/ui/AboutReveal.js` (cadences : `T` pour l'écriture, `OUT` pour la fumée
   de sortie), styles dans `style.css` (section « À PROPOS »).
-  ⚠️ La fumée ajourne la fermeture de l'overlay de ~1 s : `close()` attend le
-  délai rendu par `smokeOut()` avant `_finishClose()` (fond effacé + torche
-  relancée). Elle ne concerne QUE l'« À Propos » posé — les documents et une
-  lecture interrompue gardent le fondu ordinaire.
+  ⚠️ La fumée de sortie (fragments-mots, Web Animations API) précède TOUTE
+  sortie de l'« À Propos » posé : fermeture (clic/Escape), ouverture d'un
+  document par-dessus (`DocumentOverlay.open` diffère `_openNow`), navigation
+  flèche/navbar (`PhrenologieScene._leaveTo` diffère le `navigate`).
+  `smokeOut()` est rejouable (rappelé, il rend le temps restant) et ne part
+  que d'un texte POSÉ — texte en cours d'écriture et documents gardent le
+  fondu ordinaire. Fermeture « À Propos » : ~2,2 s au lieu de 0,7.
 
 ## Événements window (pont scène ↔ modules)
 

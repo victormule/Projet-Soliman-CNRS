@@ -1920,6 +1920,17 @@ body.peine-aim #cursor.aim-hot {
 .ab-hook text { font-family: 'Playfair Display', Georgia, serif; }
 .ab-t--base   { font-weight: 400; }
 
+/* Repère des transforms de la FUMÉE de sortie : chaque mot (<text>) et la
+   barre du coup tournent autour d'EUX-MÊMES. Sans transform-box: fill-box,
+   l'origine serait le coin du viewBox — les mots partiraient en orbite autour
+   du coin du SVG. Inerte tant qu'aucun transform n'est posé (seule la fumée,
+   via smokeOut, en pose). */
+.ab-hook text,
+.ab-hook line {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
 /* Lit commun : tracé blanc, encrage blanc cassé.
    Délais inline (2 valeurs : tracé, encrage). */
 .ab-t--base tspan {
@@ -2094,6 +2105,7 @@ body.peine-aim #cursor.aim-hot {
 .ab-body {
   width: min(100%, 1040px);   /* bords alignés sur l'accroche */
   margin: 0 auto;
+  position: relative;         /* ancre du calque de fumée (.ab-smoke) */
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 300;
   line-height: 1.68;
@@ -2233,67 +2245,62 @@ body.peine-aim #cursor.aim-hot {
 /* ══════════════════════════════════════════════════════════════════
    LA FUMÉE — la sortie (src/ui/AboutReveal.js → smokeOut)
    ──────────────────────────────────────────────────────────────────
-   Un souffle traverse la page de GAUCHE À DROITE : les lettres s'effacent à
-   mesure que le front passe (délai ET durée propres à chacune, posés en inline
-   d'après leur abscisse), pendant que le bloc dérive vers la droite en
-   s'élevant et en penchant. Les lueurs dorées des noms survivent à leurs
-   lettres et s'étirent.
+   Un souffle traverse la page de GAUCHE À DROITE et emporte le texte PAR MOTS,
+   librement HORS du cadre de lecture : .ab-out ouvre l'overflow du host (la
+   position de lecture a été transposée dans le transform du stack — rien ne
+   saute) et coupe le masque de défilement, qui rognerait la fumée.
 
-   Ne part QUE d'un texte posé (.ab-settled) : le contenu est alors statique,
-   chaque calque est rastérisé UNE fois puis composé. transform et opacité
-   seulement — JAMAIS de flou animé. Animer un rayon de flou, c'est
-   re-rastériser une gaussienne par glyphe et par frame : c'est très exactement
-   ce qu'on a retiré de ce module (et ce que fait le « smoky text » d'origine,
-   jouable à 21 lettres, rédhibitoire aux ~950 d'ici).
+   La chorégraphie vit dans le JS (Web Animations API) : chaque fragment reçoit
+   là-bas sa trajectoire (translate + rotation + cisaillement + flou) et son
+   instant. Ici, seulement les ÉTATS : ce qui s'ouvre, ce qui se cache.
+
+   PERFORMANCE — le texte réel ne s'anime JAMAIS pendant la fumée : il est caché
+   en une frame (visibility) et remplacé au pixel près par ~180 fragments-mots
+   absolus, composités. Animer l'opacité des ~950 lettres inline (repaint plein
+   cadre par frame) sous un transform de conteneur (re-raster de la couche par
+   frame), c'était le lag de la première version. Le « smoky text » d'origine
+   (text-shadow animé par lettre) tient à 21 grosses lettres, pas à 950.
    ══════════════════════════════════════════════════════════════════ */
 
-/* Le mouvement est porté par le HOST — c'est lui qui rogne (overflow) et qui,
-   sur petit écran, défile. Le transformer emporte sa propre découpe : le texte
-   ne peut pas être coupé par sa propre dérive. Déplacer .ab-stack obligerait à
-   ouvrir l'overflow du host, ce qui perdrait la position de lecture. */
+/* Le cadre s'ouvre : la fumée n'appartient plus à la boîte de texte. Elle est
+   rognée par l'écran (#app, overflow:hidden), plus par la boîte. !important :
+   il faut battre .is-scroll.ab-phase2 (overflow-y:auto) et le mask du même
+   sélecteur, quel que soit l'état de défilement au moment de la sortie. */
 .doc-ov-about.ab-out {
-  will-change: transform;
-  animation: abSmokeDrift 1700ms cubic-bezier(0.4, 0, 0.75, 0.6) both;
-}
-/* Le haut fuit vers la droite, le bas retient : la page penche DANS le vent au
-   lieu de glisser d'un bloc (skewX déplace x proportionnellement à y — l'angle
-   négatif fait donc partir le haut du côté où souffle le souffle). */
-@keyframes abSmokeDrift {
-  from { transform: translate3d(0, 0, 0) skewX(0) scale(1); }
-  to   { transform: translate3d(22px, -26px, 0) skewX(-3.5deg) scale(1.02); }
+  overflow: visible !important;
+  -webkit-mask: none !important;
+          mask: none !important;
 }
 
-/* Les lettres — opacité SEULE : un <span> inline n'accepte pas de transform, et
-   c'est très bien ainsi. À ~950 lettres, 950 trajectoires ne feraient pas de la
-   fumée, elles feraient du bruit ; le pen d'origine ne tient que parce qu'il a
-   21 grosses lettres. Ici le front est doux parce que des dizaines de fondus se
-   recouvrent, et vivant parce que le JS disperse instants et durées.
-   Sélecteurs volontairement plus spécifiques que les règles .ab-settled qu'ils
-   doivent battre (animation:none) — un poids égal ne se départagerait qu'à
-   l'ordre du fichier. */
-.doc-ov-about.ab-settled.ab-out .ab-hook tspan,
-.doc-ov-about.ab-settled.ab-out .ab-hook .ab-underline,
-.doc-ov-about.ab-settled.ab-out .ab-body span {
-  animation: abSmoke 520ms ease-out both;   /* délai et durée écrasés en inline */
-}
-/* ease-out : la lettre chute d'emblée puis s'attarde, presque éteinte — elle
-   laisse un fantôme au lieu de disparaître net. */
-@keyframes abSmoke { to { opacity: 0; } }
+/* Les indices de défilement sont coupés NET — pas un fondu : leur
+   backdrop-filter ré-échantillonnerait à chaque frame tout ce qui bouge
+   dessous, précisément pendant les ~180 vols. */
+.doc-ov-about.ab-out .ab-scrollblur { display: none; }
 
-/* LES NOMS SURVIVENT À LEURS LETTRES. Les halos dorés sont des clones DÉJÀ
-   flous et déjà composités : les agrandir agrandit leur flou — on étire une
-   texture, on n'en recalcule pas une. La fumée est faite de ce qu'on avait déjà
-   payé pour l'embrasement. Ils cumulent leur dérive et celle du host : ils
-   partent donc plus loin et plus vite que le texte, comme il se doit.
-   transform-origin est posé en inline sur le nom lui-même (voir smokeOut). */
-.doc-ov-about.ab-settled.ab-out .ab-hook-glow--gold.is-set {
-  transition: none;
-  animation: abSmokeHalo 1000ms ease-out both;
+/* Le texte réel du corps disparaît — visibility, pas opacity : elle est
+   orthogonale à l'opacité que .ab-settled fige à 1, aucune spécificité à
+   batailler. Les fragments .ab-smoke prennent sa place dans la MÊME frame :
+   remplacement invisible. (L'accroche, elle, s'envole par ses <text> réels —
+   rien à cacher. Les espaces, nœuds texte nus, restent : ils sont invisibles
+   par nature.) */
+.doc-ov-about.ab-out .ab-body p span { visibility: hidden; }
+
+/* Le calque des fragments : recouvre exactement .ab-body (position:relative
+   posée sur lui plus haut) et HÉRITE de toute sa typographie — Inter, corps,
+   graisse, interlignage, text-shadow — pour que chaque mot cloné soit
+   indiscernable de l'original à la frame du remplacement. */
+.ab-smoke {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
-@keyframes abSmokeHalo {
-  0%   { opacity: 0.45; transform: translate3d(0, 0, 0) scale(1); }
-  22%  { opacity: 0.66; }                    /* la lueur se ravive une dernière fois */
-  100% { opacity: 0; transform: translate3d(52px, -46px, 0) scale(1.5); }
+/* Un fragment est un mot : il ne se replie jamais (sa position vient d'une
+   mesure, pas du flux). Pas de will-change : les ~180 couches sont promues par
+   le compositeur au démarrage de chaque animation, échelonnées par les délais —
+   les réserver toutes d'avance gonflerait la mémoire GPU pour rien. */
+.ab-smokew {
+  position: absolute;
+  white-space: nowrap;
 }
 
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
@@ -2341,9 +2348,8 @@ body.peine-aim #cursor.aim-hot {
   /* Le battement est une chorégraphie : il n'a pas lieu. (!important comme les
      règles voisines — .ab-body.ab-live .ab-beat::before pèse autant.) */
   .doc-ov-about .ab-beat::before { animation: none !important; opacity: 0; }
-  /* La fumée de sortie non plus : le texte s'efface avec le fond, sans souffle.
-     smokeOut() refuse déjà de partir sous ce réglage — même filet de sécurité
-     que pour la secousse ci-dessus, au cas où l'état changerait en cours de
-     session (this._reduced est lu au montage). */
-  .doc-ov-about.ab-out { animation: none !important; transform: none !important; }
+  /* La fumée de sortie non plus : smokeOut() refuse de partir sous ce réglage
+     (this._reduced) — le texte s'efface avec le fond, sans souffle. Pas de
+     filet CSS à poser : la fumée est pilotée en Web Animations API, et sans
+     smokeOut il n'y a ni classe .ab-out, ni fragments, ni animations. */
 }

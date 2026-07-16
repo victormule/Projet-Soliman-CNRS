@@ -96,22 +96,37 @@ export class DocumentOverlay {
     if (!data) { console.warn(`[DocumentOverlay] Contenu inconnu : ${key}`); return; }
     if (this.currentKey === key) { this.close(); return; }
 
+    this._ensureDOM();
+    this._clearTimers();   // annule une fermeture ou une purge en attente
+
+    // « À Propos » posé à l'écran → LA FUMÉE passe d'abord, le document demandé
+    // s'ouvre ensuite (fond maintenu, torche toujours gelée — aucun fondu dans
+    // ce chemin). currentKey est posé TOUT DE SUITE : la bascule (re-clic sur le
+    // même bouton = fermer) et Escape restent cohérents pendant l'attente —
+    // close() les traite par son chemin normal, et smokeOut, REJOUABLE, lui
+    // rendra le temps restant de la fumée en cours. Si elle vient d'être lancée
+    // par un close() (fermeture en route), le _clearTimers ci-dessus a annulé le
+    // _finishClose en attente : l'ouverture reprend la main sur la fermeture.
+    const wait = this._aboutFx?.smokeOut?.() ?? 0;
+    if (wait > 0) {
+      this.currentKey = key;
+      this._smoking   = true;
+      this._addTimer(() => this._openNow(key, data), wait);
+      return;
+    }
+    this._openNow(key, data);
+  }
+
+  /** Montage effectif d'un contenu (après l'éventuelle fumée de l'« À Propos »). */
+  _openNow(key, data) {
     // Le fond opaque de l'overlay va recouvrir la scène → on gèle la torche
     // (rendu par frame inutile tant que c'est masqué). Idempotent si on passe
     // d'un document à l'autre sans fermer.
     this.torch?.pause();
-
-    this._ensureDOM();
-    this._clearTimers();
     this._disconnectObserver();
 
     this.currentKey = key;
-    // Ouvrir PENDANT la fumée de l'« À Propos » : elle est simplement remplacée,
-    // sans délai. Le _clearTimers() ci-dessus a déjà annulé le _finishClose en
-    // attente, .visible n'a pas encore été retiré (c'est tout l'intérêt de ne
-    // l'ôter qu'à la fin) — le document demandé s'affiche donc sans clignoter.
-    // Aller voir un document n'est pas un adieu : la fumée ne lui est pas due.
-    this._smoking = false;
+    this._smoking   = false;
     this._aboutFx?.destroy();
     this.inner.innerHTML = '';
     this._frames   = [];
@@ -134,33 +149,40 @@ export class DocumentOverlay {
     document.addEventListener('keydown', this._onKeyDown);
   }
 
+  /**
+   * Ferme le contenu affiché.
+   * @returns {number} ms avant que la sortie ne soit engagée (durée de la fumée
+   *   de l'« À Propos », 0 sinon) — la scène s'en sert pour différer une
+   *   navigation d'autant (voir PhrenologieScene._leaveTo).
+   */
   close() {
-    if (!this.el) return;
+    if (!this.el) return 0;
 
-    // Deuxième clic PENDANT la fumée : on coupe court. Sans cela close() sortait
-    // ici (currentKey est déjà nul) et l'utilisateur restait ~1,7 s devant un
-    // écran qui ne répond plus. Une mise en scène ne doit jamais piéger.
-    if (!this.currentKey) { if (this._smoking) this._finishClose(); return; }
+    // Deuxième clic PENDANT la fumée de fermeture : on coupe court. Sans cela
+    // close() sortait ici (currentKey est déjà nul) et l'utilisateur restait
+    // ~2 s devant un écran qui ne répond plus. Une mise en scène ne piège pas.
+    if (!this.currentKey) { if (this._smoking) this._finishClose(); return 0; }
 
     this.currentKey = null;
-    this._clearTimers();
+    this._clearTimers();   // annule aussi une ouverture différée en attente
     this._disconnectObserver();
     this._loupe.disable();
     document.removeEventListener('keydown', this._onKeyDown);
 
     // « À Propos » posé → LA FUMÉE : le texte s'en va AVANT le noir. Tant
     // qu'elle passe, le fond reste opaque et la torche reste GELÉE — elle serait
-    // invisible dessous, et son rendu par frame disputerait le budget à la fumée
-    // (c'est pour cette raison même qu'on la gèle à l'ouverture). Les deux se
-    // réveillent ensemble, dans _finishClose. Tout autre contenu → 0, fondu
-    // ordinaire : rien ne change pour les documents.
+    // invisible dessous, et son rendu par frame disputerait le budget aux ~180
+    // fragments en vol (c'est pour cette raison même qu'on la gèle à
+    // l'ouverture). Les deux se réveillent ensemble, dans _finishClose. Tout
+    // autre contenu → 0, fondu ordinaire : rien ne change pour les documents.
     const wait = this._aboutFx?.smokeOut?.() ?? 0;
     if (wait > 0) {
       this._smoking = true;
       this._addTimer(() => this._finishClose(), wait);
-      return;
+      return wait;
     }
     this._finishClose();
+    return 0;
   }
 
   /**
@@ -300,6 +322,10 @@ export class DocumentOverlay {
     // pas l'overlay. Molette et gestes de lecture restent locaux.
     article.addEventListener('click', (e) => {
       e.stopPropagation();
+      // …sauf pendant la fumée de FERMETURE : re-cliquer le texte coupe court,
+      // comme le fond (le stopPropagation avalerait le geste sinon). Pendant
+      // une OUVERTURE différée (currentKey posé), on laisse l'attente se finir.
+      if (this._smoking && !this.currentKey) { this._finishClose(); return; }
       this._aboutFx?.skip();
     });
     article.addEventListener('wheel', e => e.stopPropagation(), { passive: true });
