@@ -374,7 +374,13 @@ export class AboutReveal {
       all.push(...spans);
 
       if (beats[i]) {
-        beats[i].style.animationDelay = Math.round(lastAt + T.beat_lead) + 'ms';
+        // ⚠️ Le filet est un ::before : on ne peut pas lui poser de style inline,
+        // et animation-delay ne s'hérite PAS (le poser sur le <div> ne ferait
+        // rien — les trois battements partiraient ensemble à 0 ms). Une propriété
+        // PERSONNALISÉE, elle, s'hérite jusqu'au pseudo-élément : c'est le seul
+        // canal pour lui transmettre son instant.
+        beats[i].style.setProperty('--beat-at',
+          Math.round(lastAt + T.beat_lead) + 'ms');
         at = lastAt + T.body_char + T.body_gap;
       }
     });

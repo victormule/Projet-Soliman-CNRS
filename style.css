@@ -2127,12 +2127,16 @@ body.peine-aim #cursor.aim-hot {
   position: relative;
   height: 1.05em;             /* = la marge cédée par .has-beat */
 }
+/* Un filet de LUMIÈRE, pas une règle tracée : le dégradé culmine au centre et
+   s'éteint aux deux bouts, sans plateau — sur le fond noir, il se lit comme une
+   lueur qui affleure. (Le filet des légendes, lui, est un objet permanent : il
+   a un plateau. Celui-ci ne fait que passer.) */
 .ab-beat::before {
   content: '';
   position: absolute;
   left: 50%;
   top: 50%;
-  width: clamp(48px, 7%, 96px);
+  width: clamp(56px, 9%, 120px);
   height: 1px;
   transform-origin: center;
   transform: translate(-50%, -50%) scaleX(0);
@@ -2140,22 +2144,34 @@ body.peine-aim #cursor.aim-hot {
   background: linear-gradient(
       to right,
       rgba(210, 175, 90, 0) 0%,
-      rgba(210, 175, 90, 0.7) 28%,
-      rgba(210, 175, 90, 0.7) 72%,
+      rgba(232, 205, 143, 0.85) 50%,
       rgba(210, 175, 90, 0) 100%);
 }
 
-/* Il s'ouvre, tient, puis S'EFFACE pendant que le paragraphe suivant se pose :
-   le battement est un événement dans le temps, pas un ornement — le texte lu
-   reste net. transform + opacité : compositeur, coût nul. Délai inline. */
+/* Il s'ouvre du centre, tient, PUIS SE REFERME vers le centre : un souffle
+   complet — c'est ce qui en fait un battement plutôt qu'une apparition. Le
+   retrait est plus lent que l'ouverture : le geste part avec intention et se
+   retire sans bruit.
+   Le délai vient de --beat-at, posé par le JS sur le <div> parent : un pseudo-
+   élément n'a pas de style inline, et animation-delay ne s'hérite pas — une
+   propriété personnalisée, si.
+   La cadence de chaque temps est déclarée DANS les keyframes (une courbe unique
+   sur la totalité raidirait aussi bien l'ouverture que le retrait).
+   transform + opacité : compositeur, coût nul. */
 .ab-body.ab-live .ab-beat::before {
-  animation: abBeat 1400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: abBeat 1400ms linear var(--beat-at, 0ms) both;
 }
 @keyframes abBeat {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scaleX(0); }
-  22%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
-  60%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(1); }
+  /* l'ouverture — le filet s'écarte du centre */
+  0%   { opacity: 0; transform: translate(-50%, -50%) scaleX(0);
+         animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  /* la tenue */
+  24%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1);
+         animation-timing-function: linear; }
+  /* le retrait — il se referme et s'éteint ensemble */
+  56%  { opacity: 1; transform: translate(-50%, -50%) scaleX(1);
+         animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.18); }
 }
 
 /* Pluie de lettres : chaque span porte son délai (inline — ordre aléatoire
