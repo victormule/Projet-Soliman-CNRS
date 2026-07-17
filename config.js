@@ -236,12 +236,23 @@ window.CONFIG = {
       // Barre navigation — bas de l'écran
       appear_at:        7000,   // ms depuis enter() — régler ici indépendamment
 
-      // Layout
-      width:            0.85,   // Fraction largeur écran (plafond absolu)
-      cell_width:       0.33,   // Largeur idéale d'UNE cellule (fraction vW).
-                                // La barre vaut min(width·vW, N·cell_width·vW) :
-                                // en passant de 3 à 2 boutons elle se resserre au
-                                // lieu d'étirer démesurément chaque cellule.
+      // ── Layout ────────────────────────────────────────────────────────
+      // ⚠️ POUR RACCOURCIR LA BARRE, c'est cell_width — PAS width.
+      // La barre vaut min(width·vW, N·cell_width·vW), N = nombre de boutons.
+      // Aujourd'hui N = 2, donc :  min(0.85 , 2 × 0.31 = 0.62) = 0.62·vW
+      // → cell_width décide, et width ne mordrait qu'EN DESSOUS de 0.62. Le
+      // régler au-dessus de ce seuil ne fait rien : c'est un PLAFOND, et il
+      // n'est pas atteint. Il sert de garde-fou si l'on remet un 3ᵉ bouton
+      // (3 × 0.31 = 0.93·vW : là, il mordrait).
+      width:            0.85,   // Plafond absolu (fraction vW) — inerte tant
+                                // que N · cell_width reste en dessous
+      cell_width:       0.31,   // ← LA LONGUEUR DE LA BARRE : largeur idéale
+                                // d'UNE cellule (fraction vW). La barre s'y
+                                // ajuste, au lieu d'étirer démesurément chaque
+                                // cellule quand il y a moins de boutons.
+                                // ⚠️ Rétrécir la cellule rétrécit le LIBELLÉ :
+                                // « Collaboration avec de jeunes citoyens » se
+                                // pose déjà sur deux lignes.
       bottom:           0.05,   // Position bas (fraction hauteur)
       height:           0.08,   // Hauteur (fraction hauteur)
 
