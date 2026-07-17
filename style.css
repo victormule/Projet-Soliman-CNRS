@@ -2241,7 +2241,8 @@ body.peine-aim #cursor.aim-hot {
    repaint. Un `filter: blur()` par lettre était magnifique mais rédhibitoire :
    des centaines de filtres maintenus pendant toute la phase 1, puis animés en
    parallèle en phase 2 → repaint continu, tout ralentit. L'apparition
-   aléatoire suffit à évoquer le décodage d'archive ; la lenteur fait le reste. */
+   aléatoire suffit à évoquer le décodage d'archive ; la lenteur fait le reste.
+
    DEUX PORTÉES pour .ab-live : sur le CORPS entier (tout tient à l'écran — la
    pluie suit sa frise cumulée d'un paragraphe à l'autre) ou sur UN PARAGRAPHE
    (révélation au défilement : il pleut quand le regard l'atteint). Même
