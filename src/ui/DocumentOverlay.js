@@ -51,6 +51,14 @@ const T = {
 const TEXT_MIN_PX = 11;
 const TEXT_MAX_PX = 30;
 
+/* ⚠️ CE N'EST PAS UN RÉGLAGE. Le voile se règle dans config.js
+   (DOCS.overlay.veil_opacity) — et NULLE PART AILLEURS. Ce garde-fou n'existe
+   que pour un cas : si la clé disparaissait de la config, poser « undefined »
+   dans la variable CSS rendrait le dégradé invalide et le fond deviendrait
+   TRANSPARENT (le document s'afficherait à nu sur la scène). Il ne sert jamais
+   en fonctionnement normal, et _applyVeil le crie en console s'il sert. */
+const VEIL_GUARD = 0.8;
+
 export class DocumentOverlay {
   constructor(config, torch = null) {
     this.config = config;
@@ -203,7 +211,19 @@ export class DocumentOverlay {
    */
   _applyVeil() {
     const ov = this.config.DOCS?.overlay ?? {};
-    this.el.style.setProperty('--doc-ov-veil', String(ov.veil_opacity ?? 0.82));
+    // UNE seule source pour le voile : DOCS.overlay.veil_opacity, dans
+    // config.js. Pas de repli qui double le chiffre — un repli ne se voit pas
+    // et se règle pour rien (le vrai réglage gagne TOUJOURS). Ce fichier a
+    // porté « ?? 0.82 » et le CSS « var(…, 0.82) » pendant que la config disait
+    // 0.80 : trois chiffres, un seul effet. Si la clé manque, on le DIT.
+    const veil = ov.veil_opacity;
+    if (typeof veil !== 'number') {
+      console.warn('[config] DOCS.overlay.veil_opacity manquant ou non numérique',
+                   `(reçu : ${veil}) — le voile se règle dans config.js.`);
+    }
+    this.el.style.setProperty(
+      '--doc-ov-veil',
+      String(typeof veil === 'number' ? veil : VEIL_GUARD));
     document.body.classList.toggle('doc-ov-open', ov.veil_hides_torch !== false);
   }
 

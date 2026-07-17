@@ -14,6 +14,13 @@
 export const CONFIG = {
 
     // ── TEXTES ─────────────────────────────────────────────────────
+    // Sous-titre (tier 2) affiché sous « Espace collaboratif » dès l'entrée dans
+    // le chapitre, et masqué au retour. Rendu par Chapitre3Scene via
+    // #chapitre-subtitle. Il vivait dans config.js (section CHAPITRE3) : ramené
+    // ici à l'audit de juillet 2026, comme le sous-titre des chapitres 1 et 2.
+    // Chapitre3Scene importe ce fichier STATIQUEMENT — c'est ce qui le rend
+    // lisible avant l'import() du moteur, au moment où le sous-titre paraît.
+    subtitle : 'Le Général Jean-Baptiste Kléber',
     haut : 'Galerie des Batailles · Versailles',
     bas  : 'Jean-Baptiste Kléber · 1753 – 1800',
 

@@ -1,6 +1,12 @@
 import { Scene }             from '../core/Scene.js';
 import { bus }               from '../core/EventBus.js';
 import { ArrowChp3Opening }  from '../ui/ArrowChapitre3.js';
+// La CONFIG du chapitre (données pures, aucun effet de bord) est importée
+// STATIQUEMENT — comme Chapitre2Scene le fait de chp2-config. Le MOTEUR, lui,
+// reste en import() dynamique (pattern factory) : c'est le moteur qui doit
+// attendre le DOM, pas les réglages. Sans cela, le sous-titre — affiché AVANT
+// l'import() pour meubler le chargement — ne pourrait pas être lu ici.
+import { CONFIG as CHP3 }    from '../../Chapitre3/chp3-src/chp3-config.js';
 
 /**
  * Chapitre3Scene — intégration SPA du chapitre 3 (Kléber · Galerie des Batailles)
@@ -186,7 +192,7 @@ export class Chapitre3Scene extends Scene {
   _showSubtitle() {
     const el = document.getElementById('chapitre-subtitle');
     if (!el) return;
-    el.innerHTML = window.CONFIG.CHAPITRE3?.subtitle ?? 'Le Général Jean-Baptiste Kléber';
+    el.innerHTML = CHP3.subtitle ?? 'Le Général Jean-Baptiste Kléber';
     this._applySubtitleFont(el);
     // Temporisation : ne pas chevaucher le fondu d'entrée de scène.
     setTimeout(() => { if (this.isActive) el.classList.add('visible'); }, 400);

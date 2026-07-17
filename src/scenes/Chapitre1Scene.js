@@ -1197,7 +1197,7 @@ export class Chapitre1Scene extends Scene {
   /**
    * Affiche le sous-titre du chapitre.
    * -----------------------------------------------------------------------------
-   * Le contenu texte provient de CONFIG.CHAPITRE1.subtitle
+   * Le contenu texte provient de CHP1.subtitle (import direct)
    * et sa mise en forme s'appuie sur CONFIG.FONTS.subtitle.
    *
    * Le sous-titre peut être rappelé plusieurs fois dans la scène :

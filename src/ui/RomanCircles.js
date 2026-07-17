@@ -83,13 +83,18 @@ export class RomanCircles {
     this.hoverTitleCurrent = null;
     this.hoverTitleLeaveTimer = null;
 
-    const C = this.config.COLLAB;
+    // Les cercles se règlent dans CONFIG.COLLABORATION.circles — la source,
+    // lue directement. On passait par CONFIG.COLLAB, une COPIE de sept valeurs
+    // faite au chargement de config.js, qui les renommait au passage
+    // (circle_size_vh pour size_vh…) : deux noms, deux vérités possibles.
+    // Copie supprimée à l'audit de juillet 2026.
+    const C = this.config.COLLABORATION.circles;
     const vW = Math.max(this.config.MIN_SIZE.width, window.innerWidth);
     const vH = Math.max(this.config.MIN_SIZE.height, window.innerHeight);
-    
-    const sz = Math.max(36, Math.round(vH * C.circle_size_vh / 100));
-    const gap = Math.max(8, Math.round(vH * (C.circle_gap_vh ?? 3) / 100));
-    const topPct = C.circle_top_pct ?? 50;
+
+    const sz = Math.max(36, Math.round(vH * C.size_vh / 100));
+    const gap = Math.max(8, Math.round(vH * C.gap_vh / 100));
+    const topPct = C.top_pct;
     const CIRC = 201;
 
     const fRoman = this.config.FONTS?.roman;
@@ -173,7 +178,7 @@ export class RomanCircles {
           btn.onclick = () => onClickCallbacks[i]();
         }
 
-      }, i * C.circles_stagger);
+      }, i * C.stagger);
     });
   }
 

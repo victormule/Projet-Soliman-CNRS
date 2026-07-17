@@ -111,7 +111,7 @@ export class CollaborationScene extends Scene {
       this.torch.cancelFade();
       this.torch.setRadius(0);
       this.torch.setTarget(C.torch.size);
-      this.torch.uncenterTorch();
+      this.torch.setCentered(false);
 
       // Ambiance sonore :
       // - on atténue le son musée s'il tourne déjà,
@@ -139,7 +139,7 @@ export class CollaborationScene extends Scene {
       // ───────────────────────────────────────────────────────────────────────
       // La torche grandit vers sa taille cible. Cette animation se lance en
       // parallèle du reste de la chronologie et n'a pas besoin d'être await.
-      this.torch.grow(this.torch.torchTargetRadius, C.torch.grow_duration);
+      this.torch.grow(C.torch.grow_duration);
 
       // ───────────────────────────────────────────────────────────────────────
       // 4) Apparition de la flèche de navigation

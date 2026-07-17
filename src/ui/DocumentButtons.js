@@ -255,13 +255,17 @@ export class DocumentButtons {
   /**
    * Cache
    */
+  /* Fondu de disparition — réglé dans config.js (DOCS.hide_duration). La valeur
+     y figurait déjà, mais n'était lue par personne : elle était écrite en dur
+     ici. Les 20 ms de marge évitent de vider le DOM avant la fin du fondu. */
   hide() {
-    this.el.style.transition = 'opacity 600ms ease';
+    const ms = this.config.DOCS.hide_duration;
+    this.el.style.transition = `opacity ${ms}ms ease`;
     this.el.style.opacity = '0';
     this.el.classList.remove('visible');
-    
+
     setTimeout(() => {
       this.el.innerHTML = '';
-    }, 620);
+    }, ms + 20);
   }
 }

@@ -253,14 +253,22 @@ export class ArrowBase {
 
   /* ── hide() ─────────────────────────────────────────── */
 
+  /* Le fondu de disparition se règle dans config.js (ARROW.hide_duration) —
+     UNE valeur pour toutes les flèches du site, y compris celles des chapitres.
+     Il y avait naguère un « hide_duration » dans VITRINE.arrow, PHRENOLOGIE.arrow
+     et COLLABORATION.arrow : trois réglages qui laissaient croire à un fondu par
+     scène, alors que cette méthode est partagée et que la durée était écrite en
+     dur ici. Aucun des trois n'était lu. Le purger différé garde ses 20 ms de
+     marge : le DOM ne se vide qu'une fois le fondu réellement fini. */
   hide() {
-    this.el.style.transition = 'opacity 400ms ease';
+    const ms = this.config.ARROW.hide_duration;
+    this.el.style.transition = `opacity ${ms}ms ease`;
     this.el.style.opacity    = '0';
     this.el.classList.remove('visible');
     setTimeout(() => {
       this.el.innerHTML = '';
       this.el.onclick   = null;
-    }, 420);
+    }, ms + 20);
   }
 
   /* ── resize() ───────────────────────────────────────── */

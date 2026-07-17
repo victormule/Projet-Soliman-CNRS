@@ -87,15 +87,46 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 
 ## Où se règle quoi (sans toucher au code)
 
+**La règle (audit de juillet 2026)** : un réglage de `config.js` est LU, et lu
+d'un seul endroit. **Aucun repli** dans le code ou le CSS ne doit doubler un
+chiffre de la config : un repli ne se voit pas, gagne quand la clé manque et
+perd toujours quand elle est là — on le règle donc pour rien. Le voile des
+documents a vécu avec TROIS valeurs (config `0.80`, JS `?? 0.82`, CSS
+`var(…, 0.82)`) dont une seule agissait. Si une clé manque, le code doit le
+DIRE (`console.warn`), pas faire semblant ; un garde-fou technique inévitable
+se nomme et s'annonce comme tel (cf. `VEIL_GUARD` dans `DocumentOverlay.js`).
+
+Corollaire : un réglage qui n'agit pas n'a rien à faire dans `config.js`.
+L'audit en a retiré une quinzaine — dont trois tailles de torche et une
+atténuation de torche qu'aucun code ne lisait (`TORCH.taille_phren` disait
+`0.22` quand la phrénologie tournait à `0.34`). Garde-fou : `audit-config.js`
+(clés mortes, revenants, alias locaux).
+
+⚠️ **Le piège des alias locaux** : le code lit la config sous des noms courts
+(`const C = this.config.COLLABORATION.circles`). Chercher `COLLABORATION.gap_vh`
+dans le code ne prouve donc RIEN — une clé peut sembler morte tout en tenant une
+scène entière. C'est ainsi que la copie `CONFIG.COLLAB` a failli être supprimée
+avec ses six lecteurs vivants (les cercles romains, donc l'accès aux chapitres).
+Toujours chercher par NOM DE CLÉ, jamais par chemin.
+
 | Quoi | Fichier |
 |---|---|
 | Transversal : polices, flèches, player, volumes, torche, écrans du tronc | `config.js` |
+| Fondu de disparition des flèches (toutes, chapitres compris) | `config.js` → `ARROW.hide_duration` |
 | Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) et se coupent en 2 lignes ; « À Propos » se calibre SEUL, TOUJOURS sur 1 ligne (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
 | Torche de la phrénologie : `PHRENOLOGIE.torch.mode` = `'follow'` (suit le curseur, `size`) ou `'fixed'` (fixe au centre, large, `size_fixed`) | `config.js` |
 | Voile derrière un document ouvert : `DOCS.overlay.veil_opacity` (0 = image nue, 1 = noir) et `veil_hides_torch` (la torche s'efface pour qu'on voie l'image ailleurs que dans son halo) | `config.js` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
-| Chapitre 3 : textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
+| Chapitre 3 : **sous-titre**, textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
+
+Aucun chapitre n'a plus de réglage dans `config.js` (la section `CHAPITRE3`,
+qui ne portait que le sous-titre, l'a rejoint chez lui). Chaque scène de
+chapitre importe la config de son chapitre **statiquement** — des données pures,
+sans effet de bord : c'est ce qui la rend lisible AVANT l'`import()` du moteur,
+au moment où le sous-titre paraît. Seul le MOTEUR est en import dynamique.
+Il n'y a plus de registre `window.CONFIG.CHAPITRE1` : ses seuls lecteurs étaient
+les alias torche supprimés.
 
 ## Où se modifient les TEXTES éditoriaux
 
@@ -166,9 +197,27 @@ Rejouer l'expérience « première visite » :
   à la souris, pointerup précède `click` ; endormir l'œil ferait ignorer le
   clic (bug historique corrigé, commit 99ac01d). Ne pas « simplifier ».
 - config.js reste un **script classique** (pas un module) : il doit exister
-  avant tout le graphe ESM. C'est app.js qui enregistre chp1-config dans
-  `window.CONFIG.CHAPITRE1` pour les systèmes partagés (TorchSystem,
-  MediaPlayer).
+  avant tout le graphe ESM. En revanche il n'enregistre plus aucune config de
+  chapitre dans `window.CONFIG` : chaque scène importe la sienne directement.
+
+## La torche : un seul chemin (audit de juillet 2026)
+
+`setTarget(fraction)` pose la taille, `grow(durationMs)` l'anime, `setCentered()`
+dit « fixe » ou « suit ». **C'est tout.** Ne pas réintroduire de « cible » en
+pixels : seule la fraction survit à un redimensionnement.
+
+Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
+- `updateTarget(page)` devinait la taille depuis un numéro de page et des alias
+  `CONFIG.TORCH.taille_*`. Il écrivait un `torchTargetRadius` que `grow()` **n'a
+  jamais lu** (son paramètre s'appelait `targetIgnored`), depuis un `currentPage`
+  que **personne n'écrivait** — deux de ses trois branches étaient donc
+  inatteignables. Trois réglages pour zéro effet.
+- `centerTorch()`/`uncenterTorch()` rappelaient `updateTarget()` et écrasaient
+  la taille qu'une scène venait de poser. Utiliser `setCentered()`.
+- **La torche ne baisse pas pendant un média**, et ne l'a jamais fait :
+  `MediaPlayer` passait `torcheAvant × PLAYER.torch_dim` à `grow()`, qui l'ignore.
+  Réglage retiré plutôt que réparé — décision assumée. Le rétablir demanderait
+  un vrai paramètre de cible dans `grow()`, et **changerait ce qu'on voit**.
 
 ## Test manuel de non-régression (après toute modification)
 

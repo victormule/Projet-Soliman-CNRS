@@ -15,13 +15,14 @@ export class TorchSystem {
     this.mouseY = 0;
     this.torchX = 0;
     this.torchY = 0;
-    this.torchBaseRadius   = 0;
-    this.torchTargetRadius = 0;
-    this._baseFrac         = 0;  // fraction courante de torchBaseRadius — pour rescaler au resize
-    this._targetFrac       = 0;  // fraction de torchTargetRadius — pour rescaler au resize
-    this.centered    = false;
-    this.growAnimId  = null;
-    this.currentPage = 0;
+    // TOUT est fraction de min(W,H) : le rayon en pixels se recalcule à chaque
+    // frame et à chaque resize. _baseFrac = la torche telle qu'elle est ;
+    // _targetFrac = celle qu'elle rejoint (posée par setTarget, animée par grow).
+    this.torchBaseRadius = 0;
+    this._baseFrac       = 0;
+    this._targetFrac     = 0;
+    this.centered        = false;
+    this.growAnimId      = null;
 
     this._fadeAnimId = null;  // ← Séparé de growAnimId pour éviter collision
 
@@ -70,32 +71,19 @@ export class TorchSystem {
 
   /* ─────────────────────────────── Cible torche ── */
 
-  updateTarget(page) {
-    this.currentPage = page;
-    const minDim = Math.min(this._vW(), this._vH());
-
-    if (page === 3) {
-      const taille = this.centered
-        ? (this.config.CHAPITRE1.torch_phren       ?? 1.5)
-        : (this.config.CHAPITRE1.torch_interactive ?? 2.5);
-      this.torchTargetRadius = minDim * taille;
-    } else if (page === 2) {
-      this.torchTargetRadius = minDim * this.config.COLLAB.torch_taille;
-    } else if (page === 1) {
-      this.torchTargetRadius = minDim * this.config.TORCH.taille_phren;
-    } else {
-      this.torchTargetRadius = minDim * this.config.TORCH.taille_vitrine;
-    }
-  }
-
   /**
-   * Définit torchTargetRadius depuis une fraction de min(W,H).
-   * Usage scènes : torch.setTarget(CONFIG.VITRINE.torch.size)
+   * La taille que la torche doit rejoindre, en fraction de min(W,H).
+   * Usage scènes : torch.setTarget(CONFIG.VITRINE.torch.size), puis grow().
+   *
+   * C'est le SEUL chemin. Il exista jadis un updateTarget(page) qui devinait la
+   * taille depuis un numéro de page et des alias CONFIG.TORCH.taille_* : il
+   * écrivait un `torchTargetRadius` que grow() n'a jamais lu, depuis un
+   * `currentPage` que personne n'écrivait. Trois réglages de config pour zéro
+   * effet. Supprimé (audit de juillet 2026) — ne pas réintroduire de « cible »
+   * en pixels : la fraction est la seule chose qui survive à un resize.
    */
   setTarget(fraction) {
-    const minDim = Math.min(this._vW(), this._vH());
     this._targetFrac = Math.max(0, fraction);
-    this.torchTargetRadius = minDim * this._targetFrac;
   }
 
   /**
@@ -116,28 +104,12 @@ export class TorchSystem {
 
   /**
    * Fige la torche AU CENTRE de l'écran (true), ou la rend au curseur (false).
-   *
    * Ne touche QUE le suivi : la TAILLE reste pilotée par setTarget()/grow().
-   * C'est la différence avec centerTorch()/uncenterTorch() ci-dessous, qui
-   * rappellent updateTarget() et écrasent le rayon cible depuis les alias
-   * legacy de CONFIG.TORCH — une scène qui a fait son setTarget() perdrait
-   * sa taille. Les scènes règlent leur torche par fraction : c'est ici
-   * qu'elles disent seulement « fixe » ou « suit ».
    *
    * @param {boolean} on
    */
   setCentered(on) {
     this.centered = !!on;
-  }
-
-  centerTorch() {
-    this.centered = true;
-    this.updateTarget(this.currentPage);
-  }
-
-  uncenterTorch() {
-    this.centered = false;
-    this.updateTarget(this.currentPage);
   }
 
   /* ─────────────────────────── Méthodes d'animation ── */
@@ -163,12 +135,18 @@ export class TorchSystem {
   }
 
   /**
-   * Animation grow vers la fraction cible (_targetFrac).
-   * Travaille en fractions — proportionnel à min(W,H) à chaque frame.
+   * Allume la torche : anime _baseFrac → _targetFrac (posé par setTarget).
+   * Travaille en fractions — le rayon en pixels suit min(W,H) à chaque frame.
+   *
+   * ⚠️ Cette méthode prenait naguère un premier argument « target » que les
+   * appelants calculaient soigneusement… et qu'elle ignorait (il s'appelait
+   * `targetIgnored` dans sa propre signature). C'est ce qui rendait muet le
+   * réglage d'atténuation de la torche pendant les médias. Supprimé : la cible
+   * se pose par setTarget(), et par là seulement.
+   *
+   * @param {number} durationMs
    */
-  grow(targetIgnored, durationMs) {
-    // targetIgnored : conservé pour compatibilité API (les scènes passent torchTargetRadius)
-    // On anime en réalité de _baseFrac vers _targetFrac
+  grow(durationMs) {
     this.cancelGrow();
     this.cancelFade();
 
@@ -223,10 +201,6 @@ export class TorchSystem {
       };
       this._fadeAnimId = requestAnimationFrame(step);
     });
-  }
-
-  get targetRadius() {
-    return this.torchTargetRadius;
   }
 
   /* ─────────────────────────────────────── Rendu ── */
@@ -348,10 +322,8 @@ export class TorchSystem {
   resize() {
     this.canvas.width  = this._vW();
     this.canvas.height = this._vH();
-    // Les fractions (_baseFrac, _targetFrac) sont source de vérité.
-    // torchBaseRadius et torchTargetRadius sont recalculés depuis les fractions.
-    const minDim = Math.min(this._vW(), this._vH());
-    this.torchBaseRadius   = minDim * this._baseFrac;
-    this.torchTargetRadius = minDim * this._targetFrac;
+    // La fraction est la source de vérité ; le rayon en pixels en découle.
+    // (_targetFrac n'a rien à recalculer : c'est déjà une fraction.)
+    this.torchBaseRadius = Math.min(this._vW(), this._vH()) * this._baseFrac;
   }
-                                                                        }
+}

@@ -1,48 +1,84 @@
 /* ╔══════════════════════════════════════════════════════════════════╗
    ║                                                                  ║
-   ║                     C O N F I G U R A T I O N                    ║ 
+   ║                     C O N F I G U R A T I O N                    ║
+   ║                        (tronc commun)                            ║
    ║                                                                  ║
-   ╚══════════════════════════════════════════════════════════════════╝ */
+   ╚══════════════════════════════════════════════════════════════════╝
+
+   Réglages TRANSVERSAUX : les scènes du tronc commun (vitrine, phrénologie,
+   collaboration), les composants partagés (flèches, player, torche, titre) et
+   les contenus des documents. Chargé en SCRIPT CLASSIQUE (pas un module) : il
+   doit exister avant tout le graphe ESM.
+
+   Ce que ce fichier ne contient PAS — chaque chapitre garde sa propre config,
+   importée directement par sa scène :
+       Chapitre1/chp1-config.js · chp2-src/chp2-config.js · chp3-src/chp3-config.js
+
+   ┌─ LA RÈGLE ─────────────────────────────────────────────────────────────┐
+   │ Un réglage qui est ici est LU, et lu d'un seul endroit. Pas de valeur  │
+   │ de secours dans le code ou le CSS qui doublerait le chiffre : un repli │
+   │ ne se voit pas, gagne quand la clé manque, et perd toujours quand elle │
+   │ est là — on le règle donc pour rien. Si une clé manque, le code doit   │
+   │ le DIRE (console), pas faire semblant.                                 │
+   │                                                                        │
+   │ Corollaire : un réglage qui n'agit pas n'a rien à faire ici. L'audit   │
+   │ de juillet 2026 en a retiré une quinzaine — dont trois « tailles de    │
+   │ torche » et une atténuation de torche qu'aucun code ne lisait, l'une   │
+   │ d'elles divergeant depuis longtemps de la valeur réellement appliquée. │
+   │ Garde-fou : scratchpad/audit-config.js (clés mortes, doublons).        │
+   └────────────────────────────────────────────────────────────────────────┘ */
 
 window.CONFIG = {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   VITRINE
+   VITRINE — le premier écran après l'accueil
    ──────────────────────────────────────────────────────────────────
-   CHRONOLOGIE (depuis enter()) :
-
+   CHRONOLOGIE (ms depuis enter()) :
+        0 → le fond se révèle                        (timing.bg_fade_in)
+     1200 → pause sur le fond nu                (timing.pause_before_torch)
+     1600 → la torche s'allume — très lentement    (torch.grow_duration)
+     5000 → la flèche se dessine, torche déjà amorcée  (arrow.appear_at)
+    16600 → la torche a fini de s'ouvrir
+   Sortie : la torche s'éteint (torch.fade_out_duration), puis un souffle de
+   noir (timing.exit_black_pause) avant la scène suivante.
    ══════════════════════════════════════════════════════════════════ */
 
   VITRINE: {
 
     torch: {
-      size:              0.65,   // Fraction de min(W,H) — torche large et enveloppante
+      size:              0.65,   // Fraction de min(W,H) — large et enveloppante
       grow_duration:    15000,   // Allumage très lent et progressif (ms)
       fade_out_duration: 1500,   // Extinction en sortie (ms)
     },
 
     arrow: {
-      // Délai ABSOLU depuis le début de enter()
-      // La torche est déjà bien amorcée avant que la flèche apparaisse
+      // Délai ABSOLU depuis le début de enter().
       appear_at:        5000,   // ms
       draw_duration:    2100,   // Durée animation SVG cercle + flèche (ms)
-      hide_duration:     400,   // Fondu disparition (ms)
+      // (le fondu de DISPARITION est commun à toutes les flèches du site :
+      //  voir ARROW.hide_duration, plus bas)
     },
 
     timing: {
       bg_fade_in:         1200,  // Révélation fond (ms)
       pause_before_torch:  400,  // Pause après fond avant torche (ms)
-      exit_black_pause:    10,  // Pause noir en fin de exit (ms)
+      exit_black_pause:     10,  // Pause noir en fin de exit (ms)
     },
   },
 
 
 /* ══════════════════════════════════════════════════════════════════
-   PHRENOLOGIE
+   PHRENOLOGIE — la salle : documents, loupe, « À Propos »
    ──────────────────────────────────────────────────────────────────
-   CHRONOLOGIE (depuis enter()) :
-
+   CHRONOLOGIE (ms depuis enter()) :
+        0 → le fond se révèle                        (timing.bg_fade_in)
+     1200 → pause sur le fond nu                (timing.pause_before_torch)
+     1700 → la torche s'allume                     (torch.grow_duration)
+     4700 → la torche a fini de s'ouvrir
+     5500 → la flèche se dessine                      (arrow.appear_at)
+     6000 → les boutons documents se tracent           (docs.appear_at)
+     7000 → la barre de navigation se dessine        (navbar.appear_at)
    ══════════════════════════════════════════════════════════════════ */
 
   PHRENOLOGIE: {
@@ -66,11 +102,10 @@ window.CONFIG = {
     },
 
     arrow: {
-      // Flèche en HAUT, centrée sur X
-      // Apparaît après que la torche soit suffisamment visible
+      // Flèche en HAUT, centrée sur X.
+      // Apparaît après que la torche soit suffisamment visible.
       appear_at:        5500,   // ms depuis enter()
       draw_duration:    2200,   // Durée animation SVG (ms)
-      hide_duration:     400,
 
       // ── POSITION VERTICALE ────────────────────────────────────────────
       // Marge depuis le haut, en fraction de min(largeur, hauteur) du viewport.
@@ -98,7 +133,8 @@ window.CONFIG = {
 
       // Animation
       draw_duration:     850,   // Dessin SVG de chaque bouton (ms)
-      hide_duration:     600,
+      hide_duration:     600,   // Fondu de disparition (ms) — lu par
+                                // DocumentButtons.hide()
 
       // ── Réglage de l'AFFICHAGE des documents (overlay) ─────────────────
       // Ces valeurs pilotent la place occupée par les documents et le texte
@@ -108,8 +144,11 @@ window.CONFIG = {
         // Ouvrir un document ne coupe plus la scène : l'image phrenologie
         // reste PERCEPTIBLE sous un voile sombre, au lieu d'un noir plein.
         //   0 = image nue (illisible)  ·  1 = noir complet (l'ancien état)
-        // 0.80 : on lit sans peine, la salle reste là derrière.
-        veil_opacity: 0.80,
+        // 0.70 : la salle se devine nettement derrière le document.
+        // C'est ICI, et nulle part ailleurs, que le voile se règle : ni le JS
+        // ni le CSS ne portent plus de valeur de secours qui doublerait ce
+        // chiffre (ils en ont porté deux — 0.82 et 0.82 — sans effet aucun).
+        veil_opacity: 0.70,
 
         // La torche s'efface pendant la lecture. Sans cela le « voile » serait
         // torche + voile : la torche noircit déjà tout l'écran sauf son halo,
@@ -198,7 +237,7 @@ window.CONFIG = {
       appear_at:        7000,   // ms depuis enter() — régler ici indépendamment
 
       // Layout
-      width:            0.90,   // Fraction largeur écran (plafond absolu)
+      width:            0.85,   // Fraction largeur écran (plafond absolu)
       cell_width:       0.33,   // Largeur idéale d'UNE cellule (fraction vW).
                                 // La barre vaut min(width·vW, N·cell_width·vW) :
                                 // en passant de 3 à 2 boutons elle se resserre au
@@ -236,10 +275,18 @@ window.CONFIG = {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   COLLABORATION
+   COLLABORATION — les cercles romains, seuil des chapitres
    ──────────────────────────────────────────────────────────────────
-   CHRONOLOGIE (depuis enter()) :
-
+   CHRONOLOGIE (ms depuis enter()) :
+        0 → le fond se révèle                        (timing.bg_fade_in)
+     1200 → pause sur le fond nu                (timing.pause_before_torch)
+     1800 → la torche s'allume                     (torch.grow_duration)
+     4000 → la flèche se dessine (retour phréno)      (arrow.appear_at)
+     4800 → la torche a fini de s'ouvrir
+     5400 → les cercles arrivent, l'un après l'autre  (circles.appear_at
+            puis circles.stagger)
+   AU RETOUR d'un chapitre, les cercles reviennent bien plus vite
+   (circles.appear_at_return) : la salle est déjà connue.
    ══════════════════════════════════════════════════════════════════ */
 
   COLLABORATION: {
@@ -254,7 +301,6 @@ window.CONFIG = {
       // Flèche BAS-GAUCHE, pointe vers la gauche (retour phréno)
       appear_at:        4000,   // ms depuis enter()
       draw_duration:    2100,
-      hide_duration:     400,
     },
 
     circles: {
@@ -289,19 +335,10 @@ window.CONFIG = {
 
 
 
-/* ══════════════════════════════════════════════════════════════════
-   CHAPITRE 3
-   ══════════════════════════════════════════════════════════════════ */
-
-  CHAPITRE3: {
-    // Sous-titre (tier 2) affiché sous « Espace collaboratif » dès l'entrée
-    // dans le chapitre 3, et masqué au retour vers l'Espace collaboratif.
-    // Rendu par Chapitre3Scene via #chapitre-subtitle (apparition/disparition
-    // cinématographiques portées par la classe .visible en CSS).
-    subtitle: 'Le Général Jean-Baptiste Kléber',
-  },
-
-
+/* (La section CHAPITRE3 vivait ici, pour un seul réglage : le sous-titre. Il a
+   rejoint chp3-src/chp3-config.js à l'audit de juillet 2026 — là où vivent déjà
+   ceux des chapitres 1 et 2. Aucun chapitre n'a plus de réglage dans ce
+   fichier : la règle est sans exception.) */
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -436,7 +473,6 @@ window.CONFIG = {
 
     phren_fade_in:   1800,
     phren_fade_out:  2200,
-    phren_intro_delay: 1800,
 
     sanza_vol:       0.55,
     sanza_fade_in:   2000,
@@ -458,17 +494,19 @@ window.CONFIG = {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   TITRE
+   TITRE — la signature, en haut de l'écran
    ══════════════════════════════════════════════════════════════════ */
 
   TITLE: {
-    texte:       ['Abounaddara', '—', 'CNRS', '—', '2026'],
-    couleur:     'rgba(210,175,90,1)',
-    char_delay:   65,
-    start_delay:  800,
+    // Le texte, mot à mot (les tirets sont des mots : ils se posent aussi).
+    texte: ['Abounaddara', '—', 'CNRS', '—', '2026'],
+    // La CADENCE est dans TIMING (title_start, title_char_delay) et la COULEUR
+    // dans FONTS.title.color. Ce bloc portait des doublons (couleur, char_delay,
+    // start_delay) que personne ne lisait : régler la couleur ici n'avait aucun
+    // effet. Retirés à l'audit de juillet 2026.
   },
 
-  TITLE_SWAP_MS: 620,
+  TITLE_SWAP_MS: 620,   // bascule « Abounaddara… » ↔ « Espace collaboratif »
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -501,10 +539,13 @@ window.CONFIG = {
     fade_out_y:          18,
     btn_color:         'rgba(255,255,255,0.82)',
     btn_color_hover:   'rgba(255,220,120,1)',
-    close_size:         0.028,
-    close_delay:        0.5,
+    close_delay:        0.5,   // retard de la croix, après le tracé (s)
 
-    torch_dim:          0.8,
+    // Fondu de la flèche et du bouton plein écran, à l'ouverture d'un média (ms).
+    // ⚠️ La torche, elle, NE BAISSE PAS pendant un média. Il y avait ici un
+    // « torch_dim: 0.8 » : MediaPlayer le passait à grow(), qui ignore cet
+    // argument. Le réglage n'a jamais rien produit — retiré à l'audit de
+    // juillet 2026 plutôt que réparé (décision : la torche reste pleine).
     torch_ms:           800,
   },
 
@@ -529,29 +570,40 @@ window.CONFIG = {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   ARROW — Taille de référence globale
-   ArrowBase, NavigationBar, MediaPlayer, Fullscreen l'utilisent
-   pour calculer leurs dimensions de façon cohérente.
+   FLÈCHES — réglages communs à TOUTES les flèches du site
+   ArrowBase, NavigationBar, MediaPlayer et Fullscreen s'en servent pour
+   s'accorder sur une même taille de référence.
    ══════════════════════════════════════════════════════════════════ */
 
   ARROW: {
     size_vh:   7,    // % de min(vW, vH)
     size_min: 36,    // px
     size_max: 120,   // px
+
+    // Fondu de DISPARITION, en ms — lu par ArrowBase.hide(), donc valable pour
+    // toutes les flèches, chapitres compris. VITRINE.arrow, PHRENOLOGIE.arrow
+    // et COLLABORATION.arrow portaient chacune un « hide_duration » qui laissait
+    // croire à un réglage par scène : la méthode est partagée, la durée était
+    // écrite en dur, et aucun des trois n'était lu. Une seule valeur, vraie.
+    hide_duration: 400,
   },
 
 
 /* ══════════════════════════════════════════════════════════════════
-   TORCH — Paramètres de rendu communs
+   TORCHE — rendu commun
+   La TAILLE se règle par scène (VITRINE.torch.size, PHRENOLOGIE.torch.size,
+   COLLABORATION.torch.size) ; il ne reste ici que ce qui vaut partout.
    ══════════════════════════════════════════════════════════════════ */
 
   TORCH: {
-    lag:            0.068,   // Latence curseur (0.01=lent, 0.2=rapide)
-    // Les tailles de torche sont désormais dans chaque section de scène :
-    // VITRINE.torch.size, PHRENOLOGIE.torch.size, COLLABORATION.torch.size
-    // Ces valeurs legacy sont conservées pour rétrocompatibilité uniquement.
-    taille_vitrine: 0.65,    // = VITRINE.torch.size
-    taille_phren:   0.22,    // = PHRENOLOGIE.torch.size
+    lag: 0.068,   // Latence du suivi curseur (0.01 = lent, 0.2 = rapide)
+
+    // ⚠️ Il y avait ici « taille_vitrine » et « taille_phren », présentés comme
+    // des alias de rétrocompatibilité. Ils n'étaient lus que par un
+    // TorchSystem.updateTarget() dont le résultat était ignoré par grow() —
+    // aucun effet, jamais. taille_phren valait 0.22 quand la phrénologie
+    // tournait à 0.34 : deux chiffres, et c'est le second qui s'affichait.
+    // Supprimés à l'audit de juillet 2026, avec leur lecteur.
   },
 
 
@@ -633,8 +685,18 @@ window.CONFIG = {
 
 
 /* ══════════════════════════════════════════════════════════════════
-   ALIAS — Requis par les composants UI qui lisent encore
-   config.DOCS, config.NAV et config.COLLAB directement.
+   RACCOURCIS — deux noms courts, pas deux vérités
+   ──────────────────────────────────────────────────────────────────
+   DOCS et NAV DÉSIGNENT les objets ci-dessus (même référence, pas une copie) :
+   régler PHRENOLOGIE.docs, c'est régler CONFIG.DOCS. Les composants partagés
+   (DocumentButtons, DocumentOverlay, NavigationBar) servent une scène unique et
+   les lisent sous ce nom court.
+
+   Il y avait ici un troisième raccourci, COLLAB, qui RECOPIAIT sept valeurs des
+   cercles (torch_taille, circles_delay, circle_size_vh…) — une copie, donc une
+   seconde vérité, figée au chargement. Six de ces clés n'étaient lues par
+   personne ; la septième alimentait le chemin torche mort. Supprimé à l'audit
+   de juillet 2026 : CollaborationScene lit CONFIG.COLLABORATION directement.
    ══════════════════════════════════════════════════════════════════ */
 
 window.CONFIG.DOCS = window.CONFIG.PHRENOLOGIE.docs;
@@ -673,14 +735,4 @@ window.CONFIG.LAYOUT = {
   },
 };
 
-window.CONFIG.COLLAB = {
-  torch_taille:    window.CONFIG.COLLABORATION.torch.size,
-  circles_delay:   window.CONFIG.COLLABORATION.circles.appear_at,
-  circles_stagger: window.CONFIG.COLLABORATION.circles.stagger,
-  circle_size_vh:  window.CONFIG.COLLABORATION.circles.size_vh,
-  circle_gap_vh:   window.CONFIG.COLLABORATION.circles.gap_vh,
-  circle_top_pct:  window.CONFIG.COLLABORATION.circles.top_pct,
-  labels:          window.CONFIG.COLLABORATION.circles.labels,
-  hover_titles:    window.CONFIG.COLLABORATION.circles.hover_titles,
-};
 

@@ -6,11 +6,9 @@
    (Chapter1LightSystem), timings, hotspots (zones + médias), citation.
    Même convention que chp2-config.js / chp3-config.js.
 
-   Consommé par :
-   - src/scenes/Chapitre1Scene.js (import direct, alias CHP1) ;
-   - TorchSystem / MediaPlayer (composants PARTAGÉS) via le registre
-     window.CONFIG.CHAPITRE1, renseigné par src/app.js au démarrage —
-     config.js étant un script classique, il ne peut pas importer ce module.
+   Consommé par src/scenes/Chapitre1Scene.js (import direct, alias CHP1) —
+   comme chp2-config.js l'est par Chapitre2Scene. Plus de registre global :
+   les systèmes partagés (TorchSystem, MediaPlayer) n'y lisent plus rien.
    ===================================================================== */
 
 export const CONFIG = {
@@ -60,11 +58,8 @@ export const CONFIG = {
   ],
 };
 
-/* Alias plats requis par TorchSystem.updateTarget() et MediaPlayer, qui
-   lisent CONFIG.CHAPITRE1.torch_phren / torch_interactive / torch_media_dim.
-   ⚠️ Le chapitre ne définit PAS de bloc torch (seulement light) : ces alias
-   valent undefined et les consommateurs retombent sur leurs défauts (?? x) —
-   comportement historique conservé à l'identique. */
-CONFIG.torch_phren       = CONFIG.torch?.size_phren;
-CONFIG.torch_interactive = CONFIG.torch?.size_interactive;
-CONFIG.torch_media_dim   = CONFIG.torch?.size_media_dim;
+/* (Il y avait ici trois alias plats — torch_phren, torch_interactive,
+   torch_media_dim — pour TorchSystem.updateTarget() et MediaPlayer. Ils
+   valaient tous undefined : le chapitre ne définit pas de bloc `torch`. Leurs
+   lecteurs sont supprimés (audit de juillet 2026), et avec eux le seul effet de
+   bord au chargement de ce fichier — qui redevient des données pures.) */

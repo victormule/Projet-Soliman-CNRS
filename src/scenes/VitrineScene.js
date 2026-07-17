@@ -151,7 +151,7 @@ export class VitrineScene extends Scene {
       // ---------------------------------------------------------------------
       // La torche croît progressivement jusqu'à son rayon cible. Le rayon cible
       // a déjà été défini plus haut par setTarget().
-      this.torch.grow(this.torch.torchTargetRadius, C.torch.grow_duration);
+      this.torch.grow(C.torch.grow_duration);
 
       // ---------------------------------------------------------------------
       // 6) Apparition de la flèche à temps ABSOLU

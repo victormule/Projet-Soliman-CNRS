@@ -192,7 +192,7 @@ export class PhrenologieScene extends Scene {
       // ─────────────────────────────────────────────────────────────────────
       // La torche grandit jusqu'à son rayon cible. L'appel n'est pas attendu,
       // afin de laisser la scène continuer sa chorégraphie en parallèle.
-      this.torch.grow(this.torch.torchTargetRadius, C.torch.grow_duration);
+      this.torch.grow(C.torch.grow_duration);
 
       // ─────────────────────────────────────────────────────────────────────
       // 5) Apparition de la flèche de navigation

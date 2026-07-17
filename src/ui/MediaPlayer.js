@@ -22,7 +22,6 @@ export class MediaPlayer {
 
     this._active           = false;
     this._src              = null;
-    this._torchBefore      = 0;
     this._playerHoverTitle = null;
     this._closeSessionId   = 0;
 
@@ -113,12 +112,14 @@ export class MediaPlayer {
       ? { videoWidthFrac: P.video_min_w, targetWidthFrac: P.video_min_w, isExpanded: false }
       : null;
 
-    this._torchBefore = this.torch.targetRadius;
-    const torchDim = (this.torch.currentPage === 3)
-      ? (this.config.CHAPITRE1.torch_media_dim ?? 0.8)
-      : P.torch_dim;
-    this.torch.grow(this._torchBefore * torchDim, P.torch_ms);
-
+    // LA TORCHE NE BAISSE PAS pendant un média — et ne l'a jamais fait.
+    // Il y avait ici un grow(torcheAvant × 0.8) censé l'atténuer : grow()
+    // ignore ce premier argument (il anime _baseFrac → _targetFrac, posé par
+    // setTarget). Le réglage PLAYER.torch_dim n'a donc jamais rien produit, et
+    // CHAPITRE1.torch_media_dim encore moins (il dépendait de currentPage === 3,
+    // jamais vrai : personne n'écrivait currentPage). Retiré plutôt que réparé —
+    // décision assumée : la torche reste pleine, c'est ce que le site montre
+    // depuis toujours. Seule la flèche et le bouton plein écran s'effacent.
     const arrowEl = document.getElementById('nav-arrow');
     const fsBtn   = document.getElementById('fs-btn');
     if (arrowEl) { arrowEl.style.transition = `opacity ${P.torch_ms/1000}s ease`; arrowEl.style.opacity = '0'; }
@@ -560,7 +561,7 @@ export class MediaPlayer {
       this._creditEl = null; this._credit = null;
       this.el.innerHTML = '';
 
-      this.torch.grow(this._torchBefore, P.torch_ms);
+      // (rien à rendre à la torche : elle n'a pas baissé — voir open())
       this.audio.startSanzaLoop();
 
       const arrowEl = document.getElementById('nav-arrow');

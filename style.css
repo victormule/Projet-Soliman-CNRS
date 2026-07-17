@@ -1348,16 +1348,20 @@ body.peine-aim #cursor.aim-hot {
 }
 
 /* LE VOILE — pas un fond, un voile : l'image phrénologie reste perceptible
-   dessous. L'opacité vient de la config (--doc-ov-veil, posée par JS) ; le
-   dégradé radial garde son creux au centre (là où l'on lit) et se ferme aux
-   bords. Le facteur 1.15 sur la valeur extérieure conserve l'écart d'origine
-   entre centre et bords (0.82 → 0.94), quel que soit le réglage. */
+   dessous. Le dégradé radial garde son creux au centre (là où l'on lit) et se
+   ferme aux bords ; le facteur 1.15 conserve l'écart entre centre et bords quel
+   que soit le réglage.
+   ⚠️ AUCUN repli dans var() : l'opacité se règle dans config.js
+   (DOCS.overlay.veil_opacity) et nulle part ailleurs. Un repli ici serait un
+   second chiffre, invisible et sans effet — ce fichier en a porté un (0.82)
+   pendant que la config disait 0.80. _applyVeil() pose toujours la variable
+   avant que ce fond s'affiche, et crie en console si la clé manque. */
 .doc-ov-backdrop {
   position: absolute;
   inset: 0;
   background: radial-gradient(circle at 42% 50%,
-    rgba(8, 8, 8, var(--doc-ov-veil, 0.82)) 0%,
-    rgba(0, 0, 0, calc(var(--doc-ov-veil, 0.82) * 1.15)) 100%);
+    rgba(8, 8, 8, var(--doc-ov-veil)) 0%,
+    rgba(0, 0, 0, calc(var(--doc-ov-veil) * 1.15)) 100%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
