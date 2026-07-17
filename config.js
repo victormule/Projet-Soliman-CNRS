@@ -48,7 +48,19 @@ window.CONFIG = {
   PHRENOLOGIE: {
 
     torch: {
-      size:              0.34,   // Fraction de min(W,H) — torche intime, centrée sur le sujet
+      // ── MODE ── Deux mises en scène, un seul mot à changer :
+      //   'follow' : la torche SUIT le curseur — on fouille le noir à tâtons,
+      //              le visiteur cherche (mise en scène actuelle) ;
+      //   'fixed'  : torche FIXE au centre et large — la salle est éclairée,
+      //              le visiteur lit. (Sur téléphone, où il n'y a pas de
+      //              curseur à suivre, ce mode montre la page d'emblée.)
+      // La taille employée suit le mode : size en 'follow', size_fixed en
+      // 'fixed'. Rien d'autre à toucher pour basculer.
+      mode:            'follow',
+
+      size:              0.34,   // Fraction de min(W,H) en mode 'follow' — intime
+      size_fixed:        0.85,   // Fraction de min(W,H) en mode 'fixed' — presque
+                                 // toute la page (le vignettage tient les bords)
       grow_duration:     3000,
       fade_out_duration: 1400,
     },
@@ -159,7 +171,7 @@ window.CONFIG = {
       // plus long (colonne homogène), lui remplit son propre bouton. Monter
       // cette valeur l'agrandit ; il reste plafonné par son cadre (largeur du
       // bouton et 42 % de sa hauteur), donc l'excès est simplement ignoré.
-      about_size_max: 26,
+      about_size_max: 22,
 
       // Contenu — chaque action est une clé de CONFIG.DOCUMENTS
       labels:  ['Un jugement', 'Un catalogue de musée', 'Un court-métrage', 'Lettre au Président de la république'],

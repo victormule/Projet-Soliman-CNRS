@@ -153,10 +153,19 @@ export class PhrenologieScene extends Scene {
       this.torch.cancelGrow();
       this.torch.cancelFade();
 
+      // MODE DE TORCHE (config : PHRENOLOGIE.torch.mode) — 'fixed' fige la
+      // torche au centre et l'ouvre large ; 'follow' la laisse suivre le
+      // curseur. Le mode choisit aussi la taille : les deux vont ensemble
+      // (une torche fixe et intime n'éclairerait qu'un coin de la page).
+      const torchFixed = C.torch.mode === 'fixed';
+      this.torch.setCentered(torchFixed);
+
       // On repart d'une torche éteinte, puis on fixe sa taille cible avant le
       // démarrage de l'animation de croissance.
       this.torch.setRadius(0);
-      this.torch.setTarget(C.torch.size);
+      this.torch.setTarget(torchFixed
+        ? (C.torch.size_fixed ?? C.torch.size)
+        : C.torch.size);
 
       // ─────────────────────────────────────────────────────────────────────
       // 2) Ambiance sonore musée
@@ -305,6 +314,11 @@ export class PhrenologieScene extends Scene {
 
     // Extinction progressive de la torche puis retrait du fond.
     await this.torch.fadeOut(C.torch.fade_out_duration);
+
+    // La scène défait ce qu'elle a posé : le mode 'fixed' ne doit pas fuir vers
+    // la scène suivante (toutes ne recentrent pas la torche en entrant). On le
+    // rend APRÈS l'extinction : à rayon nul, le retour au curseur ne se voit pas.
+    this.torch.setCentered(false);
     await this.bgMgr.hide('phrenologie', 400);
 
     // Micro-pause dans le noir pour lisser la transition vers la scène suivante.

@@ -6,6 +6,24 @@
 import { applyGoldenHover, applyNeighborPush, clearNeighborPush,
          setLabelLines, unifyFontSizeMultiline } from '../utils/helpers.js';
 
+/**
+ * Pose le libellé « À Propos » sur UNE SEULE LIGNE, toujours.
+ *
+ * Les documents ont le droit de se couper en deux (leurs titres sont longs) ;
+ * « À Propos » non — deux mots empilés dans un bouton large seraient laids, et
+ * il est assez court pour tenir en rétrécissant. On efface donc les <tspan>
+ * éventuels (textContent les remplace) : sans tspan, l'unification mesure la
+ * ligne entière et réduit la police jusqu'à ce qu'elle rentre. Au resize, il
+ * suit ainsi la largeur du bouton, proportionnellement.
+ */
+function setAboutLabel(textEl, label, cx, cy) {
+  if (!textEl) return;
+  textEl.textContent = label;
+  textEl.setAttribute('data-lines', '1');
+  textEl.setAttribute('x', cx);
+  textEl.setAttribute('y', cy);
+}
+
 export class DocumentButtons {
   constructor(config) {
     this.config = config;
@@ -87,7 +105,7 @@ export class DocumentButtons {
         aboutBtn.style.marginBottom =
           Math.max(6, Math.round(vH * (D.about_gap_vh ?? 5) / 100)) + 'px';
         this.el.appendChild(aboutBtn);
-        setLabelLines(aboutBtn.querySelector('.doc-label'), D.about_label, w * 0.82, w / 2, h / 2);
+        setAboutLabel(aboutBtn.querySelector('.doc-label'), D.about_label, w / 2, h / 2);
       }
 
       this.config.DOCS.labels.forEach((label) => {
@@ -118,8 +136,13 @@ export class DocumentButtons {
         label.setAttribute('x', w / 2);
         label.setAttribute('y', h / 2);
         label.setAttribute('font-size', fontSizeStart + 'px');
-        // Recalcule le découpage 1/2 lignes à la nouvelle largeur.
-        setLabelLines(label, domLabels[i] ?? label.textContent, w * 0.82, w / 2, h / 2);
+        // Recalcule le découpage 1/2 lignes à la nouvelle largeur — sauf pour
+        // « À Propos », qui reste sur une ligne et rétrécit (voir plus bas).
+        if (btn.classList.contains('doc-btn--about')) {
+          setAboutLabel(label, domLabels[i] ?? label.textContent, w / 2, h / 2);
+        } else {
+          setLabelLines(label, domLabels[i] ?? label.textContent, w * 0.82, w / 2, h / 2);
+        }
       });
 
       // Réajuste l'espacement sous le bouton « À Propos ».
@@ -143,8 +166,11 @@ export class DocumentButtons {
 
     const aboutText = this.el.querySelector('.doc-btn--about .doc-label');
     if (aboutText) {
-      // Plafond de largeur ET de hauteur : un libellé court pourrait sinon
-      // grossir jusqu'à toucher le cadre du bouton.
+      // Il part de son plafond (config, borné par la hauteur du bouton : un
+      // libellé court grossirait sinon jusqu'à toucher le cadre) et REDESCEND
+      // jusqu'à tenir sur sa ligne. C'est ce qui le rend proportionnel au
+      // resize : sur écran étroit il rétrécit au lieu de déborder ou de se
+      // couper en deux.
       const cap = Math.min(D.about_size_max ?? f?.size_max ?? fontSizeStart,
                            h * 0.42);
       unifyFontSizeMultiline([aboutText], w * 0.82, cap);

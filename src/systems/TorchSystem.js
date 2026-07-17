@@ -114,6 +114,22 @@ export class TorchSystem {
     this.torchBaseRadius = r;
   }
 
+  /**
+   * Fige la torche AU CENTRE de l'écran (true), ou la rend au curseur (false).
+   *
+   * Ne touche QUE le suivi : la TAILLE reste pilotée par setTarget()/grow().
+   * C'est la différence avec centerTorch()/uncenterTorch() ci-dessous, qui
+   * rappellent updateTarget() et écrasent le rayon cible depuis les alias
+   * legacy de CONFIG.TORCH — une scène qui a fait son setTarget() perdrait
+   * sa taille. Les scènes règlent leur torche par fraction : c'est ici
+   * qu'elles disent seulement « fixe » ou « suit ».
+   *
+   * @param {boolean} on
+   */
+  setCentered(on) {
+    this.centered = !!on;
+  }
+
   centerTorch() {
     this.centered = true;
     this.updateTarget(this.currentPage);

@@ -90,7 +90,8 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 | Quoi | Fichier |
 |---|---|
 | Transversal : polices, flèches, player, volumes, torche, écrans du tronc | `config.js` |
-| Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) ; « À Propos » se calibre SEUL (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
+| Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) et se coupent en 2 lignes ; « À Propos » se calibre SEUL, TOUJOURS sur 1 ligne (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
+| Torche de la phrénologie : `PHRENOLOGIE.torch.mode` = `'follow'` (suit le curseur, `size`) ou `'fixed'` (fixe au centre, large, `size_fixed`) | `config.js` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
