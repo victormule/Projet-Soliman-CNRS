@@ -179,6 +179,28 @@ const T = {
   settle:      600,   // marge avant l'éclairage des passages en relief
 };
 
+/* ── LA POSE DU TAMPON (géométrie) ───────────────────────────────────────────
+   Le signe n'est pas écrit, il est apposé : une pièce apposée à la main ne se
+   range pas dans la ligne. Elle est plus grosse que l'écriture, penchée, et
+   posée un peu haut. Ces quatre valeurs disent CE QU'IL DEVIENT ; T.q_* dit
+   QUAND il tombe.
+
+   ⚠️ Pourquoi la pose vit ici, en géométrie SVG (font-size du <text>, x/y du
+   tspan, rotation d'un <g>), et NON dans un transform CSS : la fumée de sortie
+   lit le SVG — les x,y des tspans — pour savoir où sont les glyphes. Un
+   transform CSS lui est INVISIBLE : le signe s'envolerait de son ancienne
+   place, à son ancienne taille, et sauterait au premier souffle. Écrite dans
+   le SVG, la pose est lue par les deux (une seule source de vérité).
+   L'animation de chute (CSS abStamp) reste, elle, sur le <text> : elle joue
+   DANS ce repère déjà posé, et le « transform: none » du repos l'annule sans
+   rien retirer à la pose. */
+const Q = {
+  scale: 1.22,   // plus gros que l'écriture : c'est une pièce, pas une lettre
+  tilt:  -4,     // degrés — la main n'aligne pas un tampon
+  dx:     0.05,  // en cadratins : décalé…
+  dy:    -0.05,  // …et posé un peu au-dessus de la ligne
+};
+
 /* ── LA FUMÉE (ms) — la sortie, voir smokeOut() ──────────────────────────────
    Un souffle traverse la page de GAUCHE À DROITE et emporte le texte LETTRE PAR
    LETTRE. Le MOT reste l'unité du GESTE (toutes ses lettres partagent une même
@@ -562,9 +584,9 @@ export class AboutReveal {
     // n'est pas redessiné : le mot raturé ne peut structurellement pas hanter la
     // fumée — on ne dessine que ce que l'on choisit.
     let svgR = null, scale = 1, hookPx = 0;
-    const hookFont = (kw, eng) => kw
-      ? `${eng ? '' : 'italic '}700 ${hookPx}px ${HOOK_FONT}`
-      : `400 ${hookPx}px ${HOOK_FONT}`;
+    const hookFont = (kw, eng, px = hookPx) => kw
+      ? `${eng ? '' : 'italic '}700 ${px}px ${HOOK_FONT}`
+      : `400 ${px}px ${HOOK_FONT}`;
     if (this.svg) {
       svgR   = this.svg.getBoundingClientRect();
       scale  = svgR.width / SVG_W;
@@ -573,6 +595,11 @@ export class AboutReveal {
         if (t.closest('.ab-draft')) continue;
         const kw  = t.classList.contains('ab-t--kw');
         const eng = t.classList.contains('ab-t--engraved');
+        // LE TAMPON — il est posé plus grand et penché (voir Q). Ses x,y sont
+        // déjà ceux de la pose : seules sa TAILLE et son BIAIS restent à lire,
+        // faute de quoi il se redresserait et rapetisserait au premier souffle.
+        const q   = t.classList.contains('ab-t--q');
+        const px  = q ? hookPx * Q.scale : hookPx;
         let x0 = Infinity, base = 0;
         const letters = [];
         for (const ts of t.querySelectorAll('tspan')) {
@@ -583,12 +610,13 @@ export class AboutReveal {
         }
         if (!letters.length) continue;
         letters.forEach(l => { l.dx = l.ax - x0; });
-        words.push({ font: hookFont(kw, eng),
+        words.push({ font: hookFont(kw, eng, px),
                      color: kw ? 'rgba(224,192,116,1)' : 'rgba(255,255,255,0.96)',
                      x: x0, y: base,
-                     top: base - hookPx * 0.8, bottom: base + hookPx * 0.26,
-                     right: letters[letters.length - 1].ax + hookPx,
-                     hook: true, letters });
+                     top: base - px * 0.8, bottom: base + px * 0.26,
+                     right: letters[letters.length - 1].ax + px,
+                     hook: true, letters,
+                     rot0: q ? Q.tilt * Math.PI / 180 : 0 });
       }
     }
 
@@ -710,6 +738,10 @@ export class AboutReveal {
           dur: base.dur * rnd(0.85, 1.2),
           mx:  base.mx * rnd(0.75, 1.3),
           my:  base.my * rnd(0.7, 1.35),
+          // rot0 : l'inclinaison de REPOS (le tampon est posé de biais ; tout
+          // le reste est droit). Elle vaut dès la première frame, sans quoi le
+          // signe se redresserait à l'instant du départ.
+          rot0: w.rot0 || 0,
           rot: base.rot + rnd(-6, 6) * RAD,
           sk:  base.sk * rnd(0.6, 1.4),
           gr:  base.gr * rnd(0.6, 1.5),
@@ -808,7 +840,8 @@ export class AboutReveal {
         // centre du glyphe — puis le repère du calque (résolution + origine).
         //   R·K·S = [ cos·s ,  (cos·k − sin)·s ]     avec k = tan(cisaillement)
         //           [ sin·s ,  (sin·k + cos)·s ]
-        const co = Math.cos(f.rot * m), si = Math.sin(f.rot * m);
+        const r  = f.rot0 + f.rot * m;
+        const co = Math.cos(r), si = Math.sin(r);
         const k  = Math.tan(f.sk * m);
         const s  = 1 + f.gr * m;
         const tx = f.cx + f.mx * m, ty = f.cy + f.my * m;
@@ -1266,11 +1299,31 @@ export class AboutReveal {
               if (c.stamp) {
                 d += T.q_hold;                     // 1. LE SILENCE
                 qAt = d;                           // 2. LE TAMPON (CSS abStamp)
+                // LA POSE (voir Q) — écrite dans la géométrie, pas en CSS :
+                // la fumée relit ces x,y et cette taille, donc le signe
+                // s'envolera d'où il est POSÉ, pas d'où il aurait été écrit.
+                const qx = cx + Q.dx * size;
+                const qy = baseY + Q.dy * size;
+                const qs = size * Q.scale;
+                ts.setAttribute('x', qx.toFixed(2));
+                ts.setAttribute('y', qy.toFixed(2));
                 const qt = document.createElementNS(NS, 'text');
                 qt.setAttribute('class', 'ab-t ab-t--base ab-t--q');
+                qt.setAttribute('font-size', qs.toFixed(2));
                 qt.style.setProperty('--q-at', `${qAt}ms`);
                 qt.appendChild(ts);
-                svg.appendChild(qt);
+                // Le biais est porté par un <g> : sur le <text>, l'animation
+                // CSS de chute écraserait l'attribut transform (une propriété
+                // CSS bat toujours l'attribut de présentation homonyme), et
+                // « transform: none » au repos le retirerait tout à fait.
+                // Le pivot est le centre du signe — celui-là même autour
+                // duquel la fumée le fera tourner (cf. rot0 dans smokeOut).
+                const qg = document.createElementNS(NS, 'g');
+                qg.setAttribute('transform',
+                  `rotate(${Q.tilt} ${(qx + cw * Q.scale / 2).toFixed(2)} `
+                  + `${(qy - qs * 0.34).toFixed(2)})`);
+                qg.appendChild(qt);
+                svg.appendChild(qg);
                 // « ? » est un mot à lui seul (la composition sépare au blanc) :
                 // le <text> du run reste alors une coquille vide, que la fumée
                 // parcourrait pour rien. On ne la laisse pas dans l'arbre.
