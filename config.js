@@ -154,8 +154,15 @@ window.CONFIG = {
       about_label:  'À Propos',
       about_gap_vh: 5.0,   // espacement sous « À Propos » (% vh), > gap_vh
 
+      // Taille de police du SEUL bouton « À Propos » (px). Il se calibre
+      // INDÉPENDAMMENT des documents : ceux-ci s'unifient sur leur libellé le
+      // plus long (colonne homogène), lui remplit son propre bouton. Monter
+      // cette valeur l'agrandit ; il reste plafonné par son cadre (largeur du
+      // bouton et 42 % de sa hauteur), donc l'excès est simplement ignoré.
+      about_size_max: 26,
+
       // Contenu — chaque action est une clé de CONFIG.DOCUMENTS
-      labels:  ['Un jugement', 'Un catalogue de musée', 'Un court-métrage', 'Une lettre au Président de la république'],
+      labels:  ['Un jugement', 'Un catalogue de musée', 'Un court-métrage', 'Lettre au Président de la république'],
       actions: ['doc-1', 'doc-2', 'doc-3', 'doc-4'],
     },
 
@@ -165,7 +172,7 @@ window.CONFIG = {
 
       // Layout
       width:            0.90,   // Fraction largeur écran (plafond absolu)
-      cell_width:       0.28,   // Largeur idéale d'UNE cellule (fraction vW).
+      cell_width:       0.33,   // Largeur idéale d'UNE cellule (fraction vW).
                                 // La barre vaut min(width·vW, N·cell_width·vW) :
                                 // en passant de 3 à 2 boutons elle se resserre au
                                 // lieu d'étirer démesurément chaque cellule.
@@ -549,8 +556,8 @@ window.CONFIG = {
     doc_btns: {
       family:  'Cinzel, serif',
       size_vw:  0.80,
-      size_min: 8,
-      size_max: 14,
+      size_min: 16,
+      size_max: 28,
       weight:   400,
       spacing: '0.18em',
       style:   'normal',

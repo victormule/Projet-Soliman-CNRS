@@ -29,10 +29,11 @@
  *
  *   3. LA FUMÉE — avant TOUTE sortie (fermeture, ouverture d'un document
  *      par-dessus, navigation flèche/navbar), un souffle traverse la page de
- *      GAUCHE À DROITE et emporte le texte PAR MOTS, hors du cadre de lecture,
- *      sur UN SEUL CANVAS (l'outil de la torche). Les lueurs dorées des noms
- *      survivent à leurs lettres. Voir smokeOut() : l'appelant attend le délai
- *      rendu avant de continuer (noir, document, navigation).
+ *      GAUCHE À DROITE et emporte le texte LETTRE PAR LETTRE, hors du cadre de
+ *      lecture, sur UN SEUL CANVAS (l'outil de la torche) : le mot donne la
+ *      direction, chaque lettre en dévie et le déchire. Les lueurs dorées des
+ *      noms survivent à leurs lettres. Voir smokeOut() : l'appelant attend le
+ *      délai rendu avant de continuer (noir, document, navigation).
  *
  * CONTRAT (règles du site) :
  *   - aucun effet de bord au chargement : tout se crée dans mount(), tout se
@@ -54,9 +55,11 @@
  *     par leur état final statique, la couche GPU du stack est rendue ;
  *   - la fumée de sortie ne part QUE d'un texte posé, et RIEN du DOM ne
  *     s'anime pendant qu'elle passe : le texte réel se cache en UNE frame et
- *     un canvas unique redessine les mots aux positions mesurées — une couche,
- *     zéro style/layout/paint, ~1000 glyphes en cache par frame (voir le bloc
- *     STRATÉGIE de smokeOut, avec l'autopsie des deux versions mortes).
+ *     un canvas unique redessine les lettres aux positions mesurées, en
+ *     recopiant les vignettes d'un ATLAS de glyphes pré-peint — une couche,
+ *     zéro style/layout/paint, zéro changement d'état de contexte, ~1000
+ *     drawImage par frame (voir buildGlyphAtlas et le bloc STRATÉGIE de
+ *     smokeOut, avec l'autopsie des trois mécaniques mortes).
  *
  * Les DURÉES d'animation vivent dans style.css (section « À PROPOS ») ; ici ne
  * vivent que les DÉLAIS par lettre (posés en style inline) et la chronologie :
@@ -159,24 +162,121 @@ const T = {
 };
 
 /* ── LA FUMÉE (ms) — la sortie, voir smokeOut() ──────────────────────────────
-   Un souffle traverse la page de GAUCHE À DROITE et emporte le texte PAR MOTS.
+   Un souffle traverse la page de GAUCHE À DROITE et emporte le texte LETTRE PAR
+   LETTRE. Le MOT reste l'unité du GESTE (toutes ses lettres partagent une même
+   direction générale, il se lit encore un instant en s'envolant) ; la LETTRE est
+   l'unité du DÉTAIL (son instant, sa dérive, sa rotation propres) — le mot se
+   déchire au lieu de glisser d'un bloc.
    Arithmétique du total :
-     front au bord droit = lead + sweep + jitter        ≈ 1120 ms
+     front au bord droit = lead + sweep + jitter + letter ≈ 1210 ms
      fond effacé         = bg_at (1500) + fondu CSS de #doc-overlay (700) = 2200
-     dernier fragment    ≈ 2670 ms — il meurt DANS le fondu du fond
+     dernier fragment    ≈ 2900 ms — il meurt DANS le fondu du fond
    L'INVARIANT : le front doit avoir entièrement traversé AVANT que le noir ne
-   commence (1120 < 1500), sinon le fond mange la droite du texte et il n'y a
+   commence (1210 < 1500), sinon le fond mange la droite du texte et il n'y a
    plus de gauche-à-droite à voir. Toucher à l'un, c'est vérifier l'autre. */
 const OUT = {
   lead:        60,  // le clic est entendu tout de suite
   sweep:      900,  // le front traverse la largeur du texte
-  jitter:     160,  // + jusqu'à, par fragment : le front est déchiqueté, pas réglé
+  jitter:     160,  // + jusqu'à, par MOT : le front est déchiqueté, pas réglé
+  letter:      90,  // + jusqu'à, par LETTRE : le mot s'effiloche au lieu de partir net
   fade:      1050,  // vol minimal d'un fragment
   fade_var:   500,  // + jusqu'à : certains mots s'accrochent
   halo_after: 200,  // la lueur d'un nom survit à ses propres lettres
   halo:      1300,  // puis s'étire et s'éteint
   bg_at:     1500,  // instant où le fond commence à s'effacer
 };
+
+/* ─────────────────────────────────────────────────────────────────────────
+   L'ATLAS DE GLYPHES — ce qui rend la fumée fluide.
+
+   POURQUOI. Le navigateur garde en cache l'image des glyphes déjà rasterisés,
+   mais ce cache NE SERT QUE SOUS TRANSLATION. Dès qu'un fillText s'exécute
+   sous une rotation, un cisaillement et une échelle UNIQUES — c'est le cas de
+   chaque fragment en vol, à chaque frame — le contour vectoriel est
+   re-rasterisé de zéro. Mille glyphes en vol, ce n'étaient donc pas mille
+   recopies bon marché : c'étaient mille rasterisations de courbes par frame.
+   C'était là, et nulle part ailleurs, que la fumée ramait.
+
+   COMMENT. On peint UNE fois chaque couple (fonte+couleur, caractère) dans une
+   planche unique — l'alphabet réellement employé, quelques centaines de
+   vignettes, payées avant le décollage. En vol, chaque fragment n'est plus
+   qu'un drawImage d'un rectangle de cette planche : une recopie d'image sous
+   transformation, ce que le compositeur fait par blocs. La couleur est CUITE
+   dans la vignette (les teintes se comptent sur les doigts d'une main) : plus
+   un seul changement d'état de contexte pendant le vol — ni ctx.font, ni
+   fillStyle, ni tri par fonte.
+
+   C'est ce qui rend la dispersion LETTRE PAR LETTRE gratuite : les lettres
+   étaient déjà dessinées une par une, seules leurs trajectoires étaient
+   groupées par mot. Le coût ne tient pas au nombre de fragments mais à la
+   nature de chaque dessin — et celle-ci vient de changer d'ordre de grandeur.
+
+   @param {Map<string,{font:string,color:string,ch:string}>} entries
+   @param {number} dpr
+   @returns {{img:HTMLCanvasElement, cells:Map<string,Object>}|null}
+     cells : clé → { sx,sy,sw,sh (planche, px physiques),
+                     ox,oy (origine du glyphe dans la vignette, px CSS),
+                     w,h (taille de la vignette, px CSS) }
+   ───────────────────────────────────────────────────────────────────────── */
+function buildGlyphAtlas(entries, dpr) {
+  if (!entries.size) return null;
+  const probe = document.createElement('canvas').getContext('2d');
+  probe.textBaseline = 'alphabetic';
+
+  // Les extents d'ENCRE (actualBoundingBox*), pas l'avance : un italique gras
+  // déborde de sa chasse, et une vignette trop juste rognerait ses jambages.
+  const PAD = 2;                       // marge d'anticrénelage
+  const cells = [];
+  for (const [key, e] of entries) {
+    probe.font = e.font;
+    const m = probe.measureText(e.ch);
+    const num = (v, d) => (Number.isFinite(v) ? v : d);
+    const fbA  = num(m.fontBoundingBoxAscent, 16);
+    const fbD  = num(m.fontBoundingBoxDescent, 4);
+    const inkL = num(m.actualBoundingBoxLeft, 0);
+    const inkR = num(m.actualBoundingBoxRight, m.width);
+    const inkA = num(m.actualBoundingBoxAscent, fbA);
+    const inkD = num(m.actualBoundingBoxDescent, fbD);
+    const w = Math.ceil(inkL + inkR) + PAD * 2;
+    const h = Math.ceil(inkA + inkD) + PAD * 2;
+    if (w <= PAD * 2 || h <= PAD * 2) continue;      // glyphe sans encre
+    cells.push({ key, font: e.font, color: e.color, ch: e.ch,
+                 ox: inkL + PAD, oy: inkA + PAD, w, h });
+  }
+  if (!cells.length) return null;
+
+  // Rangement en étagères : trié par hauteur, on remplit des rangées. Aucun
+  // raffinement nécessaire — quelques centaines de vignettes minuscules.
+  const MAXW = 2048;
+  cells.sort((a, b) => b.h - a.h);
+  let rx = 0, ry = 0, rowH = 0, aw = 1, ah = 1;
+  for (const c of cells) {
+    c.sw = Math.ceil(c.w * dpr);
+    c.sh = Math.ceil(c.h * dpr);
+    if (rx + c.sw > MAXW) { rx = 0; ry += rowH; rowH = 0; }
+    c.sx = rx; c.sy = ry;
+    rx += c.sw;
+    if (c.sh > rowH) rowH = c.sh;
+    if (rx > aw) aw = rx;
+    if (ry + rowH > ah) ah = ry + rowH;
+  }
+
+  const img = document.createElement('canvas');
+  img.width = aw; img.height = ah;
+  const g = img.getContext('2d');
+  g.textBaseline = 'alphabetic';
+  const out = new Map();
+  for (const c of cells) {
+    // dpr sur les axes, position de la vignette en px physiques : le glyphe se
+    // peint dans son repère CSS, à son origine (ox, oy).
+    g.setTransform(dpr, 0, 0, dpr, c.sx, c.sy);
+    g.font = c.font;
+    g.fillStyle = c.color;
+    g.fillText(c.ch, c.ox, c.oy);
+    out.set(c.key, c);
+  }
+  return { img, cells: out };
+}
 
 export class AboutReveal {
   /**
@@ -316,34 +416,44 @@ export class AboutReveal {
 
   /**
    * LA FUMÉE — la sortie. Un souffle traverse la page de GAUCHE À DROITE et
-   * emporte le texte PAR MOTS : chaque mot s'envole sur sa trajectoire propre
-   * (translation + rotation + cisaillement + croissance), hors du cadre de
-   * lecture. Les lueurs dorées des noms survivent à leurs lettres.
+   * emporte le texte LETTRE PAR LETTRE : chaque lettre s'envole sur sa
+   * trajectoire propre (translation + rotation + cisaillement + croissance),
+   * hors du cadre de lecture. Le MOT reste l'unité du GESTE — ses lettres
+   * partagent une direction générale et il se lit encore un instant en se
+   * déchirant. Les lueurs dorées des noms survivent à leurs lettres.
    *
    * NE PART QUE D'UN TEXTE POSÉ (_done) — forcer l'état posé pour pouvoir
    * souffler ferait apparaître le texte entier d'un coup juste avant de
    * l'emporter. Sinon → 0 : l'appelant fait son fondu ordinaire.
    *
-   * STRATÉGIE — UN SEUL CANVAS (l'outil que le site emploie déjà pour la
-   * torche, à chaque frame, sans broncher) :
+   * STRATÉGIE — UN SEUL CANVAS + UN ATLAS DE GLYPHES :
    *   - le texte réel se cache en UNE frame (.ab-out → visibility sur .ab-stack)
    *     et un canvas unique, posé au niveau de l'overlay (hors du host : la
    *     fumée n'est rognée que par l'écran), redessine chaque mot LETTRE PAR
    *     LETTRE aux positions MESURÉES — crénage, justification et interlettrage
    *     sont ceux du vrai texte, à la sous-unité près ;
-   *   - chaque frame : un clearRect + ~1000 fillText de glyphes en cache —
-   *     UNE couche, ZÉRO style/layout/paint DOM, aucun objet d'animation. Les
-   *     deux versions précédentes sont mortes de leur mécanique DOM : opacité
-   *     par lettre sous un transform de conteneur (repaint + re-raster plein
-   *     cadre par frame), puis ~180 couches WAAPI dont les animations de
-   *     filter:blur() retombaient sur le thread principal ;
+   *   - chaque frame : un clearRect + ~1000 drawImage de vignettes d'atlas.
+   *     Une couche, zéro style/layout/paint DOM, aucun objet d'animation, et
+   *     AUCUN changement d'état de contexte — voir buildGlyphAtlas : sous une
+   *     rotation, le cache de glyphes du navigateur ne sert plus et chaque
+   *     fillText re-rasterise son contour. C'était le dernier foyer de lag ;
+   *     le supprimer a rendu la dispersion par LETTRE gratuite ;
    *   - les lueurs des noms sont PRÉ-RENDUES une fois (leur flou n'est jamais
-   *     recalculé en vol) ; aucun flou par mot par frame — la dissolution
+   *     recalculé en vol) ; aucun flou par fragment par frame — la dissolution
    *     (fondu + croissance + cisaillement) suffit à dire la fumée ;
    *   - le fondu final de #doc-overlay (opacity, compositeur) emporte le canvas
    *     avec le fond : les derniers fantômes meurent dans le noir ;
    *   - le calque se retire SEUL (fin de course ou déconnexion) : la boucle ne
    *     dépend pas de l'instance — destroy() peut passer pendant le vol.
+   *
+   * TROIS MÉCANIQUES MORTES — ne pas y revenir :
+   *   1. animations CSS d'opacité par lettre sous un transform de conteneur
+   *      (repaint + re-raster plein cadre à chaque frame) ;
+   *   2. ~180 fragments DOM en Web Animations, dont les filter:blur()
+   *      retombaient sur le thread principal (le flou « déplace des pixels »,
+   *      le compositeur le refuse) ;
+   *   3. fillText par glyphe sous transformation unique — visuellement
+   *      identique à l'atlas, mais mille rasterisations de courbes par frame.
    *
    * FIDÉLITÉ ASSUMÉE À L'ÉCART PRÈS : l'anticrénelage canvas (niveaux de gris)
    * diffère un rien du texte DOM (subpixel), et la lueur de repos des passages
@@ -514,33 +624,71 @@ export class AboutReveal {
                    cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 });
     }
 
-    /* ── TRAJECTOIRES ── le front n'est pas une règle : chaque mot a son
-       instant (abscisse + désordre), sa durée, son geste. Le recouvrement de
-       dizaines de vols fait un front doux ; le désordre le rend vivant. */
+    /* ── L'ATLAS ── on relève l'alphabet réellement employé (fonte+couleur ×
+       caractère), et on le peint UNE fois. Passé ce point, plus une seule
+       rasterisation de contour : le vol n'est que de la recopie d'images. */
+    const keyOf = (font, color, ch) => font + '|' + color + '|' + ch;
+    const needed = new Map();
+    for (const w of words) {
+      for (const L of w.letters) {
+        const k = keyOf(w.font, w.color, L.ch);
+        if (!needed.has(k)) needed.set(k, { font: w.font, color: w.color, ch: L.ch });
+      }
+    }
+    const atlas = buildGlyphAtlas(needed, dpr);
+    if (!atlas) { this._smokeEndsAt = 0; return 0; }   // rien à souffler
+
+    /* ── TRAJECTOIRES ── le front n'est pas une règle : chaque LETTRE a son
+       instant (son abscisse propre + désordre), sa durée, son geste. Le mot
+       donne la DIRECTION GÉNÉRALE — ses lettres en dévient chacune un peu :
+       il se déchire en partant au lieu de glisser d'un bloc. Le recouvrement
+       de centaines de vols fait un front doux ; le désordre le rend vivant. */
     const tOf = (cx) => Math.min(1, Math.max(0, (cx - stackR.left) / sw));
     const rnd = (a, b) => a + Math.random() * (b - a);
     const RAD = Math.PI / 180;
-    const sprites = [];
+    const frags = [];
     for (const w of words) {
       if (w.bottom < hostR.top - 4 || w.top > hostR.bottom + 4) continue;
-      const cy = (w.top + w.bottom) / 2;
-      const a0 = alphaAt(cy);
+      const wcy = (w.top + w.bottom) / 2;
+      const a0  = alphaAt(wcy);
       if (a0 <= 0.01) continue;
-      const cx  = (w.x + w.right) / 2;
       const amp = w.hook ? 1.45 : 1;    // les grands glyphes portent plus loin
-      sprites.push(Object.assign(w, {
-        cx, cy, a0,
-        at:  OUT.lead + tOf(cx) * OUT.sweep + rnd(0, OUT.jitter),
+
+      // Le geste du mot : la trame dont chaque lettre est une variation.
+      const base = {
+        at:  OUT.lead + rnd(0, OUT.jitter),
         dur: (OUT.fade + rnd(0, OUT.fade_var)) * (w.hook ? 1.15 : 1),
         mx:  rnd(30, 115) * amp,
         my: -rnd(22, 77) * amp,
         rot: rnd(-9, 5) * RAD,
         sk: -rnd(5, 18) * RAD,
         gr:  rnd(0.05, 0.27),
-      }));
+      };
+
+      for (const L of w.letters) {
+        const cell = atlas.cells.get(keyOf(w.font, w.color, L.ch));
+        if (!cell) continue;                       // glyphe sans encre (espace…)
+        // Repos : l'origine du glyphe est (x + dx, ligne de base) ; la vignette
+        // s'y accroche par son (ox, oy). On vole autour de SON centre.
+        const dx = (w.x + L.dx) - cell.ox;
+        const dy = w.y - cell.oy;
+        const cx = dx + cell.w / 2;
+        const cy = dy + cell.h / 2;
+        frags.push({
+          cell, cx, cy, a0,
+          hw: cell.w / 2, hh: cell.h / 2,
+          // L'instant vient de l'abscisse de LA LETTRE : le mot pèle de gauche
+          // à droite, à l'intérieur même du balayage de la page.
+          at:  base.at + tOf(cx) * OUT.sweep + rnd(0, OUT.letter),
+          dur: base.dur * rnd(0.85, 1.2),
+          mx:  base.mx * rnd(0.75, 1.3),
+          my:  base.my * rnd(0.7, 1.35),
+          rot: base.rot + rnd(-6, 6) * RAD,
+          sk:  base.sk * rnd(0.6, 1.4),
+          gr:  base.gr * rnd(0.6, 1.5),
+        });
+      }
     }
-    // Une seule bascule de fonte par groupe et par frame (ctx.font est lente).
-    sprites.sort((a, b) => (a.font < b.font ? -1 : a.font > b.font ? 1 : 0));
 
     if (strike) {
       const cx = (strike.x1 + strike.x2) / 2, cy = (strike.y1 + strike.y2) / 2;
@@ -579,15 +727,16 @@ export class AboutReveal {
     cv.style.height = bh + 'px';
     root.appendChild(cv);
     const ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-    ctx.translate(-bx, -by);            // on dessine en coordonnées écran
-    ctx.textBaseline = 'alphabetic';
+    // Le repère du calque : résolution physique, origine au coin du canvas —
+    // on raisonne partout en coordonnées ÉCRAN. Les fragments composent leur
+    // matrice à la main : il faut donc pouvoir y revenir d'un appel.
+    const setBase = () => ctx.setTransform(dpr, 0, 0, dpr, -bx * dpr, -by * dpr);
 
     /* ── LA BOUCLE — close over ses données, jamais sur `this` : destroy()
        peut passer pendant le vol, la fumée finit sa course et se retire seule
        (fin de la dernière trajectoire, ou canvas déconnecté du DOM). */
     const T0 = performance.now();
-    const endAt = sprites.reduce((m, s) => Math.max(m, s.at + s.dur),
+    const endAt = frags.reduce((m, f) => Math.max(m, f.at + f.dur),
                     halos.reduce((m, h) => Math.max(m, h.at + h.dur),
                       strike ? strike.at + strike.dur : 0)) + 80;
     const clamp01 = (v) => v < 0 ? 0 : v > 1 ? 1 : v;
@@ -599,6 +748,7 @@ export class AboutReveal {
     const frame = () => {
       if (!cv.isConnected) return;
       const t = performance.now() - T0;
+      setBase();
       ctx.clearRect(bx, by, bw, bh);
 
       // Les lueurs d'abord (sous les lettres) : drawImage d'un flou déjà payé.
@@ -616,29 +766,37 @@ export class AboutReveal {
         ctx.restore();
       }
 
-      let font = '';
-      for (const s of sprites) {
-        const e = clamp01((t - s.at) / s.dur);
+      // LES LETTRES — le cœur du budget : une recopie d'image par fragment,
+      // et RIEN d'autre. Ni ctx.font, ni fillStyle (cuits dans l'atlas), ni
+      // save/restore : la matrice est composée à la main et posée d'un seul
+      // setTransform. Deux appels de contexte par lettre et par frame.
+      for (const f of frags) {
+        const e = clamp01((t - f.at) / f.dur);
         if (e >= 1) continue;
-        const a = s.a0 * fall(e);
+        const a = f.a0 * fall(e);
         if (a <= 0.004) continue;
-        if (s.font !== font) { ctx.font = font = s.font; }
-        ctx.fillStyle   = s.color;
-        ctx.globalAlpha = a;
-        ctx.save();
         const m = smooth(e);
-        ctx.translate(s.cx + s.mx * m, s.cy + s.my * m);
-        if (m) {
-          ctx.rotate(s.rot * m);
-          ctx.transform(1, 0, Math.tan(s.sk * m), 1, 0, 0);
-          const k = 1 + s.gr * m;
-          ctx.scale(k, k);
-        }
-        const lx = s.x - s.cx, ly = s.y - s.cy;
-        for (const L of s.letters) ctx.fillText(L.ch, lx + L.dx, ly);
-        ctx.restore();
+
+        // Matrice locale = rotation ∘ cisaillement ∘ croissance, autour du
+        // centre du glyphe — puis le repère du calque (résolution + origine).
+        //   R·K·S = [ cos·s ,  (cos·k − sin)·s ]     avec k = tan(cisaillement)
+        //           [ sin·s ,  (sin·k + cos)·s ]
+        const co = Math.cos(f.rot * m), si = Math.sin(f.rot * m);
+        const k  = Math.tan(f.sk * m);
+        const s  = 1 + f.gr * m;
+        const tx = f.cx + f.mx * m, ty = f.cy + f.my * m;
+        const c  = f.cell;
+
+        ctx.globalAlpha = a;
+        ctx.setTransform(
+          dpr * co * s,             dpr * si * s,
+          dpr * (co * k - si) * s,  dpr * (si * k + co) * s,
+          dpr * (tx - bx),          dpr * (ty - by)
+        );
+        ctx.drawImage(atlas.img, c.sx, c.sy, c.sw, c.sh, -f.hw, -f.hh, c.w, c.h);
       }
 
+      setBase();                      // les fragments ont quitté le repère
       if (strike) {
         const e = clamp01((t - strike.at) / strike.dur);
         if (e < 1) {

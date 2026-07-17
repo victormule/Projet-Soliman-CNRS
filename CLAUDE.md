@@ -90,6 +90,7 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 | Quoi | Fichier |
 |---|---|
 | Transversal : polices, flèches, player, volumes, torche, écrans du tronc | `config.js` |
+| Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) ; « À Propos » se calibre SEUL (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
@@ -107,17 +108,22 @@ timers/listeners posés via `this.on`/`this.addTimer`).
   `paragraphs` = corps (`*…*` met un passage en relief). Moteur :
   `src/ui/AboutReveal.js` (cadences : `T` pour l'écriture, `OUT` pour la fumée
   de sortie), styles dans `style.css` (section « À PROPOS »).
-  ⚠️ La fumée de sortie (UN canvas, mots redessinés lettre à lettre aux
-  positions mesurées — jamais d'animation DOM) précède TOUTE sortie de
+  ⚠️ La fumée de sortie (UN canvas, lettres redessinées aux positions mesurées
+  en recopiant les vignettes d'un ATLAS de glyphes pré-peint — jamais
+  d'animation DOM, jamais de `fillText` en vol) précède TOUTE sortie de
   l'« À Propos » posé : fermeture (clic/Escape), ouverture d'un document
   par-dessus (`DocumentOverlay.open` diffère `_openNow`), navigation
   flèche/navbar (`PhrenologieScene._leaveTo` diffère le `navigate`).
   `smokeOut()` est rejouable (rappelé, il rend le temps restant) et ne part
   que d'un texte POSÉ — texte en cours d'écriture et documents gardent le
   fondu ordinaire. Fermeture « À Propos » : ~2,2 s au lieu de 0,7.
-  L'autopsie des deux mécaniques abandonnées (animations CSS par lettre,
-  fragments Web Animations) est dans le bloc STRATÉGIE de `smokeOut` : ne
-  pas y revenir.
+  L'autopsie des TROIS mécaniques abandonnées (animations CSS par lettre,
+  fragments Web Animations, `fillText` par glyphe sous transformation) est
+  dans le bloc STRATÉGIE de `smokeOut` : ne pas y revenir.
+  ⚠️ Le point de perf non évident, expliqué dans `buildGlyphAtlas` : sous une
+  rotation, le cache de glyphes du navigateur ne sert plus — chaque `fillText`
+  re-rasterise son contour. D'où l'atlas (couleur cuite dans la vignette →
+  zéro changement d'état de contexte en vol).
 
 ## Événements window (pont scène ↔ modules)
 

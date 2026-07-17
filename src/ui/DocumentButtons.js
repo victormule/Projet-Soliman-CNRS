@@ -3,103 +3,8 @@
  * Boutons documents phréno avec animation SVG
  */
 
-import { unifyFontSize, applyGoldenHover, applyNeighborPush, clearNeighborPush } from '../utils/helpers.js';
-
-/**
- * Pose le texte d'un label dans un <text> SVG, sur UNE ou DEUX lignes selon la
- * place. Si le libellé tient dans maxW à la taille courante, une seule ligne ;
- * sinon on le coupe en deux lignes équilibrées (au blanc le plus central) via
- * des <tspan>, verticalement centrées autour de cy.
- *
- * @param {SVGTextElement} textEl
- * @param {string} label
- * @param {number} maxW  largeur cible (px)
- * @param {number} cx    centre horizontal (x)
- * @param {number} cy    centre vertical (y)
- */
-function setLabelLines(textEl, label, maxW, cx, cy) {
-  if (!textEl) return;
-
-  // Essai sur une ligne.
-  textEl.textContent = label;
-  const oneLine = textEl.getComputedTextLength();
-  if (oneLine <= maxW || !label.includes(' ')) {
-    // Tient (ou insécable) : on laisse tel quel, unifyFontSize fera le reste.
-    textEl.setAttribute('data-lines', '1');
-    return;
-  }
-
-  // Deux lignes : couper au blanc le plus proche du milieu (coupure équilibrée).
-  const words = label.split(' ');
-  let best = 1, bestDiff = Infinity;
-  const total = label.length;
-  let acc = 0;
-  for (let i = 0; i < words.length - 1; i++) {
-    acc += words[i].length + 1;
-    const diff = Math.abs(acc - total / 2);
-    if (diff < bestDiff) { bestDiff = diff; best = i + 1; }
-  }
-  const line1 = words.slice(0, best).join(' ');
-  const line2 = words.slice(best).join(' ');
-
-  const fs = parseFloat(textEl.getAttribute('font-size')) || 12;
-  const lh = fs * 1.18;                       // interligne
-  textEl.textContent = '';
-  textEl.setAttribute('data-lines', '2');
-
-  const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-  t1.setAttribute('x', cx);
-  t1.setAttribute('y', cy - lh / 2);
-  t1.textContent = line1;
-
-  const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-  t2.setAttribute('x', cx);
-  t2.setAttribute('y', cy + lh / 2);
-  t2.textContent = line2;
-
-  textEl.appendChild(t1);
-  textEl.appendChild(t2);
-}
-
-/**
- * Comme unifyFontSize, mais gère les labels sur deux lignes (<tspan>). Mesure
- * la ligne la plus large de chaque label, réduit la police jusqu'à ce que toutes
- * tiennent dans maxWidth, applique la taille commune, puis repositionne les
- * tspans (l'interligne dépend de la taille finale).
- */
-function unifyFontSizeMultiline(textElements, maxWidth, startSize) {
-  const widthOf = (txt) => {
-    const spans = txt.querySelectorAll('tspan');
-    if (!spans.length) return txt.getComputedTextLength();
-    let m = 0;
-    spans.forEach(s => { m = Math.max(m, s.getComputedTextLength()); });
-    return m;
-  };
-
-  let unified = startSize;
-  textElements.forEach(txt => {
-    let fs = startSize;
-    txt.setAttribute('font-size', fs + 'px');
-    while (widthOf(txt) > maxWidth && fs > 6) {
-      fs -= 0.5;
-      txt.setAttribute('font-size', fs + 'px');
-    }
-    if (fs < unified) unified = fs;
-  });
-
-  textElements.forEach(txt => {
-    txt.setAttribute('font-size', unified + 'px');
-    // Repositionner les deux lignes autour du centre à la taille finale.
-    const spans = txt.querySelectorAll('tspan');
-    if (spans.length === 2) {
-      const cy = parseFloat(txt.getAttribute('y')) || 0;
-      const lh = unified * 1.18;
-      spans[0].setAttribute('y', cy - lh / 2);
-      spans[1].setAttribute('y', cy + lh / 2);
-    }
-  });
-  return unified;
-}
+import { applyGoldenHover, applyNeighborPush, clearNeighborPush,
+         setLabelLines, unifyFontSizeMultiline } from '../utils/helpers.js';
 
 export class DocumentButtons {
   constructor(config) {
@@ -225,9 +130,25 @@ export class DocumentButtons {
       }
     }
 
-    // Uniformiser la police en tenant compte des labels sur deux lignes.
-    const allTexts = Array.from(this.el.querySelectorAll('.doc-label'));
-    unifyFontSizeMultiline(allTexts, maxTextW, fontSizeStart);
+    // ── CALIBRAGE DE LA POLICE — deux groupes INDÉPENDANTS ────────────────
+    // Les quatre documents s'unifient entre eux : le plus long libellé impose
+    // sa taille à tous (colonne homogène, c'est voulu).
+    // « À Propos » ne participe PAS à ce vote. Court, il n'a aucune raison de
+    // subir la contrainte d'un titre de quarante caractères : il se calibre
+    // seul et remplit SON bouton, jusqu'à about_size_max (à défaut : le
+    // size_max de la fonte). Ce qui rend enfin le réglage de config effectif.
+    const docTexts = Array.from(
+      this.el.querySelectorAll('.doc-btn:not(.doc-btn--about) .doc-label'));
+    unifyFontSizeMultiline(docTexts, maxTextW, fontSizeStart);
+
+    const aboutText = this.el.querySelector('.doc-btn--about .doc-label');
+    if (aboutText) {
+      // Plafond de largeur ET de hauteur : un libellé court pourrait sinon
+      // grossir jusqu'à toucher le cadre du bouton.
+      const cap = Math.min(D.about_size_max ?? f?.size_max ?? fontSizeStart,
+                           h * 0.42);
+      unifyFontSizeMultiline([aboutText], w * 0.82, cap);
+    }
   }
 
   /**

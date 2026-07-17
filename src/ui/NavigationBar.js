@@ -3,7 +3,7 @@
  * Barre de navigation bas avec animation SVG et hover
  */
 
-import { unifyFontSize } from '../utils/helpers.js';
+import { setLabelLines, unifyFontSizeMultiline } from '../utils/helpers.js';
 
 export class NavigationBar {
   constructor(config, arrowSizeFn) {
@@ -118,6 +118,7 @@ export class NavigationBar {
       txt.setAttribute('font-size', navFontSize + 'px');
       txt.setAttribute('letter-spacing', fNav?.spacing ?? C.btn_letter_spacing);
       txt.setAttribute('font-weight', fNav?.weight ?? 300);
+      txt.setAttribute('data-cy', cy);   // repère de centrage, immunisé au hover
       txt.textContent = label;
       txt.style.opacity = animate ? '0' : '1';
       txt.style.transition = animate ? `opacity ${C.text_fade}s ease ${d}s` : 'none';
@@ -141,8 +142,19 @@ export class NavigationBar {
     this.el.style.height = H + 'px';
     this.el.appendChild(svg);
 
-    // Uniformiser police
-    unifyFontSize(txts, cellW * 0.82, parseFloat(txts[0].getAttribute('font-size')));
+    // ── LIBELLÉS : deux lignes plutôt qu'un débordement ───────────────────
+    // Le texte doit être DANS le DOM pour être mesuré (getComputedTextLength).
+    // unifyFontSize (une ligne) rétrécissait jusqu'à un plancher de 6 px puis
+    // laissait le libellé DÉBORDER de sa cellule : sur téléphone, « Collaboration
+    // avec de jeunes citoyens » réclame ~170 px là où la cellule en offre ~90.
+    // Comme les boutons documents, on le coupe en deux lignes équilibrées ; la
+    // police ne descend plus qu'au strict nécessaire.
+    const startSize = parseFloat(txts[0].getAttribute('font-size'));
+    C.labels.forEach((label, i) => {
+      const cx = x + (i + 0.5) * cellW;
+      setLabelLines(txts[i], label, cellW * 0.82, cx, y + h / 2);
+    });
+    unifyFontSizeMultiline(txts, cellW * 0.82, startSize, 8);
 
     if (animate) {
       setTimeout(() => {
@@ -158,6 +170,15 @@ export class NavigationBar {
     const EXPAND = cellW * 0.18;
     const DUR_MS = 600;
     let sepCurX = sepDefaultX.slice();
+
+    // Un libellé coupé en deux lignes porte ses abscisses sur ses <tspan> : le
+    // x du <text> parent y est SANS EFFET. Le glissé du hover doit donc bouger
+    // les deux — sans quoi les libellés à deux lignes resteraient plantés
+    // pendant que les séparateurs s'écartent.
+    const setLabelX = (txt, nx) => {
+      txt.setAttribute('x', nx);
+      txt.querySelectorAll('tspan').forEach(s => s.setAttribute('x', nx));
+    };
 
     const animateSeps = (targetX, targetTxtX, hovI) => {
       if (this.animRaf) {
@@ -179,7 +200,7 @@ export class NavigationBar {
         });
         txts.forEach((txt, ti) => {
           const nx = startTX[ti] + (targetTxtX[ti] - startTX[ti]) * e;
-          txt.setAttribute('x', nx);
+          setLabelX(txt, nx);
           txt.setAttribute('fill', ti === hovI ? C.btn_color_hover : C.btn_color);
         });
         if (p < 1) {
