@@ -121,7 +121,17 @@ body.resizing * {
   inset: 0;
   z-index: 1;
   pointer-events: none;
+  /* Le fondu accompagne celui de #doc-overlay (700 ms) : voir .doc-ov-open. */
+  transition: opacity 700ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
+
+/* Document ouvert : la torche s'efface pour laisser paraître l'image sous le
+   voile. La torche noircit tout l'écran sauf son halo — la garder reviendrait
+   à ne montrer l'image QUE dans ce halo. Elle est déjà gelée à cet instant
+   (TorchSystem.pause) : ce fondu ne coûte qu'une opacité de couche, et le
+   dernier cadre peint reste intact dessous pour la réapparition.
+   Posée/retirée par DocumentOverlay selon overlay.veil_hides_torch. */
+body.doc-ov-open #overlay-canvas { opacity: 0; }
 
 /* Lumière autonome Chapitre 1 */
 #chapter1-fixed-light {
@@ -1337,10 +1347,17 @@ body.peine-aim #cursor.aim-hot {
   pointer-events: auto;
 }
 
+/* LE VOILE — pas un fond, un voile : l'image phrénologie reste perceptible
+   dessous. L'opacité vient de la config (--doc-ov-veil, posée par JS) ; le
+   dégradé radial garde son creux au centre (là où l'on lit) et se ferme aux
+   bords. Le facteur 1.15 sur la valeur extérieure conserve l'écart d'origine
+   entre centre et bords (0.82 → 0.94), quel que soit le réglage. */
 .doc-ov-backdrop {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 42% 50%, rgba(8, 8, 8, 0.82) 0%, rgba(0, 0, 0, 0.94) 100%);
+  background: radial-gradient(circle at 42% 50%,
+    rgba(8, 8, 8, var(--doc-ov-veil, 0.82)) 0%,
+    rgba(0, 0, 0, calc(var(--doc-ov-veil, 0.82) * 1.15)) 100%);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2078,6 +2095,46 @@ body.peine-aim #cursor.aim-hot {
   100% { transform: translate3d(0, 0, 0); }
 }
 
+/* ── LE TAMPON (le point d'interrogation final) ─────────────────────────────
+   Toute l'accroche est ÉCRITE ; ce signe-là est APPOSÉ. Il ne se trace pas :
+   il tombe de haut, s'écrase (0.86), rebondit (1.05) et se pose. La courbe
+   dépasse volontairement 1 — un tampon rebondit, une plume jamais.
+   transform-box: fill-box → l'origine est la boîte d'encre du signe lui-même
+   (sans quoi l'échelle partirait du coin du SVG, à des centaines d'unités de
+   là, et le « ? » traverserait la page). Un seul élément animé : on est très
+   loin des tempêtes de couches proscrites ailleurs dans ce fichier. */
+.ab-t--q {
+  transform-box: fill-box;
+  transform-origin: 50% 62%;
+  animation: abStamp 260ms cubic-bezier(0.2, 0.85, 0.3, 1.2) var(--q-at, 0ms) both;
+}
+@keyframes abStamp {
+  0%   { opacity: 0; transform: scale(3.1); }
+  46%  { opacity: 1; transform: scale(0.86); }   /* l'écrasement */
+  70%  { transform: scale(1.05); }               /* le rebond */
+  100% { opacity: 1; transform: scale(1); }
+}
+/* Le signe est déjà encré : il n'a ni tracé ni encrage à jouer, c'est le
+   tampon qui le donne d'un coup. */
+.ab-t--q tspan {
+  animation: none;
+  stroke: transparent;
+  stroke-dashoffset: 0;
+  fill: rgba(255, 255, 255, 0.96);
+}
+
+/* L'ONDE du tampon — VERTICALE : une presse s'abat, elle ne balaie pas.
+   (Le coup, lui, est latéral : abShock. Deux gestes, deux ondes.) */
+.ab-hookwrap.is-q-shock { animation: abStampShock 300ms cubic-bezier(0.3, 0, 0.2, 1); }
+@keyframes abStampShock {
+  0%   { transform: translate3d(0, 0, 0); }
+  10%  { transform: translate3d(0, 5px, 0); }
+  28%  { transform: translate3d(-2px, -3px, 0); }
+  46%  { transform: translate3d(1px, 2px, 0); }
+  66%  { transform: translate3d(0, -1px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
 @keyframes abDraw     { to { stroke-dashoffset: 0; } }
 @keyframes abFillBase { to { fill: rgba(255, 255, 255, 0.96); stroke: transparent; } }
 @keyframes abFillWhite{ to { fill: #ffffff; stroke: transparent; } }
@@ -2158,7 +2215,8 @@ body.peine-aim #cursor.aim-hot {
    La cadence de chaque temps est déclarée DANS les keyframes (une courbe unique
    sur la totalité raidirait aussi bien l'ouverture que le retrait).
    transform + opacité : compositeur, coût nul. */
-.ab-body.ab-live .ab-beat::before {
+.ab-body.ab-live .ab-beat::before,
+.ab-body .ab-beat.ab-live::before {
   animation: abBeat 1400ms linear var(--beat-at, 0ms) both;
 }
 @keyframes abBeat {
@@ -2184,8 +2242,13 @@ body.peine-aim #cursor.aim-hot {
    des centaines de filtres maintenus pendant toute la phase 1, puis animés en
    parallèle en phase 2 → repaint continu, tout ralentit. L'apparition
    aléatoire suffit à évoquer le décodage d'archive ; la lenteur fait le reste. */
+   DEUX PORTÉES pour .ab-live : sur le CORPS entier (tout tient à l'écran — la
+   pluie suit sa frise cumulée d'un paragraphe à l'autre) ou sur UN PARAGRAPHE
+   (révélation au défilement : il pleut quand le regard l'atteint). Même
+   animation, même cadence : seul le déclencheur change. */
 .ab-body span { opacity: 0; }
-.ab-body.ab-live span { animation: abLetter 640ms ease forwards; }
+.ab-body.ab-live span,
+.ab-body p.ab-live span { animation: abLetter 640ms ease forwards; }
 @keyframes abLetter { from { opacity: 0; } to { opacity: 1; } }
 
 /* Passages en relief (*…* dans la config). Graisse posée dès le départ
@@ -2226,9 +2289,33 @@ body.peine-aim #cursor.aim-hot {
 .doc-ov-about.ab-settled .ab-draft { animation: none; opacity: 0; }
 /* Le battement a eu lieu : il ne reste rien. (Sélecteur volontairement plus
    spécifique que .ab-body.ab-live .ab-beat::before, qui pèse autant — sinon la
-   règle gagnante ne dépendrait que de l'ordre du fichier.) */
-.doc-ov-about.ab-settled .ab-body .ab-beat::before { animation: none; opacity: 0; }
-.doc-ov-about.ab-settled .ab-body span { animation: none; opacity: 1; }
+   règle gagnante ne dépendrait que de l'ordre du fichier.)
+   ⚠️ :not(.ab-live) — en révélation au défilement, .ab-settled tombe dès le
+   premier paragraphe posé, alors que les battements suivants n'ont pas encore
+   battu : sans cette réserve, cette règle les éteindrait AVANT leur tour. Un
+   battement porte .ab-live le temps de son geste, et le perd ensuite : la
+   règle le rattrape alors, et n'en laisse rien. */
+.doc-ov-about.ab-settled .ab-body .ab-beat:not(.ab-live)::before {
+  animation: none;
+  opacity: 0;
+}
+/* Le tampon est tombé : plus de transform vivant sur le signe (une couche GPU
+   de moins), et il reste à sa place, à sa taille. */
+.doc-ov-about.ab-settled .ab-t--q {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* Le DÉSARMEMENT du corps est PAR PARAGRAPHE (.ab-pdone), pas global.
+   ⚠️ Il vivait sur .ab-settled — impossible désormais : en révélation au
+   défilement (téléphone), .ab-settled tombe dès le premier paragraphe posé
+   (c'est lui qui ouvre le relief, les survols et la fumée), et il aurait
+   affiché d'un coup TOUT le texte encore à découvrir plus bas.
+   Chaque paragraphe se désarme donc quand SA pluie est finie — en révélation
+   au défilement comme en mode ordinaire (où ils reçoivent tous la classe
+   ensemble). Rien ne reste vivant nulle part, et la borne est la même. */
+.doc-ov-about .ab-body p.ab-pdone span { animation: none; opacity: 1; }
 
 /* ══════════════════════════════════════════════════════════════════
    LA FUMÉE — la sortie (src/ui/AboutReveal.js → smokeOut)
@@ -2287,6 +2374,14 @@ body.peine-aim #cursor.aim-hot {
 .doc-ov-about.ab-skip .ab-hook-glow--strike { animation: none; opacity: 0; }
 /* Sauter, c'est aller au texte corrigé : le raté n'a pas lieu. */
 .doc-ov-about.ab-skip .ab-draft { animation: none; opacity: 0; }
+/* Ni le tampon. ⚠️ La règle du fast-forward ci-dessus ne vise que les tspans :
+   l'animation du signe vit sur son <text> et se serait jouée à son heure, des
+   secondes après un texte déjà posé. Le point est simplement là. */
+.doc-ov-about.ab-skip .ab-t--q {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
 /* Ni les battements : le corps se pose d'un bloc, il n'y a plus rien à ponctuer. */
 .doc-ov-about.ab-skip .ab-body .ab-beat::before { animation: none; opacity: 0; }
 .doc-ov-about.ab-skip .ab-stack { transition-duration: 550ms; }
@@ -2309,6 +2404,12 @@ body.peine-aim #cursor.aim-hot {
      remplissage plein) : sans ceci, « meurtrier » resterait affiché PAR-DESSUS
      « assassin ». L'opacité du groupe tranche. */
   .doc-ov-about .ab-draft { animation: none; opacity: 0; }
+  /* Le point est posé, pas apposé : ni chute, ni rebond, ni onde. */
+  .doc-ov-about .ab-t--q {
+    animation: none !important;
+    opacity: 1;
+    transform: none !important;
+  }
   /* Ni secousse ni éclat : c'est précisément ce que ce réglage demande. La barre
      reste, le coup n'a pas lieu. (Le JS ne les programme pas non plus ; cette
      règle est le filet de sécurité.) */

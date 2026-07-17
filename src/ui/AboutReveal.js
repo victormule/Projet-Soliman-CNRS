@@ -139,6 +139,24 @@ const T = {
   strike_shock: 280,  // secousse de la plaque        (= CSS abShock)
   strike_after: 620,  // résonance avant que la phrase reprenne
 
+  /* ── LE POINT D'INTERROGATION — la question se referme ────────────────────
+     Toute l'accroche s'écrit : une main, à la plume, qui hésite et se corrige.
+     Le point final, lui, n'est PAS écrit — il est APPOSÉ. La question cesse
+     d'être une phrase pour devenir une pièce : c'est le geste du greffier, pas
+     celui de l'auteur.
+     Trois temps, comme le coup :
+       1. LE SILENCE  : la plume s'arrête avant le dernier signe (q_hold) ;
+       2. LE TAMPON   : il tombe de haut et s'écrase (q_stamp) — d'où l'échelle
+          qui part de loin et dépasse en arrivant : un tampon rebondit ;
+       3. L'ONDE      : la plaque encaisse (q_shock), décalée de q_wave.
+     Il ne fait ni éclat ni incandescence : le blanc appartient à la sentence
+     (« condamnation à mort »). Le tampon administre, il ne condamne pas. */
+  q_hold:      680,   // le silence avant le dernier signe
+  q_stamp:     260,   // le tampon claque             (= CSS abStamp)
+  q_wave:       80,   // retard de l'onde : le tampon est en train d'arriver
+  q_shock:     300,   // la plaque encaisse           (= CSS abStampShock)
+  q_after:     460,   // résonance avant la respiration
+
   breath:      950,   // respiration après l'accroche, avant la remontée
   body_lag:    550,   // la pluie de lettres démarre PENDANT la remontée
   body_spread: 4200,  // encre totale de la pluie, RÉPARTIE entre paragraphes
@@ -295,6 +313,10 @@ export class AboutReveal {
     this._timers    = [];
     this._raf       = null;
     this._bodySpans = null;
+    this._paras     = null;   // [{ p, spans, beat, span, shown }] — l'unité de
+                              // la RÉVÉLATION AU DÉFILEMENT
+    this._io        = null;   // observateur de cette révélation
+    this._scrollReveal = false;
     this._words     = [];     // [{ spans, em }] — l'unité de la FUMÉE de sortie
     this._smokeEndsAt = 0;    // instant de fin de la fumée (0 = pas partie)
     this._bodyEnd   = 0;      // fin de la dernière pluie (depuis .ab-live)
@@ -390,6 +412,11 @@ export class AboutReveal {
   skip() {
     if (this._done || !this.host) return;
     this._skipped = true;
+    // Sauter, c'est demander TOUT le texte, maintenant : la révélation au
+    // défilement n'a plus lieu d'être. On la désarme AVANT de reposer les
+    // délais ci-dessous, sinon un observateur encore vivant redonnerait plus
+    // tard sa cadence locale à un paragraphe déjà posé.
+    this._disarmScrollReveal();
     this._clearTimers();
     this.host.classList.add('ab-skip');        // animations SVG → état final
     this._markKwSet();
@@ -835,11 +862,15 @@ export class AboutReveal {
       this.host.removeEventListener('scroll', this._onScroll);
     }
     this._onScroll = null;
+    // L'observateur retient ses cibles : sans disconnect, les <p> d'une visite
+    // révolue survivraient à la purge du DOM par l'overlay.
+    this._disarmScrollReveal();
     this._hoverFns.forEach(([el, type, fn]) => el.removeEventListener(type, fn));
     this._hoverFns = [];
     this.host = this.stack = this.svg = this.body = null;
     this._hookWrap = this._blurTop = this._blurBot = null;
     this._bodySpans = null;
+    this._paras     = null;
     this._words     = [];
     this._kwTexts   = [];
     this._kwGolds   = [];
@@ -863,8 +894,9 @@ export class AboutReveal {
   _buildBody() {
     const body = document.createElement('div');
     body.className = 'ab-body';
-    const paras = [];                           // un lot de spans par <p>
-    const beats = [];                           // le filet qui SUIT chaque lot
+    const paras  = [];                          // un lot de spans par <p>
+    const pElems = [];                          // le <p> de chaque lot
+    const beats  = [];                          // le filet qui SUIT chaque lot
                                                 // (null pour le dernier)
     const texts = this.data.paragraphs ?? [];
 
@@ -901,6 +933,7 @@ export class AboutReveal {
       body.appendChild(p);
       if (!spans.length) return;    // paragraphe vide : ni lot, ni battement
       paras.push(spans);
+      pElems.push(p);
 
       // Le battement PREND la marge du paragraphe qu'il suit (has-beat) au lieu
       // de s'y ajouter : l'écart entre deux paragraphes ne bouge pas d'un pixel,
@@ -949,6 +982,14 @@ export class AboutReveal {
 
     this._bodySpans = all;
     this._bodyEnd   = Math.round(end);
+    // Les paragraphes, comme unités révélables : la RÉVÉLATION AU DÉFILEMENT
+    // (téléphone) les donne un par un, à mesure que le regard descend. `span`
+    // est la cadence LOCALE d'un paragraphe (indépendante de la frise
+    // cumulée ci-dessus, qui n'a de sens que si tout tient à l'écran).
+    this._paras = paras.map((spans, i) => ({
+      p: pElems[i], spans, beat: beats[i],
+      span: Math.round(Math.max(0, spans.length - 1) * step),
+    }));
     this.stack.appendChild(body);
     this.body = body;
   }
@@ -1065,6 +1106,14 @@ export class AboutReveal {
       return { runs, w: runs.reduce((s, r) => s + r.w, 0) };
     });
 
+    // LE POINT D'INTERROGATION — on marque le tout dernier caractère de
+    // l'accroche s'il ferme une question. Marquer le CARACTÈRE (et non le mot)
+    // rend le geste indépendant de la composition : que le texte finisse par
+    // « 1800 ? » ou par « 1800? », c'est le signe seul qui sera apposé.
+    const lastRun  = words[words.length - 1]?.runs.at(-1);
+    const lastChar = lastRun?.chars.at(-1);
+    if (lastChar?.ch === '?') lastChar.stamp = true;
+
     this._ctx.font = this._font({ gold: false }, size);
     const spaceW = this._ctx.measureText(' ').width;
 
@@ -1106,6 +1155,7 @@ export class AboutReveal {
     let prevDr = 0;            // segment corrigé en cours (0 = aucun)
     let uLastD = 0;            // délai de la dernière lettre du passage frappé
     let strikeAt = 0;          // instant du coup (0 = pas de passage frappé)
+    let qAt = 0;               // instant du tampon (0 = pas de point final)
     let draftRec = null;       // { text, x0, y0, at, scratchAt, eraseAt }
     let maxY = 0;
     const underByLine = new Map();   // li → { x1, x2, y }
@@ -1206,6 +1256,29 @@ export class AboutReveal {
               ts.textContent = c.ch;
               ts.setAttribute('x', cx.toFixed(2));
               ts.setAttribute('y', baseY.toFixed(2));
+
+              // LE TAMPON — le signe reçoit son PROPRE <text> : le transform de
+              // l'apposition s'applique à un élément, or un <tspan> ne se
+              // transforme pas de façon fiable, et un <text> partagé emporterait
+              // le mot entier. Les tspans portant leurs x,y absolus, ce
+              // déplacement dans l'arbre ne déplace RIEN à l'écran. La classe
+              // ab-t--base le laisse blanc (le smoke le lira comme tel).
+              if (c.stamp) {
+                d += T.q_hold;                     // 1. LE SILENCE
+                qAt = d;                           // 2. LE TAMPON (CSS abStamp)
+                const qt = document.createElementNS(NS, 'text');
+                qt.setAttribute('class', 'ab-t ab-t--base ab-t--q');
+                qt.style.setProperty('--q-at', `${qAt}ms`);
+                qt.appendChild(ts);
+                svg.appendChild(qt);
+                // « ? » est un mot à lui seul (la composition sépare au blanc) :
+                // le <text> du run reste alors une coquille vide, que la fumée
+                // parcourrait pour rien. On ne la laisse pas dans l'arbre.
+                if (!parent.childNodes.length) parent.remove();
+                endMax = Math.max(endMax, qAt + T.q_stamp + T.q_after);
+                d += T.q_stamp + T.q_after;        // 3. la résonance
+                return;                            // ni tracé ni encrage : il CLAQUE
+              }
               parent.appendChild(ts);
 
               if (rec) {
@@ -1423,6 +1496,16 @@ export class AboutReveal {
                      at + T.scratch_shock + 40);
     }
 
+    // La secousse du TAMPON — verticale (une presse qui s'abat), sans éclat.
+    // Même règle que les deux autres : la classe est retirée l'animation finie,
+    // pour ne pas garder une couche GPU sur un texte au repos.
+    if (qAt && !this._reduced) {
+      const at = qAt + T.q_wave;
+      this._addTimer(() => wrap.classList.add('is-q-shock'), at);
+      this._addTimer(() => wrap.classList.remove('is-q-shock'),
+                     at + T.q_shock + 40);
+    }
+
     this.stack.insertBefore(wrap, this.body);
     this._hookWrap = wrap;
     this.svg = svg;
@@ -1532,6 +1615,13 @@ export class AboutReveal {
 
   _start() {
     if (this._reduced) { this._finalize(); return; }
+    // LA RÉVÉLATION AU DÉFILEMENT — décidée ici, une fois _fit() passé : c'est
+    // lui qui sait si le texte tient à l'écran (.is-scroll). Quand il ne tient
+    // pas (téléphone à l'horizontale), faire pleuvoir sur une frise cumulée
+    // reviendrait à jouer la moitié du texte hors du champ de vision : le
+    // visiteur descendrait vers un texte déjà posé, la chorégraphie serait
+    // perdue pour lui. Chaque paragraphe attend donc son tour de regard.
+    this._scrollReveal = this.host.classList.contains('is-scroll');
     this._addTimer(() => this._enterPhase2(), this._phase2At);
   }
 
@@ -1546,10 +1636,100 @@ export class AboutReveal {
     // les fondus une fois le mouvement posé.
     this._addTimer(() => this._updateFade(), 1600);
     this._addTimer(() => {
-      this.body?.classList.add('ab-live');
-      this._addTimer(() => this._setDone(),
-                     this._bodyEnd + T.body_char + T.settle);
+      if (this._scrollReveal) {
+        // Le premier paragraphe se donne (il est sous les yeux) ; les suivants
+        // attendent le regard. « Posé » se compte alors sur LUI seul : la
+        // suite n'a pas d'échéance, elle a un déclencheur.
+        this._revealPara(0);
+        this._armScrollReveal();
+        this._addTimer(() => this._setDone(),
+                       (this._paras[0]?.span ?? 0) + T.body_char + T.settle);
+      } else {
+        this.body?.classList.add('ab-live');
+        this._addTimer(() => this._setDone(),
+                       this._bodyEnd + T.body_char + T.settle);
+      }
     }, T.body_lag);
+  }
+
+  /**
+   * RÉVÉLATION AU DÉFILEMENT — arme l'observateur sur les paragraphes 2..n.
+   *
+   * Leurs délais sont RÉÉCRITS en cadence locale : sur la frise cumulée, le
+   * troisième paragraphe démarrait à ~3 s ; révélé au regard, il doit pleuvoir
+   * depuis 0 à l'instant où on l'atteint.
+   *
+   * L'observateur (et non un écouteur de défilement) : le navigateur fait le
+   * calcul de visibilité hors du thread principal et ne nous réveille qu'aux
+   * franchissements — rien à faire à chaque pixel de défilement.
+   */
+  _armScrollReveal() {
+    const host = this.host;
+    if (!host || !this._paras || this._paras.length < 2) return;
+
+    this._paras.forEach((rec, i) => {
+      // Le paragraphe 0 garde les délais de _buildBody : il ouvre la frise, sa
+      // cadence y est DÉJÀ locale (son battement compris). Rien à réécrire.
+      if (i === 0) return;
+      const n = Math.max(1, rec.spans.length);
+      const step = rec.span / n;
+      rec.spans.forEach((s, j) => {
+        s.style.animationDelay = Math.round(j * step) + 'ms';
+      });
+      // rec.beat est le battement qui SUIT ce paragraphe : il part dans la
+      // traîne de sa dernière lettre — compté depuis la révélation, comme tout
+      // le reste ici.
+      if (rec.beat) {
+        rec.beat.style.setProperty('--beat-at', (rec.span + T.beat_lead) + 'ms');
+      }
+    });
+
+    this._io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const i = this._paras.findIndex(r => r.p === e.target);
+        if (i > 0) this._revealPara(i);
+        this._io?.unobserve(e.target);      // un paragraphe ne se révèle qu'une fois
+      }
+    }, {
+      root: host,
+      // Le paragraphe se donne quand il est franchement entré, pas dès que son
+      // premier pixel affleure sous la bande de fondu.
+      rootMargin: '0px 0px -12% 0px',
+      threshold: 0.01,
+    });
+    this._paras.forEach((rec, i) => { if (i > 0) this._io.observe(rec.p); });
+  }
+
+  /** Coupe la révélation au défilement : tout est donné par ailleurs. */
+  _disarmScrollReveal() {
+    this._scrollReveal = false;
+    this._io?.disconnect();
+    this._io = null;
+  }
+
+  /**
+   * Donne un paragraphe : sa pluie part, son battement s'ouvre, et il se
+   * DÉSARME une fois posé (plus aucun objet d'animation vivant dessus).
+   */
+  _revealPara(i) {
+    const rec = this._paras?.[i];
+    if (!rec || rec.shown) return;
+    rec.shown = true;
+    rec.p.classList.add('ab-live');
+    // Posé : il se désarme (plus un objet d'animation vivant sur ses lettres).
+    this._addTimer(() => rec.p.classList.add('ab-pdone'),
+                   rec.span + T.body_char + 60);
+
+    if (rec.beat) {
+      rec.beat.classList.add('ab-live');
+      // Un battement est un ÉVÉNEMENT, pas un ornement : sa classe se retire
+      // une fois le geste passé. La règle de la séquence posée reprend alors
+      // la main (elle réserve les seuls battements .ab-live) et n'en laisse
+      // rien — ni trace à l'écran, ni animation vivante.
+      this._addTimer(() => rec.beat.classList.remove('ab-live'),
+                     rec.span + T.beat_lead + T.beat + 60);
+    }
   }
 
   /**
@@ -1561,6 +1741,14 @@ export class AboutReveal {
   _setDone() {
     this._done = true;
     this.host?.classList.add('ab-done', 'ab-settled');
+    // Le corps se désarme PAR PARAGRAPHE (.ab-pdone). Hors révélation au
+    // défilement, ils sont tous posés à cet instant : ils la reçoivent
+    // ensemble. En révélation au défilement, chacun l'a reçue (ou la recevra)
+    // à la fin de SA pluie — .ab-settled ne doit surtout pas parler pour eux,
+    // il tombe ici alors que la moitié du texte reste à découvrir plus bas.
+    if (!this._scrollReveal) {
+      this._paras?.forEach(rec => rec.p.classList.add('ab-pdone'));
+    }
     if (this.stack) this.stack.style.willChange = 'auto';
     this._updateFade();
   }

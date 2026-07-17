@@ -119,10 +119,11 @@ export class DocumentOverlay {
 
   /** Montage effectif d'un contenu (après l'éventuelle fumée de l'« À Propos »). */
   _openNow(key, data) {
-    // Le fond opaque de l'overlay va recouvrir la scène → on gèle la torche
-    // (rendu par frame inutile tant que c'est masqué). Idempotent si on passe
-    // d'un document à l'autre sans fermer.
+    // Le voile de l'overlay va recouvrir la scène → on gèle la torche (rendu
+    // par frame inutile : elle est soit effacée, soit noyée sous le voile).
+    // Idempotent si on passe d'un document à l'autre sans fermer.
     this.torch?.pause();
+    this._applyVeil();
     this._disconnectObserver();
 
     this.currentKey = key;
@@ -190,6 +191,22 @@ export class DocumentOverlay {
    * close() parce que la fumée l'ajourne — et qu'un second clic doit pouvoir y
    * sauter directement.
    */
+  /**
+   * LE VOILE — l'overlay ne coupe plus la scène : l'image reste perceptible
+   * sous un voile sombre (overlay.veil_opacity), et la torche s'efface pour
+   * qu'on la voie ailleurs que dans son seul halo (overlay.veil_hides_torch).
+   *
+   * Le voile est une variable CSS lue par .doc-ov-backdrop ; l'effacement de
+   * la torche est une classe sur <body> (le canvas de la torche vit hors de
+   * l'overlay — c'est le décor de la scène, pas un élément du document).
+   * Réappliqué à chaque ouverture : la config peut changer entre deux visites.
+   */
+  _applyVeil() {
+    const ov = this.config.DOCS?.overlay ?? {};
+    this.el.style.setProperty('--doc-ov-veil', String(ov.veil_opacity ?? 0.82));
+    document.body.classList.toggle('doc-ov-open', ov.veil_hides_torch !== false);
+  }
+
   _finishClose() {
     this._smoking = false;
     this._clearTimers();
@@ -197,8 +214,10 @@ export class DocumentOverlay {
     this._aboutFx = null;
     // La torche redevient visible pendant le fondu de sortie : on la relance au
     // moment où le fond commence à s'effacer, pour qu'elle reprenne son suivi
-    // pile quand la scène réapparaît.
+    // pile quand la scène réapparaît. Son fondu de retour (700 ms, CSS) est
+    // celui du voile qui s'en va : les deux se croisent sans à-coup.
     this.torch?.resume();
+    document.body.classList.remove('doc-ov-open');
     this.el.classList.remove('visible');
 
     // Purge différée : libère les images et interrompt toute incrustation.
@@ -224,8 +243,10 @@ export class DocumentOverlay {
 
   destroy() {
     // Sécurité : si l'overlay est détruit alors qu'un document est ouvert
-    // (sortie de scène), la torche ne doit pas rester gelée.
+    // (sortie de scène), la torche ne doit rester ni gelée, ni effacée — la
+    // classe vit sur <body>, elle survivrait à l'overlay qui l'a posée.
     this.torch?.resume();
+    document.body.classList.remove('doc-ov-open');
     this._clearTimers();
     this._disconnectObserver();
     this._aboutFx?.destroy();

@@ -92,6 +92,7 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 | Transversal : polices, flèches, player, volumes, torche, écrans du tronc | `config.js` |
 | Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) et se coupent en 2 lignes ; « À Propos » se calibre SEUL, TOUJOURS sur 1 ligne (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
 | Torche de la phrénologie : `PHRENOLOGIE.torch.mode` = `'follow'` (suit le curseur, `size`) ou `'fixed'` (fixe au centre, large, `size_fixed`) | `config.js` |
+| Voile derrière un document ouvert : `DOCS.overlay.veil_opacity` (0 = image nue, 1 = noir) et `veil_hides_torch` (la torche s'efface pour qu'on voie l'image ailleurs que dans son halo) | `config.js` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
@@ -106,7 +107,16 @@ timers/listeners posés via `this.on`/`this.addTimer`).
 - Citation de sortie du chapitre 2 : `Chapitre2Scene.js` (`_outroQuoteText`)
 - Texte « À Propos » (scène phrénologie) : `config.js` (`DOCUMENTS.about`) —
   `hook` = accroche calligraphiée (segments `style:'gold'` / `underline`),
-  `paragraphs` = corps (`*…*` met un passage en relief). Moteur :
+  `paragraphs` = corps (`*…*` met un passage en relief). Le `?` final de
+  l'accroche n'est pas écrit mais APPOSÉ (silence, chute, écrasement, rebond,
+  secousse verticale — voir `T.q_*` et `abStamp`) : le geste part du DERNIER
+  caractère s'il vaut `?`, donc il suit le texte sans réglage.
+  Quand le texte ne tient pas à l'écran (`.is-scroll` — téléphone à
+  l'horizontale), les paragraphes 2..n ne pleuvent plus sur la frise cumulée
+  mais **à mesure qu'on les atteint** (IntersectionObserver, cadence locale).
+  ⚠️ Corollaire : `.ab-settled` tombe alors dès le 1ᵉʳ paragraphe posé — il ne
+  peut donc plus désarmer le corps entier (`.ab-pdone` le fait par paragraphe)
+  ni éteindre les battements à venir (d'où le `:not(.ab-live)`). Moteur :
   `src/ui/AboutReveal.js` (cadences : `T` pour l'écriture, `OUT` pour la fumée
   de sortie), styles dans `style.css` (section « À PROPOS »).
   ⚠️ La fumée de sortie (UN canvas, lettres redessinées aux positions mesurées

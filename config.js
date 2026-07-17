@@ -56,7 +56,7 @@ window.CONFIG = {
       //              curseur à suivre, ce mode montre la page d'emblée.)
       // La taille employée suit le mode : size en 'follow', size_fixed en
       // 'fixed'. Rien d'autre à toucher pour basculer.
-      mode:            'follow',
+      mode:            'fixed',
 
       size:              0.34,   // Fraction de min(W,H) en mode 'follow' — intime
       size_fixed:        0.85,   // Fraction de min(W,H) en mode 'fixed' — presque
@@ -104,6 +104,21 @@ window.CONFIG = {
       // Ces valeurs pilotent la place occupée par les documents et le texte
       // « À Propos » dans l'overlay. Faciles à ajuster sans toucher au CSS.
       overlay: {
+        // ── LE VOILE DE FOND ─────────────────────────────────────────────
+        // Ouvrir un document ne coupe plus la scène : l'image phrenologie
+        // reste PERCEPTIBLE sous un voile sombre, au lieu d'un noir plein.
+        //   0 = image nue (illisible)  ·  1 = noir complet (l'ancien état)
+        // 0.80 : on lit sans peine, la salle reste là derrière.
+        veil_opacity: 0.80,
+
+        // La torche s'efface pendant la lecture. Sans cela le « voile » serait
+        // torche + voile : la torche noircit déjà tout l'écran sauf son halo,
+        // et l'image ne se percevrait que dans ce halo. Elle est de toute façon
+        // GELÉE pendant qu'un document est ouvert (aucun coût des deux côtés).
+        //   false = garder la torche visible sous le voile (l'image n'apparaît
+        //           alors que dans le halo — un autre parti pris, assumable).
+        veil_hides_torch: true,
+
         doc_max_frac_h:  0.95,  // hauteur max d'un document = fraction de la zone
         doc_max_frac_w:  0.95,  // largeur max d'un document = fraction de la zone
         margin_v_vh:     16,    // marge haute ET basse de l'overlay (% vh)
@@ -171,7 +186,7 @@ window.CONFIG = {
       // plus long (colonne homogène), lui remplit son propre bouton. Monter
       // cette valeur l'agrandit ; il reste plafonné par son cadre (largeur du
       // bouton et 42 % de sa hauteur), donc l'excès est simplement ignoré.
-      about_size_max: 22,
+      about_size_max: 18,
 
       // Contenu — chaque action est une clé de CONFIG.DOCUMENTS
       labels:  ['Un jugement', 'Un catalogue de musée', 'Un court-métrage', 'Lettre au Président de la république'],
