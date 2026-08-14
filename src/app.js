@@ -45,32 +45,9 @@ if (appEl) {
   appEl.style.minHeight = C.MIN_SIZE.height + 'px';
 }
 
-/* ── 2. Curseur personnalisé ──────────────────────────────────── */
-const cursorEl = document.getElementById('cursor');
-if (cursorEl) {
-  const moveCursor = e => {
-    cursorEl.style.left = e.clientX + 'px';
-    cursorEl.style.top  = e.clientY + 'px';
-  };
-  // pointermove : suivi continu (souris + doigt en contact).
-  // pointerdown : positionnement immédiat dès que le doigt touche l'écran.
-  document.addEventListener('pointermove', moveCursor, { passive: true });
-  document.addEventListener('pointerdown', moveCursor, { passive: true });
-
-  document.addEventListener('pointerdown', () => cursorEl.classList.add('active'));
-  document.addEventListener('pointerup',   () => cursorEl.classList.remove('active'));
-
-  // Détection des zones cliquables : pointerover couvre souris ET tactile
-  // (au premier contact, le curseur prend l'état « hotspot » sur un bouton).
-  document.addEventListener('pointerover', e => {
-    const isClickable = e.target.closest(
-      '[data-clickable], [data-arrow], .doc-btn, .roman-btn, .nav-btn-zone, #fs-btn'
-    );
-    cursorEl.classList.toggle('hotspot', !!isClickable);
-  }, { passive: true });
-}
-
 /* ── Appareil tactile : détection UNIQUE + classe body.is-touch ──────────────
+   Calculée tôt : le curseur personnalisé (bloc suivant) ET la hauteur stable
+   (100svh, plus bas) en dépendent tous deux.
    La classe permet au CSS de basculer sur une hauteur STABLE (100svh) : sur
    téléphone, la barre du navigateur apparaît/disparaît au toucher et fait
    « respirer » le viewport — tout ce qui est calé dessus (fixed/inset:0,
@@ -78,6 +55,39 @@ if (cursorEl) {
 const IS_TOUCH_DEVICE = window.matchMedia?.('(pointer: coarse)').matches
                      || 'ontouchstart' in window;
 if (IS_TOUCH_DEVICE) document.body.classList.add('is-touch');
+
+/* ── 2. Curseur personnalisé — RÉSERVÉ AU TACTILE ────────────────
+   Hors tactile, le site montre désormais le curseur natif de l'OS, avec son
+   comportement par défaut (cf. style.css, section « CURSEUR — natif partout,
+   sauf sur les appareils tactiles ») : ce bloc, qui positionne #cursor et
+   pilote ses états (.active/.hotspot), n'a donc plus de raison de tourner sur
+   souris/trackpad. Sur tactile, il reste nécessaire : c'est encore lui qui
+   fait suivre le curseur au doigt (ex. viseur de « Peine démesurée »). */
+if (IS_TOUCH_DEVICE) {
+  const cursorEl = document.getElementById('cursor');
+  if (cursorEl) {
+    const moveCursor = e => {
+      cursorEl.style.left = e.clientX + 'px';
+      cursorEl.style.top  = e.clientY + 'px';
+    };
+    // pointermove : suivi continu (souris + doigt en contact).
+    // pointerdown : positionnement immédiat dès que le doigt touche l'écran.
+    document.addEventListener('pointermove', moveCursor, { passive: true });
+    document.addEventListener('pointerdown', moveCursor, { passive: true });
+
+    document.addEventListener('pointerdown', () => cursorEl.classList.add('active'));
+    document.addEventListener('pointerup',   () => cursorEl.classList.remove('active'));
+
+    // Détection des zones cliquables : pointerover couvre souris ET tactile
+    // (au premier contact, le curseur prend l'état « hotspot » sur un bouton).
+    document.addEventListener('pointerover', e => {
+      const isClickable = e.target.closest(
+        '[data-clickable], [data-arrow], .doc-btn, .roman-btn, .nav-btn-zone, #fs-btn'
+      );
+      cursorEl.classList.toggle('hotspot', !!isClickable);
+    }, { passive: true });
+  }
+}
 
 /* ── 3. Systèmes partagés ────────────────────────────────────── */
 const audio      = new AudioManager(C);

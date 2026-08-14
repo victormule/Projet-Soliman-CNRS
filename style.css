@@ -8,7 +8,6 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  cursor: none !important;
 }
 
 html,
@@ -28,7 +27,45 @@ body {
   overflow: hidden;
   touch-action: none;   /* le glissé du doigt pilote curseur + torche sur tout le site */
   background: #000;
-  cursor: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CURSEUR — natif partout, sauf sur les appareils tactiles
+   ──────────────────────────────────────────────────────────────────
+   Le site masquait autrefois le pointeur de l'OS PARTOUT (règle `* {cursor:
+   none !important}` ci-dessus, aujourd'hui retirée) pour dessiner sa propre
+   flèche (#cursor, cf. section « CURSEUR — flèche élégante » plus bas).
+   Hors tactile, on revient au curseur natif de l'ordinateur et à son
+   comportement par défaut : la flèche devient une main sur tout ce qui est
+   cliquable, `cursor: pointer` étant déjà déclaré au fil du fichier — il
+   était simplement étouffé jusqu'ici par le blocage universel.
+
+   Le curseur dessiné ne survit que sur téléphone/tablette (body.is-touch,
+   posée par app.js) : c'est la seule famille d'appareils sans pointeur
+   natif à montrer, et où le curseur custom sert encore à autre chose —
+   suivre le doigt dans « Peine démesurée », par exemple. TOUTES les
+   déclarations `cursor: none` qui subsistent dans ce fichier et dans les
+   feuilles de chapitre sont donc conditionnées à `.is-touch` ; celles qui ne
+   le sont plus sont devenues `cursor: pointer` (comportement par défaut).
+
+   ⚠️ `body.is-touch` ET `body.is-touch *` : le SÉLECTEUR SEUL (`body.is-touch
+   *`) ne matche que les DESCENDANTS de body, jamais body lui-même — l'ancien
+   `* {cursor:none!important}` couvrait tout, body compris (l'universel se
+   matche aussi lui-même). Sans la première branche, un pointeur natif
+   pourrait resurgir sur les rares appareils tactiles + souris hybrides quand
+   le curseur survole un point hors de #app. Même paire déjà utilisée plus
+   bas pour body.peine-aim et, avant ce changement, pour body.chp2/3/4-active. */
+body.is-touch,
+body.is-touch * {
+  cursor: none !important;
+}
+
+/* Le curseur custom lui-même : invisible hors tactile en toute circonstance
+   (pas seulement avant le démarrage, cf. règle suivante) — filet de sécurité
+   au cas où une classe d'état (.active/.hotspot…) lui serait posée par
+   erreur sur un appareil à pointeur natif. */
+body:not(.is-touch) #cursor {
+  display: none !important;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -180,7 +217,7 @@ body.page3 #hotspot-layer {
 
 .hotspot-zone {
   position: absolute;
-  cursor: none;
+  cursor: pointer;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -310,9 +347,12 @@ body.page3 #hotspot-layer {
    focalisation avec un point de visée central — comme une loupe qui se pose
    sur le mot. Sobre, minimaliste, sans croix « technique ».
    Les sélecteurs body.peine-aim #cursor (1,1,1) priment sur #cursor.hotspot
-   (1,1,0) : le rendu encre l'emporte même quand app.js pose .hotspot. */
-body.peine-aim,
-body.peine-aim * {
+   (1,1,0) : le rendu encre l'emporte même quand app.js pose .hotspot.
+   ⚠️ RÉSERVÉ AU TACTILE (.is-touch) : hors tactile, ce viseur cède la place
+   au curseur natif de l'OS (avec `cursor: pointer` sur les mots-clefs,
+   cf. chp2-peine-demesuree.css) — cohérent avec le reste du site. */
+body.peine-aim.is-touch,
+body.peine-aim.is-touch * {
   cursor: none !important;
 }
 
@@ -594,7 +634,7 @@ body.peine-aim #cursor.hotspot::after {
 }
 
 .nav-btn-zone {
-  cursor: none;
+  cursor: pointer;
   /* Réactive la capture sur les seules cellules cliquables : le reste du SVG
      plein écran laisse passer clics et molette (pointer-events est héritée). */
   pointer-events: auto;
@@ -783,7 +823,7 @@ body.peine-aim #cursor.hotspot::after {
 #skip-btn .skip-wrap {
   position: relative;
   /* Dimensions gérées par JS via _getSkipSize() — proportionnelles à l'arrow */
-  cursor: none;
+  cursor: pointer;
   transform-origin: center center;
   will-change: transform;
   transition: transform 0.55s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -1119,19 +1159,14 @@ body.peine-aim #cursor.hotspot::after {
    du document hôte pendant l'expérience chapitre 2.
    ══════════════════════════════════════════════════════════════════ */
 
-#chapitre2-root {
-  /* position:fixed suffit pour l'isolation — pas de contain:layout (casserait les enfants fixed) */
-  cursor: none;
-}
-
-/* Neutraliser le cursor global pendant le chapitre 2 */
-body.chp2-active,
-body.chp2-active * {
-  cursor: none !important;
-}
-
-/* Garantir que #chapitre2-root est toujours au-dessus de
-   tous les layers du projet principal (canvas, veil, etc.) */
+/* position:fixed suffit pour l'isolation — pas de contain:layout (casserait
+   les enfants fixed). z-index:500 le garantit toujours au-dessus de tous les
+   layers du projet principal (canvas, veil, etc.).
+   ⚠️ Il y avait ici, en plus, une neutralisation du curseur propre au chapitre
+   2 (« body.chp2-active, body.chp2-active * {cursor:none!important} ») —
+   devenue inutile : la règle générale `body.is-touch * {cursor:none!important}`
+   (cf. section CURSEUR en tête de fichier) couvre déjà tous les descendants
+   de body, chapitre 2 compris, et ne s'applique plus qu'au tactile. */
 #chapitre2-root {
   z-index: 500;
 }
@@ -1186,13 +1221,6 @@ body.invisibilisation-media #chapitre-part-title {
 
 #chapitre3-root {
   z-index: 500;
-  cursor: none;
-}
-
-/* Neutraliser le cursor global pendant le chapitre 3 */
-body.chp3-active,
-body.chp3-active * {
-  cursor: none !important;
 }
 
 /* Le titre « Espace collaboratif », le sous-titre du chapitre et le bouton
@@ -1226,9 +1254,11 @@ body.chp3-active #skip-btn {
      · Le bouton plein écran (bas-DROITE) tombe sur le PAPIER. Lui, et lui
        seul, doit passer à l'encre sombre : son SVG est tracé en blanc,
        il disparaîtrait — et avec lui le moyen de quitter le plein écran.
-     · Le curseur traverse les deux : on ne touche pas à sa couleur
-       (ivoire, pensée pour les deux fonds) mais on renforce son liseré,
-       seul garant de sa lisibilité sur le papier.
+     · Le curseur custom (#cursor) traverse les deux, mais ne concerne plus
+       QUE le tactile depuis que le reste du site a repris le curseur natif
+       de l'OS (cf. section CURSEUR en tête de fichier) : on ne touche pas à
+       sa couleur (ivoire, pensée pour les deux fonds) mais on renforce son
+       liseré, seul garant de sa lisibilité sur le papier.
 
    Le fond du chapitre lui-même (papier, dessin, bulles, pop-up de la
    carte) vit dans Chapitre4/chp4-style/chp4-opening.css, injecté par la
@@ -1237,13 +1267,6 @@ body.chp3-active #skip-btn {
 
 #chapitre4-root {
   z-index: 500;
-  cursor: none;
-}
-
-/* Neutraliser le cursor global pendant le chapitre 4 */
-body.chp4-active,
-body.chp4-active * {
-  cursor: none !important;
 }
 
 /* Remontée au-dessus de #chapitre4-root (z 500) — même mécanique qu'aux

@@ -39,7 +39,7 @@ export class ArrowBase {
         'z-index:10',
         'opacity:0',
         'pointer-events:auto',
-        'cursor:none',
+        'cursor:pointer',
       ].join(';');
       document.getElementById('app')?.appendChild(el);
     }

@@ -642,5 +642,7 @@
     position:fixed; inset:0; z-index:40;
     background:#000; opacity:0; pointer-events:none;
 }
-/* Contexte chapitre 3 : le vrai curseur est #cursor (géré par app.js). */
-body.chp3-active { cursor:none; }
+/* Contexte chapitre 3, TACTILE seulement : le vrai curseur est #cursor (géré
+   par app.js). Hors tactile, le chapitre 3 montre le curseur natif de l'OS,
+   comme le reste du site (cf. style.css, section CURSEUR). */
+body.chp3-active.is-touch { cursor:none; }

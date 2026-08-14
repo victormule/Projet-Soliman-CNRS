@@ -191,7 +191,7 @@ export class MediaPlayer {
 
     const closeHit = document.createElement('div');
     closeHit.dataset.clickable = '1';
-    closeHit.style.cssText = `position:absolute;z-index:33;border-radius:50%;cursor:none;width:${cSz}px;height:${cSz}px;right:${cMarR}px;top:${cMarT}px;`;
+    closeHit.style.cssText = `position:absolute;z-index:33;border-radius:50%;cursor:pointer;width:${cSz}px;height:${cSz}px;right:${cMarR}px;top:${cMarT}px;`;
     closeHit.addEventListener('click', () => this._cinematicClose());
     closeHit.addEventListener('pointerenter', () => {
       closeGroup.style.transform = 'scale(1.22)';
@@ -295,7 +295,7 @@ export class MediaPlayer {
 
     const btnHit = document.createElement('div');
     btnHit.dataset.clickable = '1';
-    btnHit.style.cssText = `position:absolute;z-index:34;border-radius:50%;cursor:none;width:${bR*3.2}px;height:${bR*3.2}px;left:${bCX-bR*1.6}px;top:${bCY-bR*1.6}px;`;
+    btnHit.style.cssText = `position:absolute;z-index:34;border-radius:50%;cursor:pointer;width:${bR*3.2}px;height:${bR*3.2}px;left:${bCX-bR*1.6}px;top:${bCY-bR*1.6}px;`;
     el.appendChild(btnHit); this._playHit = btnHit;
 
     const setPlaying = (on) => { playIcon.style.opacity = on?'0':'1'; pauseIcon.style.opacity = on?'1':'0'; };
@@ -425,17 +425,17 @@ export class MediaPlayer {
 
     const playHit=document.createElement('div');
     playHit.dataset.clickable='1';
-    playHit.style.cssText=`position:absolute;z-index:34;border-radius:50%;cursor:none;width:${bR*3.2}px;height:${bR*3.2}px;left:${leftCX-bR*1.6}px;top:${bCY-bR*1.6}px;`;
+    playHit.style.cssText=`position:absolute;z-index:34;border-radius:50%;cursor:pointer;width:${bR*3.2}px;height:${bR*3.2}px;left:${leftCX-bR*1.6}px;top:${bCY-bR*1.6}px;`;
     el.appendChild(playHit); this._playHit=playHit;
 
     const sizeHit=document.createElement('div');
     sizeHit.dataset.clickable='1';
-    sizeHit.style.cssText=`position:absolute;z-index:34;border-radius:50%;cursor:none;width:${bR*3.2}px;height:${bR*3.2}px;left:${rightCX-bR*1.6}px;top:${bCY-bR*1.6}px;transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);`;
+    sizeHit.style.cssText=`position:absolute;z-index:34;border-radius:50%;cursor:pointer;width:${bR*3.2}px;height:${bR*3.2}px;left:${rightCX-bR*1.6}px;top:${bCY-bR*1.6}px;transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);`;
     el.appendChild(sizeHit); this._videoScaleBtn=sizeHit;
 
     const seekWrap=document.createElement('div');
     seekWrap.dataset.clickable='1';
-    seekWrap.style.cssText=`position:absolute;z-index:34;cursor:none;left:${seekX1}px;top:${seekY-seekWrapH*2.5}px;width:${seekX2-seekX1}px;height:${seekWrapH*5}px;`;
+    seekWrap.style.cssText=`position:absolute;z-index:34;cursor:pointer;left:${seekX1}px;top:${seekY-seekWrapH*2.5}px;width:${seekX2-seekX1}px;height:${seekWrapH*5}px;`;
     el.appendChild(seekWrap); this._videoSeekWrap=seekWrap;
 
     const setPlaying=(on)=>{ playIcon.style.opacity=on?'0':'1'; pauseIcon.style.opacity=on?'1':'0'; };

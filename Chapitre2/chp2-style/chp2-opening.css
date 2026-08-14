@@ -10,7 +10,6 @@
   inset: 0;
   overflow: hidden;
   background: #000;
-  cursor: none;
   font-family: 'Garamond', 'Georgia', serif;
   /* Isolation : box-model propre sans affecter le reste */
   box-sizing: border-box;
