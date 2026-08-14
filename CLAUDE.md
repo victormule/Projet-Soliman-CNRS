@@ -232,6 +232,46 @@ Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
   Réglage retiré plutôt que réparé — décision assumée. Le rétablir demanderait
   un vrai paramètre de cible dans `grow()`, et **changerait ce qu'on voit**.
 
+## Le curseur : natif partout, dessiné seulement au doigt (août 2026)
+
+Hors appareil tactile, le site montre le curseur de l'OS et son comportement
+par défaut — flèche, main sur le cliquable. Le curseur custom (`#cursor`, une
+flèche SVG masquée + ses variantes `.hotspot`/`.active`/`.peine-aim`) ne
+tourne plus que sur `body.is-touch` (téléphone/tablette), où il sert encore à
+autre chose que décorer : suivre le doigt dans « Peine démesurée », notamment.
+`body.is-touch` est posée UNE fois par `app.js`, tôt (avant le bloc curseur,
+dont il conditionne l'initialisation entière — pointermove/pointerdown/
+pointerover ne s'attachent même pas hors tactile).
+
+**La règle, dans `style.css`** : `body.is-touch, body.is-touch * { cursor:
+none !important; }` masque le pointeur natif — UNIQUEMENT sur tactile — pour
+laisser voir le curseur dessiné. Partout ailleurs, `cursor: pointer` fait le
+travail (déjà présent sur la plupart des boutons — il était simplement étouffé
+par l'ancien blocage universel `* {cursor:none!important}`).
+
+⚠️ **La paire, pas le sélecteur seul.** `body.is-touch *` ne matche QUE les
+descendants de body, jamais body lui-même (l'astérisque n'inclut pas l'élément
+sur lequel porte le combinateur descendant). Écrire seulement `body.is-touch *`
+laisse un trou : sur un appareil hybride tactile + souris, le pointeur natif
+peut resurgir si la souris survole un point de `body` hors de tout descendant.
+`body.is-touch, body.is-touch *` (les deux sélecteurs) couvre les deux — le
+motif est repris de `body.peine-aim` et des anciennes neutralisations par
+chapitre, déjà écrites ainsi avant cet audit.
+
+⚠️ **Un `cursor: none` dans une feuille de chapitre ne meurt pas avec le
+blocage global.** `chp2/3/4-opening.css` sont injectées EN PLUS de style.css,
+APRÈS lui (`<link>` posé au moment d'entrer dans le chapitre) : leurs propres
+déclarations `cursor: none` (sur `#chapitre2-root`, `.chp4-hit`, la pop-up de
+la carte…) auraient survécu à la neutralisation du blocage universel — la
+règle du fichier suffit à quitter un CHAPITRE mais pas ce que CE chapitre
+déclare lui-même. Chacune a dû être corrigée EN PLACE (`cursor: pointer` sur
+le cliquable, propriété simplement retirée sur les conteneurs).
+
+⚠️ **Un style inline bat toute règle externe non `!important`.** Cinq zones
+cliquables (`MediaPlayer.js`, `ArrowBase.js`) posent `cursor:none` dans
+`style.cssText` — aucune règle CSS, aussi bien ciblée soit-elle, ne les
+change sans passer par `!important`. Corrigées directement dans le JS.
+
 ## Le chapitre 4 : quatre pièges, tous documentés dans le code
 
 Le chapitre 4 anime un export Illustrator (`chp4-images/chapitre4.svg`) inliné
@@ -303,7 +343,7 @@ une branche pour remonter par l'autre côté (cf. `propagate()` dans
 
 Parcours sur serveur local, console ouverte (zéro erreur attendue) :
 1. Accueil (Playfair/Inter) → vitrine → phrénologie (documents + loupe).
-2. Collaboration : 3 cercles, survols, titres.
+2. Collaboration : 5 cercles (I-IV ouvrent un chapitre, V à venir), survols, titres.
 3. **Chapitre 1** : intro sonore (+skip), 9 survols du crâne, 2-3 médias,
    sortie (citation typée).
 4. **Chapitre 2** : bougies, les 3 sous-parties (Invisibilisation : vidéo +
@@ -312,13 +352,19 @@ Parcours sur serveur local, console ouverte (zéro erreur attendue) :
 5. **Chapitre 3** : quiz complet → travelling → 1 tableau + théâtre de papier
    (hotspots vidéo) → triptyque → sortie.
 6. **Chapitre 4** : lever de lumière (noir → page blanche, jamais de flash),
-   crâne, fissure, 5 bulles dessinées ; survol (invite ▶ / ↗), écoute d'une
-   bulle (ondes + pourtour de progression), les 3 sorties d'écoute (re-clic,
-   clic dehors, Échap), bascule directe d'une bulle à l'autre, pop-up carte,
-   sortie. Vérifier que le bouton plein écran (bas-droite, sur le papier) est
-   bien SOMBRE et la flèche (bas-gauche, sur la photo) bien BLANCHE.
+   crâne, fissure (tremblante, depuis le cœur), 5 bulles dessinées ; survol
+   (invite ▶ / ↗), écoute d'une bulle (le pourtour du nuage respire et se
+   referme à l'avancement), les 3 sorties d'écoute (re-clic, clic dehors,
+   Échap), bascule directe d'une bulle à l'autre, pop-up carte, sortie
+   (bulles à rebours, fissure qui se referme, lumière qui tombe). Vérifier
+   que le bouton plein écran (bas-droite, sur le papier) est bien SOMBRE et
+   la flèche (bas-gauche, sur la photo) bien BLANCHE.
 7. **Chaque chapitre : entrer/sortir ×2** (le pattern factory doit rejouer
    à l'identique, sans fuite d'état ni son résiduel).
+8. **Curseur, à la souris** : natif partout (flèche de l'OS), main sur tout
+   ce qui est cliquable (boutons documents, cercles romains, flèches,
+   hotspots du chapitre 1, bulles du chapitre 4, pop-up de la carte…), à
+   AUCUN moment le halo doré dessiné ne doit apparaître. Console vide.
 
 ## Notes de déploiement
 
