@@ -185,8 +185,12 @@ export class RomanCircles {
         // promet (cf. COLLABORATION.circles.actions → null).
         const titre = (C.hover_titles && C.hover_titles[i]) || ('Chapitre ' + label);
         const ouvrable = !!(C.actions && C.actions[i]);
+        // Le titre de config annonce déjà « (à venir) » pour le cercle V : ne
+        // pas le redire, sous peine d'un « … (à venir) — à venir » lu à voix
+        // haute par le lecteur d'écran.
+        const dejaAnnonce = /à\s+venir/i.test(titre);
         makeActivatable(btn, {
-          label: ouvrable ? titre : titre + ' — à venir',
+          label: (ouvrable || dejaAnnonce) ? titre : titre + ' — à venir',
           disabled: !ouvrable,
         });
 

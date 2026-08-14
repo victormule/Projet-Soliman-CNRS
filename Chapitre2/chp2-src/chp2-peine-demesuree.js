@@ -23,6 +23,7 @@
 'use strict';
 
 import { mediaMap } from './chp2-data-peine-demesuree.js';
+import { setVideoSrc } from '../../src/utils/media.js';
 
 /* ─────────────────────────────────────────────────────────────
    ÉTAT DU MODULE
@@ -601,7 +602,7 @@ function mount(root) {
 
         if (media.type === 'video' && videoPanel) {
             videoPanel.style.display = 'flex';
-            video.src = media.src;
+            setVideoSrc(video, media.src);   // allégée sur petit appareil
             video.currentTime = 0;
             video.play().catch(() => {});
         }

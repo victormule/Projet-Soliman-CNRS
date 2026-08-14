@@ -262,6 +262,14 @@ function _requestFullscreen() {
   if (fn) fn.call(el).catch(() => {});
 }
 
+/* ── 12bis. « L'utilisateur se sert du clavier » ─────────────────────────────
+   Pose une classe au tout premier appui sur une touche. Sert au halo de focus
+   de l'écran d'accueil, qui porte `autofocus` : sans cette garde, le halo
+   s'affiche au chargement, avant tout geste (voir style.css § ACCESSIBILITÉ). */
+window.addEventListener('keydown', () => {
+  document.body.classList.add('using-keyboard');
+}, { once: true, passive: true });
+
 /* ── 13. Écran de démarrage ──────────────────────────────────── */
 let startScreen = document.getElementById('start-screen');
 if (startScreen) {

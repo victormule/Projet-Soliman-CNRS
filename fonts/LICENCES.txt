@@ -1,0 +1,16 @@
+Polices embarquées — origines et licences
+========================================
+
+Cinzel                 SIL Open Font License 1.1   https://fonts.google.com/specimen/Cinzel
+Cormorant Garamond     SIL Open Font License 1.1   https://fonts.google.com/specimen/Cormorant+Garamond
+Inter                  SIL Open Font License 1.1   https://fonts.google.com/specimen/Inter
+Old Standard TT        SIL Open Font License 1.1   https://fonts.google.com/specimen/Old+Standard+TT
+Playfair Display       SIL Open Font License 1.1   https://fonts.google.com/specimen/Playfair+Display
+Roboto Condensed       Apache License 2.0          https://fonts.google.com/specimen/Roboto+Condensed
+
+Ces licences autorisent l'hébergement local et la redistribution, y compris
+dans un projet non commercial ou institutionnel, à condition de ne pas vendre
+les fontes seules et de conserver la mention de licence — c'est l'objet de ce
+fichier.
+
+Regénérer : node tools/fetch-fonts.mjs

@@ -12,6 +12,7 @@
  */
 
 import { entries, slides as slidesData } from './chp2-data-violence-et-trace.js';
+import { setVideoSrc } from '../../src/utils/media.js';
 
 /* =============================================================================
    Utilitaires
@@ -108,7 +109,7 @@ class MediaPlayer {
         if (this._sourceLoaded) return;
         const src = this.slide.dataset.src;
         if (src && this.media && !this.media.src) {
-            this.media.src = src;
+            setVideoSrc(this.media, src);   // allégée sur petit appareil (mp4 seulement)
             this._sourceLoaded = true;
         }
     }

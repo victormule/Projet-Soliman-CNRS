@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Playfair+Display:ital,wght@0,400;1,300;1,400&display=swap');
+/* Les polices sont chargées par fonts/fonts.css, lié depuis index.html AVANT
+   cette feuille — elles sont donc déjà déclarées ici. Il y avait à cette place
+   un @import vers fonts.googleapis.com : appel à un tiers hors UE (RGPD) et
+   URL que Google servait parfois morte selon l'agent. Voir tools/fetch-fonts.mjs. */
 
 /* ══════════════════════════════════════════════════════════════════
    RESET & ROOT
@@ -960,7 +963,10 @@ body.peine-aim #cursor.hotspot::after {
    START SCREEN — Editorial Contemporain
    ══════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400&family=Playfair+Display:ital,wght@0,400;1,400&display=swap');
+/* (Un second @import Google se trouvait ici. Outre l'appel au tiers, il était
+   INERTE : une règle @import doit précéder toute autre règle d'une feuille, et
+   celle-ci arrivait après un millier de lignes — les navigateurs l'ignoraient
+   donc déjà. Les polices viennent de fonts/fonts.css.) */
 
 #start-screen {
   position: absolute;
@@ -2583,6 +2589,17 @@ body.peine-aim #cursor.aim-hot {
 /* :focus-visible seulement — le halo ne doit PAS apparaître au clic souris,
    qui garderait sinon une bague dorée sur le dernier bouton cliqué. */
 :focus:not(:focus-visible) { outline: none; }
+
+/* ⚠️ L'EXCEPTION DE L'ÉCRAN D'ACCUEIL.
+   #ss-start porte `autofocus` : c'est ce qui permet à Entrée de lancer
+   l'expérience sans détour, dès le chargement. Mais le navigateur traite ce
+   focus initial comme un focus CLAVIER et dessine aussitôt le halo — une bague
+   dorée sur un écran composé au pixel, alors que personne n'a rien touché.
+   On l'ajourne donc au premier appui réel sur une touche (app.js pose
+   `body.using-keyboard`) : celui qui navigue au clavier voit son repère, celui
+   qui vient à la souris voit l'écran tel qu'il a été dessiné. Le focus, lui,
+   est bien là dans les deux cas. */
+body:not(.using-keyboard) #ss-start:focus-visible { outline: none; }
 
 :focus-visible,
 [role="button"]:focus-visible,

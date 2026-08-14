@@ -18,9 +18,20 @@
  * On AJOUTE la sémantique manquante sur les éléments existants — rôle, ordre de
  * tabulation, nom accessible — et on fait suivre le clavier au pointeur.
  *
- * `activate()` synthétise un vrai `click()` plutôt que d'appeler un callback :
- * les composants posent déjà leur `onclick`, et un seul chemin d'activation
- * vaut mieux que deux qui peuvent diverger.
+ * L'activation clavier synthétise un vrai événement `click` plutôt que
+ * d'appeler un callback : les composants posent déjà leur `onclick`, et un
+ * seul chemin d'activation vaut mieux que deux qui peuvent diverger.
+ *
+ * ⚠️ ET C'EST UN `MouseEvent`, PAS `el.click()`.
+ *
+ * `click()` est défini sur HTMLElement — PAS sur Element, donc PAS sur les
+ * éléments SVG (vérifié : `typeof rect.click === 'undefined'`,
+ * `Element.prototype.click === undefined`). Or les boutons de la barre de
+ * navigation sont des `<rect>` SVG transparents. Avec `el.click()`, la touche
+ * Entrée y était donc SANS AUCUN EFFET, en silence — et comme c'est l'un de
+ * ces boutons qui mène à l'espace collaboratif, une partie entière du site
+ * restait inatteignable au clavier. Un `MouseEvent` dispatché fonctionne sur
+ * n'importe quel Element : ne pas revenir à `click()`.
  *
  * CE QUE CE MODULE NE PRÉTEND PAS FAIRE
  *
@@ -63,8 +74,20 @@ export function makeActivatable(el, opts = {}) {
     if (el.getAttribute('aria-disabled') === 'true') return;
     // Espace fait défiler la page par défaut ; Entrée peut valider un formulaire.
     e.preventDefault();
-    el.click();
+    activate(el);
   });
+}
+
+/**
+ * Déclenche l'activation d'un élément, HTML ou SVG.
+ * Voir l'avertissement en tête de fichier : `el.click()` n'existe pas sur SVG.
+ * @param {Element} el
+ */
+export function activate(el) {
+  if (!el) return;
+  el.dispatchEvent(new MouseEvent('click', {
+    bubbles: true, cancelable: true, view: window,
+  }));
 }
 
 /**

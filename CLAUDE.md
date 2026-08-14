@@ -58,13 +58,16 @@ src/
                           « À Propos »), NavigationBar, Title…
   scenes/                 Une classe par scène (contrat Scene : enter/exit)
   utils/                  helpers.js (SVG, libellés, releaseMediaElements),
-                          a11y.js (clavier + annonces), cursor, viewport…
+                          a11y.js (clavier + annonces), media.js (variantes
+                          mobiles), cursor, viewport…
+fonts/                    Polices LOCALES + fonts.css (GÉNÉRÉ) + LICENCES.txt
 audit-config.js           Garde-fou : clés de config sans lecteur
 package.json              OUTILLAGE SEUL (le site n'a aucune dépendance)
 tools/
   bench/serve.mjs         Serveur statique (gère les Range → mp4)
   bench/regression.mjs    Non-régression : fluidité, fuites, clavier, console
-  compress-videos.mjs     Compression vidéo NON destructive (→ _compressed/)
+  compress-videos.mjs     Fabrique les variantes mobiles (→ */mobile/)
+  fetch-fonts.mjs         Rapatrie les polices Google en local
 Chapitre1/
   chp1-config.js          Config du chapitre (source unique)
   chp1-images/ chp1-medias/
@@ -293,12 +296,59 @@ suivre Entrée/Espace au clic) et `announce()` signale les changements de scène
 dans une région live. Le CTA de l'accueil, lui, est un vrai `<button>`
 (`#ss-start`, avec `autofocus`).
 
+⚠️ **`el.click()` N'EXISTE PAS SUR UN ÉLÉMENT SVG.** `click()` est défini sur
+`HTMLElement`, pas sur `Element` (vérifié : `Element.prototype.click ===
+undefined`). Or les boutons de la barre de navigation sont des `<rect>` SVG
+transparents — et c'est l'un d'eux qui mène à l'espace collaboratif. Avec
+`el.click()`, la touche Entrée y était donc SANS EFFET, en silence, et toute
+une partie du site restait inatteignable au clavier. `a11y.js` dispatche un
+`MouseEvent` (`activate()`), qui fonctionne sur n'importe quel Element : **ne
+jamais revenir à `click()`**.
+
 ⚠️ **Un élément masqué doit sortir de l'ordre de tabulation.** `ArrowBase.hide()`
 pose `tabindex="-1"` + `aria-hidden` ; `makeActivatable` les retire au retour.
 Et **le bouton plein écran reste hors tabulation tant que l'écran d'accueil est
 là** : il vit dans `#app`, DERRIÈRE l'accueil, mais le PRÉCÈDE dans l'ordre du
 document — focusable, il captait la toute première tabulation et Entrée
 basculait en plein écran au lieu de lancer l'expérience.
+
+⚠️ **Le halo de focus de l'accueil attend un vrai appui.** `#ss-start` porte
+`autofocus` (c'est ce qui fait qu'Entrée démarre sans détour) ; le navigateur
+dessine alors le halo dès le chargement, sur un écran composé au pixel. Il est
+donc ajourné jusqu'au premier `keydown` (`body.using-keyboard`, posé par
+app.js). Le focus, lui, est bien là dans les deux cas.
+
+**CE QUI RESTE À FAIRE** : les CHAPITRES et leurs sous-parties n'ont encore
+AUCUN travail clavier (hotspots du chapitre 1, crânes et sous-parties du 2,
+quiz et théâtre du 3, bulles du 4). Le tronc commun — accueil, vitrine,
+phrénologie, documents, collaboration — est traité. Avancer chapitre par
+chapitre, en vérifiant chaque fois au banc d'essai.
+
+## Vidéos : allégées sur mobile, intactes sur ordinateur
+
+`src/utils/media.js` choisit la source : sur téléphone et tablette
+(`body.is-touch`, ou `saveData`), une variante allégée rangée dans un
+sous-dossier `mobile/` À CÔTÉ de l'originale, même nom de fichier :
+
+```
+Chapitre2/chp2-medias/Voyeur.mp4            ← l'original, JAMAIS touché
+Chapitre2/chp2-medias/mobile/Voyeur.mp4     ← la variante (npm run videos)
+```
+
+⚠️ **Le repli n'est pas décoratif.** Les variantes peuvent ne pas exister —
+c'est l'état du dépôt tant que la passe de compression n'a pas été lancée ET
+validée à l'œil. `setVideoSrc()` écoute l'erreur de chargement et rebascule UNE
+fois sur l'original : le site se comporte donc à l'identique avant et après la
+compression, seule la légèreté change. Vérifié : sur téléphone, la requête
+`mobile/…` répond 404 et la vidéo se lit quand même.
+
+⚠️ **Seul le .mp4 est décliné.** Les .mp3 pèsent 28 Mo à eux tous et une voix
+comprimée deux fois s'entend.
+
+⚠️ **Comparer au chemin RÉELLEMENT posé.** Le chapitre 3 réutilise le même
+`<video>` d'un hotspot à l'autre en testant `v.src.endsWith(cfg.video)` : sur
+petit appareil cette comparaison échouerait à chaque fois (la source posée est
+celle de `mobile/`) et relancerait un chargement complet. D'où `ensureVideoSrc()`.
 
 ## Le curseur : natif partout, dessiné seulement au doigt (août 2026)
 
@@ -460,19 +510,23 @@ Parcours sur serveur local, console ouverte (zéro erreur attendue) :
 ## Notes de déploiement
 
 - Poids : ~300 Mo, dont ~280 Mo de mp4 (limite GitHub : 100 Mo/fichier — le
-  plus gros fait ~23 Mo, OK). **`npm run videos` compresse sans écraser les
-  masters** (résultat dans `_compressed/`, gain attendu 50-70 %) : REGARDER
-  les fichiers produits avant tout remplacement — les plans sombres du
-  chapitre 1 et de « Violence et trace » sont les plus exposés. Demande un
-  vrai ffmpeg (celui de Playwright n'a ni H.264 ni AAC).
-- Polices : Google Fonts (Cinzel, Playfair Display, Inter, Cormorant
-  Garamond, Old Standard TT, Roboto Condensed) — chargement non bloquant
-  depuis index.html. Les fontes locales du chapitre 2 sont dans chp2-fonts/.
-  ⚠️ **Dépendance externe à trancher avant une mise en ligne institutionnelle** :
-  disponibilité (Google sert parfois une URL morte selon l'agent) et RGPD
-  (l'appel à fonts.gstatic.com transmet l'IP du visiteur à un tiers, ce que
-  plusieurs décisions européennes ont sanctionné). Les héberger localement
-  règle les deux — les licences OFL/Apache le permettent.
+  plus gros fait ~23 Mo, OK). **`npm run videos` fabrique les variantes
+  mobiles** dans `*/mobile/`, sans jamais toucher aux masters (voir « Vidéos :
+  allégées sur mobile »). REGARDER les fichiers produits avant de publier — les
+  plans sombres du chapitre 1 et de « Violence et trace » sont les plus
+  exposés. Demande un vrai ffmpeg (celui de Playwright n'a ni H.264 ni AAC).
+- Polices : **hébergées EN LOCAL** dans `fonts/` (Cinzel, Playfair Display,
+  Inter, Cormorant Garamond, Old Standard TT, Roboto Condensed — 20 fichiers
+  woff2, 666 Ko, sous-ensembles latin et latin-ext seulement). `fonts/fonts.css`
+  est GÉNÉRÉ par `tools/fetch-fonts.mjs` : ne pas l'éditer à la main. Licences
+  (OFL, Apache 2.0) dans `fonts/LICENCES.txt`. Les fontes propres au chapitre 2
+  restent dans chp2-fonts/.
+  ⚠️ **Plus AUCUN appel à fonts.googleapis.com** — ni dans index.html, ni par
+  `@import` dans style.css (il y en avait deux, dont un inerte car placé après
+  un millier de lignes). Deux raisons de ne pas y revenir : Google négocie ses
+  fichiers selon l'agent et servait une URL morte à certains navigateurs, et
+  l'appel transmet l'IP du visiteur à un tiers hors UE (RGPD). Vérifié : zéro
+  requête externe au chargement.
 - Métadonnées : titre éditorial, description, Open Graph et `theme-color` sont
   en place dans index.html. L'image de partage pointe sur
   `images/vitrineOrfila.webp` — la remplacer par un visuel dédié en 1200×630

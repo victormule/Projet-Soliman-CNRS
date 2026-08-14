@@ -26,22 +26,24 @@
   <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
   <link rel="icon" type="image/png" sizes="48x48" href="images/favicon-48.png">
   <link rel="apple-touch-icon" sizes="180x180" href="images/favicon-180.png">
-  <!-- Polices Google chargées de façon non bloquante (media=print puis swap).
+  <!-- ══ Polices — HÉBERGÉES EN LOCAL, plus aucun appel à Google ══
        Cinzel        → titres / sous-titres / navigation (config.js FONTS)
        Playfair Display → titre de l'écran d'accueil (.ss-title)
                           + accroche calligraphiée « À Propos » (ital 700 incluse)
        Inter         → libellés UI de l'écran d'accueil (.ss-eyebrow, .ss-cta)
        Cormorant Garamond → sous-titres SRT du chapitre 2
-       Old Standard TT / Roboto Condensed → « Peine démesurée » (chapitre 2) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Condensed:wght@300;400;700&display=swap"
-        media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;1,400&family=Inter:wght@300;400;500;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Roboto+Condensed:wght@300;400;700&display=swap">
-  </noscript>
+       Old Standard TT / Roboto Condensed → « Peine démesurée » (chapitre 2)
+
+       Deux raisons de ne plus passer par fonts.googleapis.com : Google négocie
+       ses fichiers selon l'agent et servait une URL morte à certains
+       navigateurs (typographie qui tombe en fonte système sans prévenir), et
+       l'appel transmet l'IP du visiteur à un tiers hors UE — ce que plusieurs
+       décisions européennes ont sanctionné. Les licences (OFL, Apache 2.0)
+       autorisent l'hébergement local : voir fonts/LICENCES.txt.
+       fonts/fonts.css est GÉNÉRÉ — le regénérer par tools/fetch-fonts.mjs. -->
+  <link rel="preload" as="font" type="font/woff2" href="fonts/playfair-display-var-latin.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="fonts/inter-var-latin.woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>

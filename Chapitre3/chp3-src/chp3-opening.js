@@ -10,6 +10,7 @@
    ===================================================================== */
 
 import { CONFIG } from './chp3-config.js';
+import { setVideoSrc, ensureVideoSrc } from '../../src/utils/media.js';
 import { $, clamp, smooth, easeInOutQuad, easeInOutSine, easeOutCubic,
          damp, setResponsiveSrc } from './chp3-utils.js';
 import { startGrain } from './chp3-grain.js';
@@ -586,7 +587,7 @@ function boot() {
             if (thPlaying === item.id || thTransitioning) return;
             const v = thEl.video;
 
-            if (!v.src.endsWith(item.video)) { v.src = item.video; v.load(); }
+            if (ensureVideoSrc(v, item.video)) v.load();
             v.muted = true; v.volume = 0;
             const bless = v.play();
             if (bless && bless.catch) bless.catch(() => {});   // échec silencieux : on retentera après le voile
@@ -727,7 +728,7 @@ function boot() {
             rvImgPromise = new Promise(res => {
                 if (cfg.video) {
                     const v = rvEl.video;
-                    if (!v.src.endsWith(cfg.video)) { v.src = cfg.video; v.load(); }   // une seule fois
+                    if (ensureVideoSrc(v, cfg.video)) v.load();   // une seule fois
                     const ready = () => res({ ar:(v.videoWidth / v.videoHeight) || T.ratioDefaut, ok:v.videoWidth > 0 });
                     if (v.readyState >= 1 && v.videoWidth > 0) { ready(); return; }     // métadonnées déjà là (réouverture)
                     v.onloadedmetadata = ready;
@@ -746,7 +747,7 @@ function boot() {
             try {
                 if (cfg.video) {
                     rvMedia = rvEl.video;
-                    if (!rvMedia.src.endsWith(cfg.video)) rvMedia.src = cfg.video;
+                    ensureVideoSrc(rvMedia, cfg.video);
                 } else if (cfg.sound) {
                     rvMedia = new Audio(cfg.sound);
                     rvMedia.preload = 'auto';
@@ -1047,7 +1048,7 @@ function boot() {
                     card.classList.add('is-video');
                     media = document.createElement('video');
                     media.className = 'm'; media.playsInline = true; media.setAttribute('playsinline', '');
-                    media.preload = 'metadata'; media.src = it.video;
+                    media.preload = 'metadata'; setVideoSrc(media, it.video);
                     media.onended = () => { if (phase === 'reveal' && revealStage === 'holding' && glActive === i) glGoTo(glImageIndex); };
                     const badge = document.createElement('div'); badge.className = 'play-badge';
                     win.append(media, veilc, sweep); card.append(svg, win, badge);

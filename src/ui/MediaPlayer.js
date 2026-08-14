@@ -11,6 +11,8 @@
  * - hover title : réapparition correcte après réduction vidéo (même logique main.js)
  */
 
+import { setVideoSrc } from '../utils/media.js';
+
 export class MediaPlayer {
   constructor(config, arrowSizeFn, torch, audio) {
     this.config      = config;
@@ -378,7 +380,10 @@ export class MediaPlayer {
     const ctrlH=rh*P.video_ctrl_h, vidH=rh-ctrlH, sepY=ry+vidH;
 
     const video=document.createElement('video');
-    video.src=src; video.preload='auto'; video.playsInline=true;
+    // Variante allégée sur téléphone/tablette, original sur ordinateur, repli
+    // automatique si la variante manque encore. Voir src/utils/media.js.
+    setVideoSrc(video, src);
+    video.preload='auto'; video.playsInline=true;
     this._playerVideo=video;
     video.style.cssText=`position:absolute;z-index:31;object-fit:contain;background:#000;opacity:0;transition:opacity 0.5s ease ${P.draw_speed+0.2}s;left:${rx+inset}px;top:${ry+inset}px;width:${Math.max(2,rw-inset*2)}px;height:${Math.max(2,vidH-inset)}px;`;
     el.appendChild(video);

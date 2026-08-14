@@ -27,6 +27,7 @@
 'use strict';
 
 import { CONFIG } from './chp2-config.js';
+import { ensureVideoSrc } from '../../src/utils/media.js';
 
 /* =============================================================================
    ÉTAT DU MODULE
@@ -841,9 +842,10 @@ function openMedia(eye) {
     startSRT();
   } else {
 
-    if (videoEl.src !== eye.videoSrc) {
-      videoEl.src = eye.videoSrc;
-    }
+    // ensureVideoSrc compare au chemin RÉELLEMENT posé (allégé sur petit
+    // appareil) : comparer à eye.videoSrc échouerait à chaque ouverture et
+    // relancerait le chargement pour rien.
+    ensureVideoSrc(videoEl, eye.videoSrc);
     videoOverlay.classList.add('active');
     videoOverlay.style.transition = `opacity ${T_VIDEO_FADE_IN}ms ease`;
     videoOverlay.style.opacity    = '1';
