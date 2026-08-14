@@ -29,6 +29,7 @@ import { Chapitre2Scene }   from './scenes/Chapitre2Scene.js';
 import { Chapitre3Scene }   from './scenes/Chapitre3Scene.js';
 import { Chapitre4Scene }   from './scenes/Chapitre4Scene.js';
 import { Chapitre1Scene }    from './scenes/Chapitre1Scene.js';
+import { announce }          from './utils/a11y.js';
 
 const C = window.CONFIG;
 
@@ -151,6 +152,28 @@ manager.register(new Chapitre4Scene(systems));
 /* ── 8. Navigation ───────────────────────────────────────────── */
 bus.on('navigate', ({ to }) => manager.go(to));
 
+/* ── 8bis. Annonce des changements de scène ──────────────────────────────────
+   Le site change de scène sans changer d'URL ni de titre : pour un lecteur
+   d'écran, absolument rien ne se passe. On annonce donc chaque arrivée dans
+   une région live, et on met le titre du document à jour (utile aussi pour
+   l'onglet et l'historique du navigateur). */
+const SCENE_NAMES = {
+  vitrine:       'La vitrine',
+  phrenologie:   'La phrénologie',
+  collaboration: 'Espace collaboratif',
+  chapitre1:     'Chapitre I — Le crâne',
+  chapitre2:     "Chapitre II — L'héritage colonial du musée",
+  chapitre3:     'Chapitre III — La Galerie des Batailles',
+  chapitre4:     'Chapitre IV — Une histoire complexe',
+};
+const BASE_TITLE = document.title;
+bus.on('scene:entered', ({ name }) => {
+  const label = SCENE_NAMES[name];
+  if (!label) return;
+  announce(label);
+  document.title = `${label} — ${BASE_TITLE}`;
+});
+
 /* ── 9. Player ───────────────────────────────────────────────── */
 bus.on('player:open', ({ src, label, credit }) => player.open(src, label, credit));
 player.setOnClose((prevTitle) => bus.emit('player:close', { prevTitle }));
@@ -240,7 +263,7 @@ function _requestFullscreen() {
 }
 
 /* ── 13. Écran de démarrage ──────────────────────────────────── */
-const startScreen = document.getElementById('start-screen');
+let startScreen = document.getElementById('start-screen');
 if (startScreen) {
   startScreen.addEventListener('click', async () => {
 
@@ -252,9 +275,16 @@ if (startScreen) {
 
     // Fade out + suppression de l'écran
     document.body.classList.add('experience-started');
+
+    // Le bouton plein écran redevient atteignable au clavier (il était hors
+    // tabulation tant que l'écran d'accueil couvrait la page — voir Fullscreen).
+    fullscreen.rebuild();
     startScreen.style.transition = `opacity ${C.START_SCREEN.fadeOut}ms ease`;
     startScreen.style.opacity    = '0';
-    setTimeout(() => startScreen.remove(), C.START_SCREEN.fadeOut + 100);
+    // `startScreen = null` après le retrait : la variable de module gardait
+    // sinon l'écran d'accueil vivant (arbre détaché) pour toute la session.
+    setTimeout(() => { startScreen?.remove(); startScreen = null; },
+               C.START_SCREEN.fadeOut + 100);
 
     // Noir complet avant la première scène
     bgMgr.blackout();

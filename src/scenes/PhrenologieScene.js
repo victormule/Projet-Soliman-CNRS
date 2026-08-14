@@ -384,61 +384,10 @@ export class PhrenologieScene extends Scene {
     }
   }
 
-  /**
-   * Programme l'exécution d'une fonction à un instant absolu de la séquence.
-   *
-   * Exemple :
-   *   si `targetMs = 6000`, alors `fn` sera exécutée à t0 + 6000 ms, même si la
-   *   méthode est appelée plus tard dans `enter()`.
-   *
-   * Le timer est enregistré dans `this._timers` via `addTimer()`, ce qui permet
-   * à `Scene.exit()` de le nettoyer proprement si la scène est quittée avant son
-   * exécution.
-   *
-   * @param {number} t0 - Timestamp de référence capturé au début de `enter()`.
-   * @param {number} targetMs - Temps absolu visé depuis `t0`.
-   * @param {Function} fn - Callback à exécuter.
-   */
-  _scheduleAt(t0, targetMs, fn) {
-    const remaining = Math.max(0, targetMs - (Date.now() - t0));
-    this.addTimer(fn, remaining);
-  }
 
-  /**
-   * Attend jusqu'à atteindre un instant absolu de la séquence d'entrée.
-   *
-   * Si cet instant est déjà dépassé, la méthode se résout immédiatement. Sinon,
-   * elle s'appuie sur `pause()`, ce qui la rend interruptible par le cycle de vie
-   * de la scène.
-   *
-   * @param {number} t0 - Timestamp de référence capturé au début de `enter()`.
-   * @param {number} targetMs - Temps absolu visé depuis `t0`.
-   */
-  async _waitUntil(t0, targetMs) {
-    const remaining = targetMs - (Date.now() - t0);
-    if (remaining > 0) await this.pause(remaining);
-  }
+  /* Les helpers temporels (addTimer, _waitUntil, _scheduleAt) vivent dans
+     core/Scene.js et NULLE PART AILLEURS. Quatre scènes en portaient une copie
+     mot pour mot : quatre vérités possibles pour un même contrat de nettoyage
+     des minuteries. Supprimées — la classe de base suffit. */
 
-  /**
-   * Enregistre un timer compatible avec le mécanisme de nettoyage de `Scene`.
-   *
-   * Pourquoi ne pas appeler `setTimeout()` directement partout ?
-   * ----------------------------------------------------------
-   * Parce qu'en centralisant la création ici, chaque timer est conservé dans
-   * `this._timers`. La classe de base peut ainsi les annuler à `exit()`, ce qui
-   * évite l'exécution tardive de callbacks appartenant à une scène déjà quittée.
-   *
-   * @param {Function} fn - Fonction à exécuter après délai.
-   * @param {number} delayMs - Délai en millisecondes.
-   * @returns {number} Identifiant du timer natif.
-   */
-  addTimer(fn, delayMs) {
-    const id = setTimeout(() => {
-      this._timers = this._timers.filter(t => t !== id);
-      fn();
-    }, delayMs);
-
-    this._timers.push(id);
-    return id;
-  }
 }

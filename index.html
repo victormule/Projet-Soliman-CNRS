@@ -3,11 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Soliman-CNRS-Abounaddara</title>
-  <!-- Favicon vide : supprime la requête favicon.ico (404) tant qu'aucune
-       icône définitive n'est fournie. Remplacer href par un vrai fichier
-       (ex. images/favicon.svg) le moment venu. -->
-  <link rel="icon" href="data:,">
+  <title>Soliman al-Halabi — Abounaddara · CNRS</title>
+
+  <!-- ══ Métadonnées de partage et d'indexation ══
+       Sans elles, le site apparaissait sous son nom de dossier, sans résumé ni
+       vignette, dans un courriel comme dans un résultat de recherche. -->
+  <meta name="description" content="Site-expérience autour de Soliman al-Halabi, exécuté en 1800 pour le meurtre du général Kléber, et du crâne conservé au Muséum. Un projet de recherche Abounaddara · CNRS." />
+  <meta name="author" content="Abounaddara · CNRS" />
+  <meta name="theme-color" content="#0b0b0b" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="Abounaddara · CNRS" />
+  <meta property="og:title" content="Soliman al-Halabi" />
+  <meta property="og:description" content="Un site-expérience sur la trace d'un homme réduite à un objet de collection. Recherche Abounaddara · CNRS." />
+  <meta property="og:image" content="images/vitrineOrfila.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Favicon : le « s » calligraphié du projet (master : favicon.png à la
+       racine, 1240 px). Décliné en trois tailles — l'original pèse 900 Ko,
+       inutilisable tel quel dans un onglet. Le rognage de 18 % rend le glyphe
+       lisible à 32 px ; pour regénérer, voir tools/ (canvas Chromium). -->
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="images/favicon-48.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="images/favicon-180.png">
   <!-- Polices Google chargées de façon non bloquante (media=print puis swap).
        Cinzel        → titres / sous-titres / navigation (config.js FONTS)
        Playfair Display → titre de l'écran d'accueil (.ss-title)
@@ -30,6 +48,15 @@
 
 <!-- Curseur hors de #app — position:fixed relatif au vrai viewport -->
 <div id="cursor"></div>
+
+<noscript>
+  <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;
+              justify-content:center;padding:2rem;background:#0b0b0b;color:#e8e7e0;
+              font-family:Georgia,serif;font-size:1.1rem;line-height:1.6;text-align:center;">
+    Ce site est une expérience narrative interactive : il lui faut JavaScript
+    pour se dérouler. Merci de l'activer, puis de recharger la page.
+  </div>
+</noscript>
 
 <div id="app">
 
@@ -102,8 +129,10 @@
     <!-- Séparateur horizontal -->
     <div class="ss-rule" aria-hidden="true"></div>
 
-    <!-- Titre principal -->
-    <div class="ss-title">Soliman <span style="white-space:nowrap">al-Halabi</span></div>
+    <!-- Titre principal — SEUL <h1> du site : c'est lui qui nomme la page pour
+         un lecteur d'écran comme pour un moteur de recherche. La classe porte
+         déjà toute la mise en forme (voir style.css § ÉCRAN DE DÉMARRAGE). -->
+    <h1 class="ss-title">Soliman <span style="white-space:nowrap">al-Halabi</span></h1>
 
     <!-- Corps -->
     <div class="ss-body">
@@ -120,8 +149,10 @@
       <span class="ss-credits__orgs">Abounaddara · CNRS · 2026</span>
     </div>
 
-    <!-- CTA -->
-    <div class="ss-cta">Cliquez pour commencer</div>
+    <!-- CTA — VRAI bouton : c'est le point d'entrée de toute l'expérience, et
+         il était jusqu'ici un <div> qu'aucune tabulation n'atteignait. Le clic
+         sur l'écran entier reste actif (il remonte jusqu'à #start-screen). -->
+    <button type="button" class="ss-cta" id="ss-start" autofocus>Cliquez pour commencer</button>
 
   </div>
 

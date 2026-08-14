@@ -7,6 +7,7 @@ import { ArrowChp3Opening }  from '../ui/ArrowChapitre3.js';
 // attendre le DOM, pas les réglages. Sans cela, le sous-titre — affiché AVANT
 // l'import() pour meubler le chargement — ne pourrait pas être lu ici.
 import { CONFIG as CHP3 }    from '../../Chapitre3/chp3-src/chp3-config.js';
+import { releaseMediaElements } from '../utils/helpers.js';
 
 /**
  * Chapitre3Scene — intégration SPA du chapitre 3 (Kléber · Galerie des Batailles)
@@ -358,6 +359,10 @@ export class Chapitre3Scene extends Scene {
 
   _removeDOM() {
     if (!this._container) return;
+    // Libération des médias avant retrait — même raison qu'au chapitre 2 (voir
+    // releaseMediaElements). Le chapitre 3 crée ses <video> dynamiquement : il
+    // ne fuit pas aujourd'hui, mais la garantie doit tenir sans dépendre de ça.
+    releaseMediaElements(this._container);
     this._container.remove();
     this._container = null;
   }

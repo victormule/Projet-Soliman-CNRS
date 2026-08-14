@@ -7,6 +7,7 @@ import { ArrowChp4 }        from '../ui/ArrowChapitre4.js';
 // de la photo, qu'elle doit poser puis attendre. Le MOTEUR, lui, reste en
 // import() dynamique (pattern factory).
 import { CONFIG as CHP4 }   from '../../Chapitre4/chp4-src/chp4-config.js';
+import { releaseMediaElements } from '../utils/helpers.js';
 
 /**
  * Chapitre4Scene — intégration SPA du chapitre 4 (« Une histoire complexe »)
@@ -324,6 +325,9 @@ export class Chapitre4Scene extends Scene {
 
   _removeDOM() {
     if (!this._container) return;
+    // Libération des médias avant retrait — même raison qu'au chapitre 2 (voir
+    // releaseMediaElements). Les sons des bulles vivent ici.
+    releaseMediaElements(this._container);
     this._container.remove();
     this._container = null;
   }

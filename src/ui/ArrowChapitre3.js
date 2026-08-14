@@ -40,7 +40,8 @@ function applyBottomLeft(el, config, zIndex) {
 
 export class ArrowChp3Opening extends ArrowBase {
   constructor(config) {
-    super(config, 'arrow-chp3-opening', PATH_LEFT);
+    super(config, 'arrow-chp3-opening', PATH_LEFT,
+          "Quitter le chapitre et revenir à l'espace collaboratif");
   }
   _applyPosition() {
     applyBottomLeft(this.el, this.config, 600);

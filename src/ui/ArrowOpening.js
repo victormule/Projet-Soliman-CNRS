@@ -19,7 +19,8 @@ export class ArrowOpening extends ArrowBase {
     super(
       config,
       'arrow-opening',
-      'M35 22 L35 48 M24 37 L35 48 L46 37'  // ↓ pointe vers le bas
+      'M35 22 L35 48 M24 37 L35 48 L46 37',  // ↓ pointe vers le bas
+      'Descendre vers la phrénologie'
     );
   }
 

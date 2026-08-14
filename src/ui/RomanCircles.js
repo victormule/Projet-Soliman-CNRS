@@ -4,6 +4,7 @@
  */
 
 import { applyNeighborPush, clearNeighborPush } from '../utils/helpers.js';
+import { makeActivatable } from '../utils/a11y.js';
 
 export class RomanCircles {
   constructor(config) {
@@ -177,6 +178,17 @@ export class RomanCircles {
         if (onClickCallbacks && onClickCallbacks[i]) {
           btn.onclick = () => onClickCallbacks[i]();
         }
+
+        // Clavier : le chiffre romain seul ne dit rien — on annonce le titre
+        // du chapitre. Le cercle V n'ouvre encore rien : il sort de l'ordre de
+        // tabulation plutôt que d'offrir un contrôle qui ne fait pas ce qu'il
+        // promet (cf. COLLABORATION.circles.actions → null).
+        const titre = (C.hover_titles && C.hover_titles[i]) || ('Chapitre ' + label);
+        const ouvrable = !!(C.actions && C.actions[i]);
+        makeActivatable(btn, {
+          label: ouvrable ? titre : titre + ' — à venir',
+          disabled: !ouvrable,
+        });
 
       }, i * C.stagger);
     });

@@ -1,0 +1,28 @@
+{
+  "name": "soliman-al-halabi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site-expérience narratif Soliman al-Halabi — Abounaddara / CNRS.",
+  "type": "module",
+  "//": [
+    "LE SITE N'A AUCUNE DÉPENDANCE et ne se construit pas : servir le dossier",
+    "tel quel suffit, comme depuis toujours. Ce fichier n'existe que pour",
+    "l'OUTILLAGE (banc d'essai, compression vidéo), qui ne part jamais en",
+    "production. Rien dans src/, Chapitre*/ ou index.html n'importe quoi que ce",
+    "soit d'ici — et rien ne doit commencer à le faire."
+  ],
+  "scripts": {
+    "serve": "node tools/bench/serve.mjs",
+    "bench": "node tools/bench/regression.mjs",
+    "bench:self-test": "node tools/bench/regression.mjs --self-test",
+    "audit:config": "node audit-config.js",
+    "videos:dry": "node tools/compress-videos.mjs --dry",
+    "videos": "node tools/compress-videos.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

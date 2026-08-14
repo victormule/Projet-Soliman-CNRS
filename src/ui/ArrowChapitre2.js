@@ -51,7 +51,8 @@ function applyBottomLeft(el, config, zIndex) {
 ─────────────────────────────────────────────────────────────────────────── */
 export class ArrowChp2Opening extends ArrowBase {
   constructor(config) {
-    super(config, 'arrow-chp2-opening', PATH_LEFT);
+    super(config, 'arrow-chp2-opening', PATH_LEFT,
+          "Quitter le chapitre et revenir à l'espace collaboratif");
   }
   _applyPosition() {
     applyBottomLeft(this.el, this.config, 600);
@@ -71,7 +72,8 @@ export class ArrowChp2Part extends ArrowBase {
    * @param {string} partId  identifiant de sous-partie (suffixe du domId)
    */
   constructor(config, partId) {
-    super(config, `arrow-chp2-${partId}`, PATH_LEFT);
+    super(config, `arrow-chp2-${partId}`, PATH_LEFT,
+          'Revenir au panorama du chapitre');
   }
   _applyPosition() {
     applyBottomLeft(this.el, this.config, 9999);

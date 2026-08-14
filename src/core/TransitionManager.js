@@ -146,14 +146,29 @@ export class TransitionManager {
     const cursor = this.quoteEl.querySelector('.cursor');
     if (!bodyEl) return;
 
-    let out = '';
+    /* Le texte s'ajoute par NŒUDS, pas par innerHTML.
+       ───────────────────────────────────────────────────────────────────────
+       L'ancienne version réécrivait `bodyEl.innerHTML` à chaque caractère :
+       le navigateur re-parsait toute la chaîne accumulée à chaque frappe, soit
+       un coût quadratique en longueur de citation. Un nœud texte que l'on
+       allonge (et un <br> ajouté au besoin) donne le même rendu sans re-parser
+       — et supprime au passage tout besoin d'échapper le HTML : un nœud texte
+       ne peut pas contenir de balise. */
+    let textNode = document.createTextNode('');
+    bodyEl.appendChild(textNode);
+
     for (let i = 0; i < text.length; i++) {
       // Vérification AVANT l'await — stoppe dès le prochain caractère
       if (token !== this.quoteTypingToken) return;
 
       const ch = text[i];
-      out += (ch === '\n') ? '<br>' : this._escapeHtml(ch);
-      bodyEl.innerHTML = out;
+      if (ch === '\n') {
+        bodyEl.appendChild(document.createElement('br'));
+        textNode = document.createTextNode('');
+        bodyEl.appendChild(textNode);
+      } else {
+        textNode.appendData(ch);
+      }
 
       let pause = charDelay;
       if (ch === ' ')  pause *= 0.45;
@@ -206,14 +221,10 @@ export class TransitionManager {
       </div>`;
   }
 
-  _escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  /* (_escapeHtml a été retiré : son unique appelant était typeQuote, qui
+     n'assemble plus de HTML — il allonge un nœud texte, lequel ne peut pas
+     contenir de balise. Un utilitaire sans lecteur est un piège : il laisse
+     croire qu'un échappement a lieu quelque part.) */
 
   _wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

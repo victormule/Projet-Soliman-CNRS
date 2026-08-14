@@ -229,23 +229,10 @@ export class VitrineScene extends Scene {
     this.title?.resize();
   }
 
-  /**
-   * Attend jusqu'à ce que l'instant absolu cible soit atteint.
-   *
-   * @param {number} t0 - Timestamp de référence, généralement capturé au début
-   *                      de enter() avec Date.now().
-   * @param {number} targetMs - Temps cible en millisecondes à atteindre depuis
-   *                            t0. Exemple : 5000 signifie "attendre jusqu'à
-   *                            t0 + 5000 ms".
-   *
-   * Comportement :
-   * - si l'instant cible est déjà dépassé, la méthode résout immédiatement ;
-   * - sinon, elle attend uniquement le temps restant ;
-   * - l'attente passe par pause(), donc reste compatible avec les mécanismes
-   *   d'interruption propres à la classe Scene.
-   */
-  async _waitUntil(t0, targetMs) {
-    const remaining = targetMs - (Date.now() - t0);
-    if (remaining > 0) await this.pause(remaining);
-  }
+
+  /* Les helpers temporels (addTimer, _waitUntil, _scheduleAt) vivent dans
+     core/Scene.js et NULLE PART AILLEURS. Quatre scènes en portaient une copie
+     mot pour mot : quatre vérités possibles pour un même contrat de nettoyage
+     des minuteries. Supprimées — la classe de base suffit. */
+
 }

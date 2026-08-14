@@ -508,23 +508,6 @@ export class Chapitre1Scene extends Scene {
     }
   }
 
-  /**
-   * Enregistre un timer dans la liste interne de la scène.
-   * -----------------------------------------------------------------------------
-   * Cela permet à la classe Scene de nettoyer proprement les timeouts à la sortie.
-   *
-   * @param {Function} fn
-   * @param {number} delayMs
-   * @returns {number} id du setTimeout
-   */
-  addTimer(fn, delayMs) {
-    const id = setTimeout(() => {
-      this._timers = this._timers.filter(t => t !== id);
-      fn();
-    }, delayMs);
-    this._timers.push(id);
-    return id;
-  }
 
   /**
    * Masque la torche globale.
@@ -1432,4 +1415,10 @@ export class Chapitre1Scene extends Scene {
     if (immediate) clearFn();
     else setTimeout(clearFn, 700);
   }
+
+  /* Les helpers temporels (addTimer, _waitUntil, _scheduleAt) vivent dans
+     core/Scene.js et NULLE PART AILLEURS. Quatre scènes en portaient une copie
+     mot pour mot : quatre vérités possibles pour un même contrat de nettoyage
+     des minuteries. Supprimées — la classe de base suffit. */
+
       }

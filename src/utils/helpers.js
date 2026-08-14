@@ -38,6 +38,61 @@ export function clearUIContent(el, delay = 0) {
   }
 }
 
+/* ── LIBÉRATION DES ÉLÉMENTS MÉDIA ────────────────────────────────────────
+   À APPELER AVANT DE RETIRER LE DOM D'UN CHAPITRE. Sans cela, le chapitre
+   entier reste vivant en mémoire après sa sortie.
+
+   POURQUOI (mesuré, pas supposé) : un <video>/<audio> qui a commencé sa
+   « resource selection » est retenu par le moteur média du navigateur — et un
+   nœud retenu retient TOUT son arbre, ancêtres compris. Retirer
+   #chapitre2-root du document ne suffit donc pas : ses trois éléments média
+   (#voyeur-video, #article-video, #article-audio, ce dernier avec un <track
+   default> qui part en chargement immédiat) le maintiennent détaché-mais-vivant.
+
+   Bissection qui l'établit — même DOM injecté puis retiré, deux cycles :
+     DOM complet          → +1 arbre détaché par cycle
+     sans <img>           → +1   (ce ne sont pas les images)
+     sans <svg>           → +1   (ni les filtres SVG)
+     sans <template>      → +1   (ni le gabarit de l'article)
+     sans <video>/<audio> → +0   ← la fuite disparaît
+
+   `load()` après avoir vidé la source est l'étape qui compte : elle AVORTE
+   l'algorithme de sélection de ressource. Sans elle, vider `src` ne libère rien.
+──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Coupe et libère tous les <video>/<audio> contenus dans `root` (inclus).
+ * Idempotent, et sans effet si `root` est nul.
+ * @param {?Element} root
+ */
+export function releaseMediaElements(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+
+  const medias = [...root.querySelectorAll('video, audio')];
+  if (root.matches?.('video, audio')) medias.push(root);
+
+  medias.forEach(el => {
+    try {
+      el.pause();
+      // Les <source> relancent la sélection de ressource au load() : on les
+      // retire. Les <track>, eux, sont seulement DÉSARMÉS (src vidé) plutôt que
+      // retirés — les retirer en ferait des arbres détachés à leur tour, alors
+      // qu'ils disparaissent naturellement avec le média qui les contient.
+      el.querySelectorAll('source').forEach(n => n.remove());
+      el.querySelectorAll('track').forEach(t => {
+        t.removeAttribute('src');
+        try { if (t.track) t.track.mode = 'disabled'; } catch (e) { /* sans objet */ }
+      });
+      el.removeAttribute('src');
+      try { el.srcObject = null; } catch (e) { /* non supporté : sans objet */ }
+      el.load();                    // avorte la sélection de ressource
+    } catch (e) {
+      // Un média déjà démonté peut lever : ce n'est pas une raison d'interrompre
+      // le nettoyage des suivants.
+    }
+  });
+}
+
 /* ── CRÉATION SVG ────────────────────────────────────────────────── */
 
 export function createSVG(width, height, viewBox = null) {
@@ -259,14 +314,36 @@ export function unifyFontSizeMultiline(textElements, maxWidth, startSize, minSiz
     return m;
   };
 
+  /* RECHERCHE DICHOTOMIQUE, pas décrément pas à pas.
+     ─────────────────────────────────────────────────────────────────────────
+     getComputedTextLength() force un recalcul de mise en page SYNCHRONE à
+     chaque appel. L'ancienne boucle descendait de 0,5 px en 0,5 px : jusqu'à
+     une centaine de reflows forcés par libellé, rejoués à chaque
+     redimensionnement. La dichotomie sur la même grille de 0,5 px donne
+     EXACTEMENT le même résultat en ~7 mesures au lieu de ~100.
+
+     Le pas de 0,5 px est conservé tel quel : c'est lui qui décide de la taille
+     finale, donc du rendu. Changer la méthode ne doit pas changer le dessin. */
+  const STEP = 0.5;
+  const steps = Math.max(0, Math.round((startSize - minSize) / STEP));
+  const sizeAt = (k) => startSize - k * STEP;          // k=0 → startSize
+
   let unified = startSize;
   textElements.forEach(txt => {
-    let fs = startSize;
-    txt.setAttribute('font-size', fs + 'px');
-    while (widthOf(txt) > maxWidth && fs > minSize) {
-      fs -= 0.5;
-      txt.setAttribute('font-size', fs + 'px');
+    // Cas courant : ça tient déjà à la taille de départ — une seule mesure.
+    txt.setAttribute('font-size', startSize + 'px');
+    if (widthOf(txt) <= maxWidth) return;
+
+    // Sinon : plus petit k tel que sizeAt(k) tienne (la largeur décroît avec k).
+    let lo = 0, hi = steps;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      txt.setAttribute('font-size', sizeAt(mid) + 'px');
+      if (widthOf(txt) <= maxWidth) hi = mid;
+      else                          lo = mid + 1;
     }
+    const fs = sizeAt(lo);                              // = minSize si rien ne tient
+    txt.setAttribute('font-size', fs + 'px');
     if (fs < unified) unified = fs;
   });
 

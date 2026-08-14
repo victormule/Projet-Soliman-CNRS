@@ -1076,8 +1076,11 @@ body.peine-aim #cursor.hotspot::after {
   margin-bottom: 1.2rem;
 }
 
-/* Titre Principal — L'élément central */
+/* Titre Principal — L'élément central.
+   C'est un <h1> depuis l'audit d'accessibilité : `margin-top: 0` annule la
+   marge par défaut des titres, la mise en forme ci-dessous fait le reste. */
 .ss-title {
+  margin-top: 0;
   color: #fff;
   font-family: 'Playfair Display', serif;
   font-size: clamp(2.5rem, 6vw, 5.5rem);
@@ -1120,7 +1123,17 @@ body.peine-aim #cursor.hotspot::after {
 }
 
 /* Call To Action */
+/* .ss-cta est désormais un <button> (il était un <div> inatteignable au
+   clavier). Ces quatre lignes annulent le style natif du navigateur pour que
+   le rendu reste EXACTEMENT celui d'avant — le reste de la règle, inchangé,
+   dessinait déjà la pastille. `line-height: inherit` reproduit l'héritage
+   qu'avait le div ; sans elle, le `normal` des boutons changerait la hauteur. */
 .ss-cta {
+  appearance: none;
+  -webkit-appearance: none;
+  line-height: inherit;
+  text-align: center;
+  cursor: pointer;
   margin-top: 1.8rem;
   color: rgba(255, 255, 255, 0.75);
   font-family: 'Inter', sans-serif;
@@ -2539,4 +2552,68 @@ body.peine-aim #cursor.aim-hot {
      (this._reduced) — le texte s'efface avec le fond, sans souffle. Pas de
      filet CSS à poser : la fumée est pilotée en Web Animations API, et sans
      smokeOut il n'y a ni classe .ab-out, ni fragments, ni animations. */
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   ACCESSIBILITÉ — clavier et lecteurs d'écran
+   ─────────────────────────────────────────────────────────────────
+   Toute l'interface est faite de <div> et de <svg> construits en JS.
+   Ils reçoivent leur rôle et leur tabindex depuis src/utils/a11y.js ;
+   ce bloc leur donne ce que le CSS seul peut donner : un focus VISIBLE
+   et une classe pour les textes réservés aux lecteurs d'écran.
+
+   Le halo doré du focus reprend exactement la couleur de survol du site
+   (rgba(255,210,80)) : l'utilisateur au clavier voit la même chose que
+   l'utilisateur à la souris, au même endroit.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Contenu réservé aux technologies d'assistance (annonces de scène). */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* :focus-visible seulement — le halo ne doit PAS apparaître au clic souris,
+   qui garderait sinon une bague dorée sur le dernier bouton cliqué. */
+:focus:not(:focus-visible) { outline: none; }
+
+:focus-visible,
+[role="button"]:focus-visible,
+.doc-btn:focus-visible,
+.roman-btn:focus-visible,
+#fs-btn:focus-visible,
+[data-arrow]:focus-visible,
+.ss-cta:focus-visible {
+  outline: 2px solid rgba(255, 210, 80, 0.95);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+/* Les zones de la navbar sont des <rect> SVG : `outline` n'y est pas fiable
+   selon les moteurs, on passe donc par le tracé lui-même. */
+.nav-btn-zone:focus-visible {
+  outline: none;
+  fill: rgba(255, 210, 80, 0.12);
+  stroke: rgba(255, 210, 80, 0.95);
+  stroke-width: 1.5;
+}
+
+/* Les hotspots du chapitre 1 et les bulles du chapitre 4 vivent dans des
+   contextes sombres ou clairs selon la moitié d'écran : un halo doré tient
+   sur les deux (c'est déjà la couleur de survol commune au site). */
+.hotspot-zone:focus-visible,
+.chp4-hit:focus-visible {
+  outline: 2px solid rgba(255, 210, 80, 0.95);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :focus-visible { transition: none !important; }
 }
