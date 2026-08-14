@@ -312,11 +312,15 @@ là** : il vit dans `#app`, DERRIÈRE l'accueil, mais le PRÉCÈDE dans l'ordre 
 document — focusable, il captait la toute première tabulation et Entrée
 basculait en plein écran au lieu de lancer l'expérience.
 
-⚠️ **Le halo de focus de l'accueil attend un vrai appui.** `#ss-start` porte
-`autofocus` (c'est ce qui fait qu'Entrée démarre sans détour) ; le navigateur
-dessine alors le halo dès le chargement, sur un écran composé au pixel. Il est
-donc ajourné jusqu'au premier `keydown` (`body.using-keyboard`, posé par
-app.js). Le focus, lui, est bien là dans les deux cas.
+⚠️ **Le halo de focus de l'accueil est visible DÈS LE CHARGEMENT, et doit le
+rester.** `#ss-start` porte `autofocus` (c'est ce qui fait qu'Entrée démarre
+sans détour) ; le navigateur traite ce focus initial comme un focus clavier et
+dessine aussitôt la bague dorée. Une passe l'a ajournée au premier `keydown`
+(`body.using-keyboard`) en jugeant qu'elle chargeait un écran composé au pixel
+— arbitrage esthétique, **annulé** : ce halo est le seul indice qu'on peut
+entrer sans la souris, et il disparaissait à l'endroit exact où le site se
+présente. La classe `using-keyboard` a été retirée avec sa règle CSS (plus
+aucun lecteur). Ne pas remasquer le halo.
 
 **CE QUI RESTE À FAIRE** : les CHAPITRES et leurs sous-parties n'ont encore
 AUCUN travail clavier (hotspots du chapitre 1, crânes et sous-parties du 2,

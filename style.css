@@ -2590,16 +2590,15 @@ body.peine-aim #cursor.aim-hot {
    qui garderait sinon une bague dorée sur le dernier bouton cliqué. */
 :focus:not(:focus-visible) { outline: none; }
 
-/* ⚠️ L'EXCEPTION DE L'ÉCRAN D'ACCUEIL.
-   #ss-start porte `autofocus` : c'est ce qui permet à Entrée de lancer
-   l'expérience sans détour, dès le chargement. Mais le navigateur traite ce
-   focus initial comme un focus CLAVIER et dessine aussitôt le halo — une bague
-   dorée sur un écran composé au pixel, alors que personne n'a rien touché.
-   On l'ajourne donc au premier appui réel sur une touche (app.js pose
-   `body.using-keyboard`) : celui qui navigue au clavier voit son repère, celui
-   qui vient à la souris voit l'écran tel qu'il a été dessiné. Le focus, lui,
-   est bien là dans les deux cas. */
-body:not(.using-keyboard) #ss-start:focus-visible { outline: none; }
+/* ⚠️ L'ÉCRAN D'ACCUEIL MONTRE SON HALO DÈS LE CHARGEMENT — c'est VOULU.
+   #ss-start porte `autofocus` : le navigateur traite ce focus initial comme un
+   focus CLAVIER et dessine aussitôt la bague dorée autour de « Cliquez pour
+   commencer ». Une passe précédente l'a ajournée jusqu'au premier appui sur une
+   touche (`body.using-keyboard`), au motif qu'elle chargeait un écran composé
+   au pixel. C'était un arbitrage esthétique, et il coûtait trop cher : ce halo
+   est le SEUL indice qu'on peut entrer sans la souris, et il tombait
+   précisément là où le site se présente. Il reste donc visible d'emblée —
+   ne pas le remasquer. */
 
 :focus-visible,
 [role="button"]:focus-visible,
