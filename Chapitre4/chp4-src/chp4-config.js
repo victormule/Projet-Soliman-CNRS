@@ -18,18 +18,28 @@
  * CHRONOLOGIE DU DESSIN (ms depuis le lever du rideau)
  *
  *      0 ─── noir. Le rideau vient de se lever, la scène retient son souffle.
- *    400 ─┬─ LA LUMIÈRE MONTE : le noir devient page blanche (dawn).
- *   2200 ─┴─ page nue.
- *   2200 ─┬─ LE CRÂNE paraît, en fondu, et se pose (léger recadrage).
- *   3600 ─┘
- *   3400 ─┬─ LA FRACTURE se propage depuis sa pointe haute.
- *   6000 ─┘
- *   5900 ─── LES BULLES, une par une (queue → contour → remplissage → mot).
- *  ≈11900 ── tout est dessiné : la flèche de sortie paraît, le dessin respire,
- *            les bulles deviennent cliquables.
+ *    700 ─┬─ LA LUMIÈRE MONTE : le noir devient page blanche (dawn).
+ *   3100 ─┘
+ *   3300 ─┬─ LE CRÂNE paraît, en fondu, et se pose (léger recadrage).
+ *   5200 ─┘
+ *   4500 ─┬─ LA FRACTURE s'ouvre depuis son cœur vers ses trois branches,
+ *         │  en tremblant — le moment du chapitre.
+ *   9700 ─┘
+ *   9300 ─── LES BULLES, une par une (queue → contour → remplissage → mot).
+ *            Elles mordent sur la fin de la fracture (`start_after` négatif).
+ *  ≈16700 ── tout est dessiné.
+ *  ≈17300 ── la flèche de sortie paraît, le dessin respire, les bulles
+ *            deviennent cliquables.
+ *
+ * Environ dix-sept secondes : c'est LONG, et c'est voulu — on entre quelque
+ * part. Pour raccourcir sans tout dérégler, jouer sur `fissure.duration` et
+ * `bubbles_timing.gap`, qui pèsent à eux deux les deux tiers du total.
  *
  * Chaque durée ci-dessous est un maillon de cette chaîne : allonger `dawn.hold`
  * décale tout le reste d'autant (les instants sont RELATIFS, enchaînés).
+ *
+ * LA SORTIE (section `exit`) en est le reflet : les bulles s'effacent à
+ * rebours, la fracture se referme sur son cœur, la lumière tombe. ~2 s.
  * ═════════════════════════════════════════════════════════════════════════════
  */
 
@@ -391,18 +401,13 @@ export const CONFIG = {
   /* ══════════════════════════════════════════════════════════════════
      LA CARTE — pop-up interne
      ──────────────────────────────────────────────────────────────────
-     ⚠️ soliman-map.netlify.app répond aujourd'hui « X-Frame-Options:
-     SAMEORIGIN » : tant que cet en-tête est là, AUCUN navigateur n'affichera
-     la carte dans notre cadre — il montrera un cadre vide. Pour l'autoriser,
-     déposer à la racine du site de la carte un fichier `_headers` :
-
-         /*
-           X-Frame-Options: ALLOWALL
-           Content-Security-Policy: frame-ancestors 'self' https://<notre-domaine>
-
-     (ou l'équivalent dans netlify.toml). En attendant, `fallback_after` fait
-     paraître une invite « ouvrir dans un nouvel onglet » sous le cadre : la
-     carte reste atteignable, jamais d'impasse.
+     ⚠️ L'AUTORISATION DE CADRAGE VIT DANS L'AUTRE DÉPÔT. La carte
+     (victormule/soliman-map-v3) refusait d'être encadrée — `X-Frame-Options:
+     SAMEORIGIN`. C'est réglé dans son `netlify.toml` : en-tête retiré et
+     `frame-ancestors` élargi à `https://*.netlify.app` plus le localhost.
+     Si le site principal déménage hors de Netlify, il faudra AJOUTER son
+     domaine là-bas, sans quoi la pop-up redeviendra un cadre vide.
+     `fallback_after` garde par sécurité un lien « pleine page » sous le cadre.
      ══════════════════════════════════════════════════════════════════ */
 
   map: {

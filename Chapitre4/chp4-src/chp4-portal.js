@@ -9,16 +9,19 @@
  * position à l'écran de la bulle cliquée, si bien qu'il en jaillit au lieu
  * d'apparaître de nulle part. C'est ce qui relie le geste à son effet.
  *
- * ⚠️ EN-TÊTE DE L'HÉBERGEUR — soliman-map.netlify.app répond aujourd'hui
- * « X-Frame-Options: SAMEORIGIN ». Tant que cet en-tête est là, le navigateur
- * REFUSE d'afficher la carte dans notre cadre, quoi que fasse ce fichier : la
- * décision est prise côté serveur, avant que notre code ne voie quoi que ce
- * soit. Le correctif (un fichier `_headers` sur le site de la carte) est écrit
- * dans chp4-config.js, section `map`. En attendant, `fallback_after` fait
- * paraître sous le cadre une porte de sortie — « ouvrir dans un nouvel onglet ».
- * Aucune détection automatique n'est tentée : un cadre bloqué charge une page
- * d'erreur du navigateur, qui déclenche `load` comme une page normale et reste
- * illisible depuis notre origine. Prétendre le détecter serait mentir.
+ * ⚠️ CE CADRE DÉPEND D'UN RÉGLAGE DANS UN AUTRE DÉPÔT. Un site ne peut être
+ * encadré que s'il y consent, par ses en-têtes de réponse — décision prise côté
+ * serveur, avant que notre code ne voie quoi que ce soit. La carte
+ * (victormule/soliman-map-v3) refusait tout cadrage : `X-Frame-Options:
+ * SAMEORIGIN`. Corrigé dans son `netlify.toml` — en-tête retiré (sa seule
+ * valeur permettant de désigner un autre site, ALLOW-FROM, n'est plus
+ * implémentée nulle part) et `frame-ancestors` élargi aux origines Netlify et
+ * au localhost. SI CE CADRE REDEVIENT BLANC, c'est là qu'il faut regarder.
+ *
+ * `fallback_after` garde par sécurité un lien « pleine page » sous le cadre.
+ * Aucune détection automatique du blocage n'est tentée : un cadre refusé charge
+ * une page d'erreur du navigateur, qui déclenche `load` comme une page normale
+ * et reste illisible depuis notre origine. Prétendre le détecter serait mentir.
  */
 
 import { Motion, EASE } from './chp4-draw.js';
@@ -107,9 +110,8 @@ export class MapPortal {
         const slot = root.querySelector('.chp4-portal-escape');
         if (!slot) return;
         slot.innerHTML =
-          `<span>La carte ne s'affiche pas&nbsp;?</span>` +
           `<a href="${C.url}" target="_blank" rel="noopener noreferrer" data-clickable="1">` +
-          `Ouvrir dans un nouvel onglet ↗</a>`;
+          `Voir la carte en pleine page ↗</a>`;
         this.motion.animate(slot, [{ opacity: 0 }, { opacity: 1 }],
           { duration: 600, easing: EASE.soft });
       });

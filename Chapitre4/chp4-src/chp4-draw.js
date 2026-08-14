@@ -385,12 +385,22 @@ export async function propagate(path, motion, o) {
      Le débord restant, à gauche, tombe dans la zone où le dégradé de la photo
      est déjà du papier pur : invisible. */
   const vb = svg.viewBox?.baseVal;
-  const m  = 40;
+  if (!vb?.width) {
+    // Sans viewBox, impossible de savoir jusqu'où étendre le cache : on ne
+    // devine pas (un cache trop grand recouvre la photographie, trop petit
+    // laisse voir la fracture d'un coup). On le dit, et on se rabat sur un
+    // simple fondu — dégradé, mais jamais faux.
+    console.warn('[chp4] L\'œuvre n\'a pas de viewBox : fracture révélée en fondu.');
+    grad.remove();
+    path.style.opacity = '0';
+    await motion.animate(path, [{ opacity: 0 }, { opacity: 1 }],
+      { duration: o.duration, easing: EASE.soft })?.finished.catch(() => {});
+    return;
+  }
+  const m = 40;
   const cover = svgEl('rect', {
-    x: (vb?.x ?? 0) - m,
-    y: (vb?.y ?? 0) - m,
-    width:  (vb?.width  ?? 1187) + m * 2,
-    height: (vb?.height ?? 1079) + m * 2,
+    x: vb.x - m, y: vb.y - m,
+    width: vb.width + m * 2, height: vb.height + m * 2,
     fill: `url(#${uid}-g)`, 'pointer-events': 'none',
   });
   path.parentNode.insertBefore(cover, path.nextSibling);

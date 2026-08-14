@@ -260,17 +260,42 @@ glisser — d'où `verify()`, qui compare au montage le centre de chaque tracé 
 celui qu'il annonce et hurle en console. **Après tout ré-export de
 chapitre4.svg, lancer le chapitre et lire la console avant toute chose.**
 
-**4. La carte ne s'affichera pas tant que son hébergeur l'interdit.**
-`soliman-map.netlify.app` répond `X-Frame-Options: SAMEORIGIN` : le navigateur
-refuse de l'afficher dans notre cadre, quoi que fasse notre code. Correctif
-côté carte (fichier `_headers` à sa racine), écrit dans `chp4-config.js` § map.
-En attendant, `map.fallback_after` fait paraître sous le cadre un lien
-« ouvrir dans un nouvel onglet ».
+**4. La pop-up de la carte dépend d'un réglage dans UN AUTRE DÉPÔT.**
+`soliman-map.netlify.app` (dépôt `victormule/soliman-map-v3`) répondait
+`X-Frame-Options: SAMEORIGIN` : le navigateur refusait d'afficher la carte dans
+notre cadre, quoi que fasse notre code. Corrigé dans son `netlify.toml` — en-tête
+retiré, et `frame-ancestors` élargi aux origines Netlify et au localhost. **Si
+la pop-up redevient un jour un cadre vide, c'est là qu'il faut regarder**, pas
+ici. `map.fallback_after` garde par sécurité un lien « ouvrir dans un nouvel
+onglet » sous le cadre.
+
+**5. Deux pièges de PERFORMANCE, découverts au banc d'essai — la mise en scène
+était juste, elle était injouable.** Symptôme commun et déroutant : l'animation
+tressautait *davantage quand on bougeait la souris* (le curseur du site, une
+silhouette masquée sous deux ombres portées, se repeint à chaque `pointermove`
+et disputait le temps qui restait).
+
+  · **Révéler la fissure par un `mask`** re-pixellisait ses onze mille
+    caractères À CHAQUE FRAME : 33 ms par frame souris en main, 67 frames
+    perdues sur 127 — la moitié des images. Remplacé par un CACHE couleur
+    papier posé par-dessus : le tracé n'est peint qu'une fois, seule une forme
+    triviale s'anime. Retour à 60 im/s. Même règle pour le tremblement, passé
+    d'un groupe DANS le SVG à une transformation CSS sur l'élément `<svg>`
+    (le compositeur la joue sans rien re-pixelliser).
+  · **`getPointAtLength()` est en temps linéaire À CHAQUE APPEL.** Mesurer la
+    portée de la fissure par échantillonnage coûtait 1,7 s de page gelée. La
+    valeur est désormais une constante mesurée une fois (`FISSURE` dans le
+    manifeste), surveillée par `verify()`.
+
+  Corollaire général : sur cette page, **rien de plein écran ne doit être en
+  `mix-blend-mode`** (le grain du papier y a renoncé) et rien d'animé ne doit
+  toucher un tracé complexe. Le banc d'essai tient en trente lignes de
+  Playwright — le refaire avant d'accuser la machine.
 
 Deux notes de composition : les libellés sont RE-COMPOSÉS en Roboto Condensed
 (la police de l'export, « Edges », n'est pas dans le projet ; ses `<text>` sont
-jetés au chargement), et la fissure est révélée par un masque radial qui grandit
-depuis sa pointe haute — une plume qui suivrait son contour fermé descendrait
+jetés au chargement), et la fissure s'ouvre depuis le CŒUR de l'étoile vers ses
+trois branches à la fois — une plume qui suivrait son contour fermé descendrait
 une branche pour remonter par l'autre côté (cf. `propagate()` dans
 `chp4-draw.js`).
 

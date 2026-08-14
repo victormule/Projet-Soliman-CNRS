@@ -45,8 +45,12 @@
 
 import { bboxInUserSpace } from './chp4-draw.js';
 
-/** Système de coordonnées de l'œuvre — toutes les valeurs ci-dessous y vivent. */
-export const VIEWBOX = { w: 1187, h: 1079 };
+/* Le repère de l'œuvre est celui de son viewBox — 0 0 1140 1079 à ce jour.
+   Il n'est PAS recopié ici en constante : le seul lecteur qui en a besoin
+   (le cache de la fracture, dans chp4-draw.js) lit `svg.viewBox.baseVal`,
+   c'est-à-dire la valeur vivante. Un chiffre recopié serait un second lieu
+   de vérité, et il a déjà failli mentir : l'œuvre est passée de 1187 à 1140
+   de large lors d'un ré-export, sans que personne n'ait à le dire au code. */
 
 /**
  * Tracés structurels (hors bulles).
@@ -102,7 +106,7 @@ export const NODES = {
  * rien s'il n'y a pas de ré-export, et bruyamment le jour où il y en a un.
  */
 export const FISSURE = {
-  heart: { x: 545, y: 635 },
+  heart: { x: 498, y: 635 },
   reach: 566,
 };
 
@@ -120,11 +124,11 @@ export const FISSURE = {
  * @property {boolean} [inset] la bulle encadre l'<image> encastrée
  */
 export const BUBBLES = [
-  { id: 'mots',      shape: 14, tail: [15, 11, 13, 12], tone: 'ink',   center: [243, 224] },
-  { id: 'pluralite', shape: 19, tail: [18, 17, 16],     tone: 'grey',  center: [745, 302] },
-  { id: 'miroir',    shape: 10, tail: [7, 9, 8],        tone: 'ink',   center: [964, 527] },
-  { id: 'dignite',   shape:  4, tail: [6, 5],           tone: 'paper', center: [196, 574] },
-  { id: 'carte',     shape: 20, tail: [3, 2],           tone: 'paper', center: [585, 912], inset: true },
+  { id: 'mots',      shape: 14, tail: [15, 11, 13, 12], tone: 'ink',   center: [196, 223] },
+  { id: 'pluralite', shape: 19, tail: [18, 17, 16],     tone: 'grey',  center: [697, 301] },
+  { id: 'miroir',    shape: 10, tail: [7, 9, 8],        tone: 'ink',   center: [916, 527] },
+  { id: 'dignite',   shape:  4, tail: [6, 5],           tone: 'paper', center: [150, 574] },
+  { id: 'carte',     shape: 20, tail: [3, 2],           tone: 'paper', center: [540, 911], inset: true },
 ];
 
 /** Nombre de <path> attendus dans l'export — première sentinelle de `verify()`. */
@@ -135,15 +139,15 @@ export const EXPECTED_PATH_COUNT = 21;
  * Séparés des bulles pour garder la liste ci-dessus lisible.
  */
 const TAIL_CENTERS = {
-  15: [433, 359], 11: [414, 351], 13: [389, 340], 12: [357, 316],
-  18: [574, 460], 17: [601, 450], 16: [629, 428],
-   7: [846, 697],  9: [865, 674],  8: [886, 640],
-   6: [259, 736],  5: [248, 698],
-   3: [555, 721],  2: [531, 764],
+  15: [386, 359], 11: [367, 351], 13: [342, 339], 12: [310, 316],
+  18: [530, 463], 17: [553, 450], 16: [582, 428],
+   7: [799, 694],  9: [818, 674],  8: [840, 640],
+   6: [211, 735],  5: [201, 695],
+   3: [504, 719],  2: [491, 761],
 };
 
 /** Centres attendus des tracés structurels. */
-const NODE_CENTERS = { 0: [594, 540], 1: [586, 518] };
+const NODE_CENTERS = { 0: [570, 540], 1: [538, 515] };
 
 /**
  * Tolérance de la vérification, en unités de l'œuvre.
