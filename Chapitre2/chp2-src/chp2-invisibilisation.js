@@ -1025,7 +1025,15 @@ function unlockMediaForTouch(eye) {
       if (!el.src) el.src = eye.audioSrc;
     } else if (eye.hasVideo && eye.videoSrc) {
       el = videoEl;
-      if (!el.src) el.src = eye.videoSrc;
+      // ⚠️ ensureVideoSrc, PAS `el.src = eye.videoSrc`. Cette fonction ne
+      // tourne que sur tactile — donc exactement là où la variante allégée
+      // doit servir. Poser l'ORIGINAL ici lançait son téléchargement dès le
+      // tap ; openMedia() rebasculait ~4 s plus tard sur la variante (cf.
+      // ligne ~848), après avoir tiré pour rien une partie du master sur le
+      // seul appareil qu'on cherche à ménager. Rien ne se voyait : la vidéo
+      // se lisait, le déverrouillage autoplay tenait (il porte sur
+      // l'ÉLÉMENT, pas sur la source) — seuls les mégaoctets partaient.
+      ensureVideoSrc(el, eye.videoSrc);
     }
     if (!el) return;                        // témoignage texte : rien à faire
     const p = el.play();

@@ -339,12 +339,30 @@ Chapitre2/chp2-medias/Voyeur.mp4            ← l'original, JAMAIS touché
 Chapitre2/chp2-medias/mobile/Voyeur.mp4     ← la variante (npm run videos)
 ```
 
-⚠️ **Le repli n'est pas décoratif.** Les variantes peuvent ne pas exister —
-c'est l'état du dépôt tant que la passe de compression n'a pas été lancée ET
-validée à l'œil. `setVideoSrc()` écoute l'erreur de chargement et rebascule UNE
-fois sur l'original : le site se comporte donc à l'identique avant et après la
-compression, seule la légèreté change. Vérifié : sur téléphone, la requête
-`mobile/…` répond 404 et la vidéo se lit quand même.
+**Les 17 variantes EXISTENT** (passe d'août 2026, ffmpeg 9.0) : 281 → 74 Mo,
+−74 %. Vérifié au navigateur : ordinateur → master 1920×1080, téléphone →
+`mobile/…` en 206, aucun repli déclenché.
+
+⚠️ **Le repli reste indispensable** — il couvre toute vidéo AJOUTÉE plus tard
+sans sa variante. `setVideoSrc()` écoute l'erreur de chargement et rebascule UNE
+fois sur l'original : une vidéo neuve se lit donc immédiatement sur téléphone,
+en attendant la prochaine passe de compression. Ne pas le retirer sous prétexte
+que les variantes sont là aujourd'hui.
+
+⚠️ **Le plafond porte sur le GRAND CÔTÉ, pas sur la largeur.**
+`Chapitre3/chp3-medias/sepulture.mp4` est en PORTRAIT (1080×1920) : un
+`scale='min(1280,iw)'` la laissait INTACTE (1080 < 1280) et sa « variante
+allégée » gardait 2,07 M de pixels quand les autres tombaient à 0,92 M — deux
+fois trop lourde, en silence. La cible se calcule en JS depuis ffprobe
+(`cible()` dans compress-videos.mjs) : elle donne 720×1280.
+
+**Qualité mesurée** (variante ré-agrandie, comparée au master) : PSNR Y de 39,4
+à 44,9 dB selon les plans, minimum par image ≥ 34,5 dB — au-dessus du seuil de
+transparence visuelle. Contrôle à l'œil fait sur les plans les plus exposés
+(chapitre 1, « Violence et trace »), ombres amplifiées ×6 : ni banding ni
+blocking. Deux taux à ne pas mal lire : `ame-noire.mp4` tombe à −93 % parce que
+son contenu est peu complexe (43,6 dB), `a_la_une.mp4` résiste à −38 % parce
+qu'il est très détaillé — dans les deux cas le CRF a fait son travail.
 
 ⚠️ **Seul le .mp4 est décliné.** Les .mp3 pèsent 28 Mo à eux tous et une voix
 comprimée deux fois s'entend.
@@ -513,12 +531,15 @@ Parcours sur serveur local, console ouverte (zéro erreur attendue) :
 
 ## Notes de déploiement
 
-- Poids : ~300 Mo, dont ~280 Mo de mp4 (limite GitHub : 100 Mo/fichier — le
-  plus gros fait ~23 Mo, OK). **`npm run videos` fabrique les variantes
-  mobiles** dans `*/mobile/`, sans jamais toucher aux masters (voir « Vidéos :
-  allégées sur mobile »). REGARDER les fichiers produits avant de publier — les
-  plans sombres du chapitre 1 et de « Violence et trace » sont les plus
-  exposés. Demande un vrai ffmpeg (celui de Playwright n'a ni H.264 ni AAC).
+- Poids : ~375 Mo, dont 281 Mo de masters mp4 + 74 Mo de variantes mobiles
+  (limite GitHub : 100 Mo/fichier — le plus gros master fait ~23 Mo, OK).
+  **`npm run videos` fabrique les variantes** dans `*/mobile/`, sans jamais
+  toucher aux masters (voir « Vidéos : allégées sur mobile »). Elles SONT
+  versionnées : c'est ce qu'un téléphone télécharge (cf. l'avertissement en tête
+  de `.gitignore`). REGARDER les fichiers produits avant de publier — les plans
+  sombres du chapitre 1 et de « Violence et trace » sont les plus exposés.
+  Demande un vrai ffmpeg (celui de Playwright n'a ni H.264 ni AAC) : sous
+  Windows, `winget install Gyan.FFmpeg`.
 - Polices : **hébergées EN LOCAL** dans `fonts/` (Cinzel, Playfair Display,
   Inter, Cormorant Garamond, Old Standard TT, Roboto Condensed — 20 fichiers
   woff2, 666 Ko, sous-ensembles latin et latin-ext seulement). `fonts/fonts.css`

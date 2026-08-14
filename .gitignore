@@ -21,5 +21,14 @@ npm-debug.log*
 #    Le plus gros fichier (~23 Mo) reste sous la limite GitHub de 100 Mo.
 #    Si le dépôt devient trop lourd, envisager Git LFS pour /**/*.mp4.
 
-# —— Sortie de tools/compress-videos.mjs (ne jamais versionner) ————————
+# —— ⚠️ Les variantes mobiles SE VERSIONNENT ————————————————————————————
+#    tools/compress-videos.mjs écrit dans `*/mobile/`, et ces fichiers SONT
+#    servis : c'est ce qu'un téléphone télécharge. Les ignorer casserait la
+#    livraison allégée en silence — le site continuerait de marcher (media.js
+#    se replie sur l'original), mais un mobile reprendrait 281 Mo de masters.
+#    NE PAS ajouter `mobile/` ici.
+#
+#    `_compressed/` est l'ancien dossier de sortie du script, avant qu'il
+#    n'écrive à côté des originaux. Conservé le temps que les copies de
+#    travail se soient vidées.
 _compressed/
