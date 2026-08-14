@@ -407,7 +407,7 @@ export const CONFIG = {
 
   map: {
     url: 'https://soliman-map.netlify.app/#tr=circuit&ax=regard&focus=section:b_integ&view=0.325,0.068,0.692',
-    title: 'La carte du regard',
+    title: 'Carte mentale - ESAA',
     /* Taille du panneau, en % du viewport. */
     width_pct:  92,
     height_pct: 88,
