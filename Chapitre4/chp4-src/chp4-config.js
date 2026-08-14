@@ -357,7 +357,7 @@ export const CONFIG = {
 
   bubbles: {
     mots: {
-      lines: ['des', 'MOTS'],
+      lines: ['Des', 'MOTS'],
       size:  48,
       nudge: [0, -4],
       media: 'Chapitre4/chp4-medias/les_mots.mp3',
@@ -375,7 +375,7 @@ export const CONFIG = {
       media: 'Chapitre4/chp4-medias/un_miroir.mp3',
     },
     dignite: {
-      lines: ['LA', 'DIGNITE'],
+      lines: ['La', 'DIGNITE'],
       size:  48,
       nudge: [0, -14],
       media: 'Chapitre4/chp4-medias/la_dignite.mp3',
