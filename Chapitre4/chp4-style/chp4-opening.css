@@ -1,0 +1,427 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   chp4-opening.css — CHAPITRE 4 · « Une histoire complexe »
+   ───────────────────────────────────────────────────────────────────────────
+   Le seul écran CLAIR du site. Tout ce qui, ailleurs, est tracé en blanc sur
+   du noir doit ici être retourné — c'est le sens des surcharges de style.css
+   (section « CHAPITRE 4 ») pour le titre, le sous-titre et le bouton plein
+   écran, qui autrement disparaîtraient purement et simplement sur le papier.
+
+   LES COULEURS NE SONT PAS ÉCRITES ICI. Elles arrivent en variables (--chp4-*)
+   posées par le moteur depuis chp4-config.js → palette. Aucun repli codé en
+   dur : une variable manquante doit se VOIR, pas se faire remplacer en douce
+   par une valeur que personne n'a réglée (règle de CLAUDE.md).
+
+   EMPILEMENT
+     #chapitre4-root (z 500, posé par style.css)
+        └ #chp4-stage      le papier : la photo, puis le dessin
+        └ #chp4-dawn       le noir du départ, et son halo (retiré après usage)
+        └ #chp4-fade       le fondu de sortie
+     #chp4-portal (z 700, greffé sur #app) — au-dessus des titres (z 600),
+        sans quoi « Espace collaboratif » flotterait par-dessus la carte.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#chapitre4-root {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  overflow: hidden;
+  background: var(--chp4-paper);
+}
+
+/* ── LE PAPIER ────────────────────────────────────────────────────────────── */
+
+#chp4-stage {
+  position: absolute;
+  inset: 0;
+  background: var(--chp4-paper);
+}
+
+/* ── LA PROFONDEUR DU PAPIER ──────────────────────────────────────────────
+   Deux voiles très faibles, posés par-dessus TOUT (dessin compris) mais
+   transparents au clic. Un aplat blanc reste plat quoi qu'on dessine dessus :
+   la vignette lui donne une lumière (une feuille éclairée par-dessus, pas un
+   écran allumé), le grain lui donne une matière. On ne les remarque pas — on
+   les ressent. Les deux se coupent depuis chp4-config → depth.
+   Le grain est un bruit SVG cuit dans une data-URI : aucune requête, aucun
+   canvas, aucune boucle — le navigateur le pave et l'oublie.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+#chp4-vignette,
+#chp4-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+#chp4-vignette {
+  background: radial-gradient(
+    ellipse 78% 78% at 50% 46%,
+    rgba(28, 24, 19, 0) var(--chp4-vignette-at),
+    rgba(28, 24, 19, calc(var(--chp4-vignette) * 0.42)) 78%,
+    rgba(28, 24, 19, var(--chp4-vignette)) 100%
+  );
+}
+
+/* ⚠️ PAS DE `mix-blend-mode` ICI. Un calque plein écran en fusion oblige le
+   navigateur à recomposer TOUT ce qui se trouve dessous à chaque frame — sur
+   une page où une fracture s'anime, c'est la moitié du budget d'affichage
+   dépensée pour un grain qu'on distingue à peine. Une simple opacité sur un
+   bruit gris donne, sur du papier clair, un résultat indiscernable. */
+#chp4-grain {
+  opacity: var(--chp4-grain);
+  background-size: var(--chp4-grain-size) var(--chp4-grain-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='190'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='190' height='190' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── LE CRÂNE ─────────────────────────────────────────────────────────────
+   La bande photo et le dessin SE CHEVAUCHENT (`overlap_pct`) : le dégradé de
+   #chp4-photo-veil passe donc sous la marge gauche du dessin. C'est ce
+   recouvrement qui fait fondre la photographie dans la page au lieu de la
+   couper net — le bord de l'image ne doit jamais se voir.
+
+   ⚠️ LE CADRE NE BOUGE PAS, SON CONTENU OUI. La parallaxe déplace l'IMAGE à
+   l'intérieur de sa bande ; la bande, elle, reste rigoureusement immobile.
+   Déplacer la bande — ce que faisait la première version — promenait le bord
+   de son calque de composition à travers l'écran, et un liseré clair ou gris
+   d'un pixel apparaissait au raccord à chaque mouvement. Même raison pour le
+   voile, débordé de 2 px sur trois côtés : à largeur fractionnaire, le
+   dégradé et l'image ne s'arrondissent pas au même pixel, et il restait une
+   colonne d'image non voilée au bord droit — bien visible là où la photo est
+   sombre.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+#chp4-photo-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--chp4-photo-w);
+  overflow: hidden;
+}
+
+#chp4-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--chp4-photo-pos);
+  /* Échelle de base × sur-échelle d'entrée (résorbée par revealPhoto), puis
+     parallaxe et secousse. Le sur-cadrage donne à l'image le mou nécessaire
+     pour glisser sans jamais découvrir le vide au bord. */
+  transform:
+    translate(calc(var(--chp4-px, 0px) + var(--chp4-jx, 0px) * 0.55),
+              calc(var(--chp4-py, 0px) + var(--chp4-jy, 0px) * 0.55))
+    scale(calc(var(--chp4-photo-scale) * var(--chp4-photo-settle, 1)));
+  transform-origin: center;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.22, 0.68, 0.24, 1);
+  will-change: transform;
+  /* Invisible tant que le moteur ne l'a pas révélée — INLINE aussi dans le DOM
+     injecté par la scène : si cette feuille tardait, le crâne apparaîtrait à nu
+     par-dessus le noir d'ouverture. */
+  opacity: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+#chp4-photo-veil {
+  position: absolute;
+  inset: -2px -2px -2px 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    rgba(247, 245, 241, 0) 0%,
+    rgba(247, 245, 241, 0) var(--chp4-veil-from),
+    rgba(247, 245, 241, 0.72) var(--chp4-veil-mid),
+    var(--chp4-paper) var(--chp4-veil-full),
+    var(--chp4-paper) 100%
+  );
+}
+
+/* ── LE DESSIN ────────────────────────────────────────────────────────────── */
+
+#chp4-art {
+  position: absolute;
+  top: var(--chp4-art-inset);
+  right: var(--chp4-art-inset);
+  bottom: var(--chp4-art-inset);
+  left: var(--chp4-art-left);
+}
+
+/* C'est le SVG qui glisse, pas son cadre : transparent et sans bord, il ne
+   peut pas laisser de liseré au raccord. */
+#chp4-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* HIDDEN, et non `visible` : garantie structurelle que rien du dessin ne
+     peut se répandre hors de sa colonne et mordre sur la photographie — c'est
+     arrivé avec le cache de la fracture. Tout le dessin tient dans le viewBox
+     (survols compris : la bulle la plus débordante s'arrête à 1118 sur 1187),
+     et la découpe suit l'élément quand il tremble ou glisse, donc elle ne coupe
+     jamais rien à l'écran. */
+  overflow: hidden;
+  transform: translate(calc(var(--chp4-ax, 0px) + var(--chp4-jx, 0px)),
+                       calc(var(--chp4-ay, 0px) + var(--chp4-jy, 0px)));
+  will-change: transform;
+}
+
+/* Le plan blanc percé qui découpe la capture d'écran : toujours opaque, de la
+   couleur du papier — invisible partout sauf autour de son trou. */
+.chp4-mask { pointer-events: none; }
+
+.chp4-fissure { pointer-events: none; }
+
+/* ── LES BULLES ───────────────────────────────────────────────────────────
+   Deux enveloppes, deux transformations qui ne se marchent pas dessus :
+   `.chp4-bubble` porte les ÉTATS (repos → survol → écoute),
+   `.chp4-breath` porte la VIE (respiration lente, jouée par le compositeur).
+   Un seul `transform` par élément : les réunir, c'est perdre l'un des deux.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.chp4-bubble {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform var(--chp4-hover-ms) cubic-bezier(0.22, 0.68, 0.24, 1),
+    opacity var(--chp4-dim-ms) ease;
+}
+
+.chp4-bubble.is-hover {
+  transform: translateY(var(--chp4-hover-lift)) scale(var(--chp4-hover-scale));
+}
+
+.chp4-bubble.is-active,
+.chp4-bubble.is-active.is-hover {
+  transform: scale(var(--chp4-listen-scale));
+}
+
+.chp4-breath {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  /* nom, durée et décalage posés par le moteur, une valeur par bulle */
+}
+
+@keyframes chp4-breath {
+  from { transform: none; }
+  to   { transform: translate(var(--bx, 0px), var(--by, 0px)) scale(var(--bs, 1)); }
+}
+
+/* Pendant l'écoute, les autres bulles s'effacent — l'attention va à la voix. */
+#chp4-svg.is-listening .chp4-bubble:not(.is-active) {
+  opacity: var(--chp4-dim);
+}
+
+/* Ombre portée au survol : la bulle se décolle du papier. Discrète — une ombre
+   franche ferait une vignette de bande dessinée, pas un dessin à l'encre. */
+.chp4-bubble .chp4-shape {
+  transition: filter var(--chp4-hover-ms) ease;
+}
+.chp4-bubble.is-hover .chp4-shape,
+.chp4-bubble.is-active .chp4-shape {
+  filter: drop-shadow(0 5px 12px rgba(20, 17, 14, 0.17));
+}
+
+/* Chaque petite bulle de queue est emballée dans un <g> : c'est LUI qui porte
+   l'échelle animée (éclosion, onde de survol). Sans cet emballage, la propriété
+   CSS `transform` écrirait par-dessus l'attribut `transform` de l'export et la
+   bulle bondirait de 731 unités — cf. chp4-bubbles.js. */
+.chp4-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* La zone cliquable : invisible, mais sensible sur toute la bulle. */
+.chp4-hit {
+  cursor: none;
+  pointer-events: none;      /* ouverte par .is-live, une fois le dessin fini */
+}
+#chp4-svg.is-live .chp4-hit { pointer-events: all; }
+
+/* L'invite de survol (▶ écouter · ↗ la carte).
+   ⚠️ Son opacité vit ICI et nulle part ailleurs : pilotée par une classe CSS,
+   elle ne doit surtout pas être doublée d'un `style="opacity:0"` en ligne, qui
+   l'emporterait sur la règle de survol et laisserait le glyphe invisible. */
+.chp4-glyph {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 320ms ease, transform 320ms cubic-bezier(0.22, 0.68, 0.24, 1);
+  transform: translateY(5px);
+}
+.chp4-bubble.is-hover .chp4-glyph {
+  opacity: 0.85;
+  transform: translateY(0);
+}
+/* Pendant l'écoute, l'invite n'a plus lieu d'être : la croix la remplace. */
+.chp4-bubble.is-active .chp4-glyph { opacity: 0; }
+
+.chp4-stop { cursor: none; }
+
+/* ── LE LEVER DE LUMIÈRE ──────────────────────────────────────────────────
+   L'écran est noir quand le rideau de la scène se lève ; c'est ce calque qui
+   fait monter le jour. Le halo (#chp4-bloom) s'ouvre avant que le noir ne
+   s'efface : une lampe qu'on allume au-dessus d'une feuille, pas un fondu.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+#chp4-dawn {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+}
+
+#chp4-bloom {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.18);
+  transform-origin: 50% 46%;
+  background: radial-gradient(
+    circle at 50% 46%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 253, 248, 0.62) 42%,
+    rgba(255, 253, 248, 0) 72%
+  );
+}
+
+/* ── LE FONDU DE SORTIE ───────────────────────────────────────────────────── */
+
+#chp4-fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA CARTE — pop-up
+   Greffée sur #app (pas sur le root du chapitre) pour passer AU-DESSUS des
+   titres du site, remontés à z 600 pendant les chapitres.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#chp4-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+}
+
+.chp4-portal-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 14, 11, 0.66);
+  -webkit-backdrop-filter: blur(3px);
+          backdrop-filter: blur(3px);
+  cursor: none;
+}
+
+.chp4-portal-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--chp4-paper, #f7f5f1);
+  border: 1px solid rgba(20, 17, 14, 0.55);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.chp4-portal-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.6rem 0.55rem 1.1rem;
+  border-bottom: 1px solid rgba(20, 17, 14, 0.28);
+}
+
+.chp4-portal-title {
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: clamp(0.72rem, 1.1vw, 0.95rem);
+  color: rgba(20, 17, 14, 0.82);
+}
+
+.chp4-portal-close {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 1px solid rgba(20, 17, 14, 0.3);
+  border-radius: 50%;
+  cursor: none;
+  transition: border-color 0.25s ease, background-color 0.25s ease, transform 0.25s ease;
+}
+.chp4-portal-close svg {
+  width: 62%;
+  height: 62%;
+  fill: none;
+  stroke: rgba(20, 17, 14, 0.78);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+.chp4-portal-close:hover {
+  transform: scale(1.08);
+  border-color: var(--chp4-accent, #b0842a);
+  background-color: var(--chp4-accent-soft, rgba(176, 132, 42, 0.16));
+}
+
+.chp4-portal-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--chp4-paper, #f7f5f1);
+}
+.chp4-portal-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* Porte de sortie, sous le panneau — voir l'avertissement de chp4-portal.js :
+   tant que l'hébergeur de la carte répond « X-Frame-Options: SAMEORIGIN », le
+   cadre ci-dessus reste vide et ce lien est le seul chemin vers la carte. */
+.chp4-portal-escape {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  opacity: 0;
+  font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif;
+  font-size: clamp(0.68rem, 0.95vw, 0.84rem);
+  letter-spacing: 0.05em;
+  color: rgba(247, 245, 241, 0.62);
+}
+.chp4-portal-escape a {
+  color: rgba(247, 245, 241, 0.92);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(247, 245, 241, 0.4);
+  cursor: none;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+.chp4-portal-escape a:hover {
+  color: #ffd98a;
+  border-color: #ffd98a;
+}
+
+/* ── Moins d'animation : la mise en scène garde sa forme, elle se joue vite
+      (le moteur divise déjà toutes les durées par quatre). Ici on coupe ce qui
+      tourne en boucle sans fin — respiration et parallaxe. ──────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .chp4-breath { animation: none !important; }
+  #chp4-art, #chp4-photo-wrap { transform: none !important; }
+}

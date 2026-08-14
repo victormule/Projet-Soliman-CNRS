@@ -17,12 +17,13 @@ Dépôt : https://github.com/victormule/Projet-Soliman-CNRS
 ```
 Écran d'accueil (clic → plein écran + déblocage audio)
   └─ vitrine ─(scroll)─ phrenologie ─(scroll)─ collaboration
-                                                 │  (3 cercles romains)
-                        ┌────────────────────────┼────────────────────┐
-                   chapitre1                chapitre2             chapitre3
-                   (crâne interactif,       (travelling crânes    (Galerie des
-                    9 hotspots médias)       + 3 sous-parties)     Batailles, Kléber)
+                                                 │  (5 cercles romains, IV ouverts)
+              ┌────────────────────┬─────────────┴──────┬────────────────────┐
+         chapitre1            chapitre2           chapitre3           chapitre4
+         (crâne interactif,   (travelling crânes  (Galerie des        (page blanche,
+          9 hotspots médias)   + 3 sous-parties)   Batailles, Kléber)  fissure + 5 bulles)
 ```
+Le cercle V n'a pas encore de chapitre (`COLLABORATION.circles.actions` → `null`).
 
 Toutes les navigations passent par `bus.emit('navigate', { to })` →
 `SceneManager.go()` : `exit()` de la scène courante (noir garanti) puis
@@ -59,6 +60,13 @@ Chapitre3/
                           chp3-atmosphere.js (bokeh+rayons) · chp3-grain.js
                           chp3-utils.js
   chp3-style/ chp3-images/ chp3-medias/
+Chapitre4/
+  chp4-src/               chp4-config.js · chp4-opening.js (moteur : chorégraphie
+                          du dessin + vie du dessin) · chp4-manifest.js (carte de
+                          l'œuvre : quel tracé est quoi) · chp4-draw.js (primitives
+                          + registre Motion) · chp4-bubbles.js (bulles, écoute)
+                          chp4-portal.js (pop-up carte)
+  chp4-style/ chp4-images/ chp4-medias/
 images/ sons/             Assets du tronc commun (vitrine, phrénologie,
                           collaboration, documents)
 ```
@@ -119,6 +127,7 @@ Toujours chercher par NOM DE CLÉ, jamais par chemin.
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : **sous-titre**, textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
+| Chapitre 4 : sous-titre, mise en page (photo/dessin), palette, **chronologie du dessin**, vie du dessin, **libellés + sons des bulles**, carte | `Chapitre4/chp4-src/chp4-config.js` |
 
 Aucun chapitre n'a plus de réglage dans `config.js` (la section `CHAPITRE3`,
 qui ne portait que le sous-titre, l'a rejoint chez lui). Chaque scène de
@@ -135,6 +144,10 @@ les alias torche supprimés.
 - Légendes/crédits des médias de « Peine démesurée » : `chp2-data-peine-demesuree.js`
 - Diapos de « La violence et ses traces » : `chp2-data-violence-et-trace.js`
 - Quiz d'intro chapitre 3 (question, stats, témoignage) : `chp3-config.js` (section `intro`)
+- Libellés des bulles du chapitre 4 (« des MOTS », « LA DIGNITE »…) et sons
+  associés : `chp4-config.js` (section `bubbles`) — l'orthographe est celle du
+  DESSIN, sans accents sur PLURALITE et DIGNITE ; les ajouter ne demande que de
+  les écrire ici (les `<text>` de l'export ne sont pas utilisés)
 - Citation de sortie du chapitre 2 : `Chapitre2Scene.js` (`_outroQuoteText`)
 - Texte « À Propos » (scène phrénologie) : `config.js` (`DOCUMENTS.about`) —
   `hook` = accroche calligraphiée (segments `style:'gold'` / `underline`),
@@ -171,8 +184,8 @@ les alias torche supprimés.
 
 | Événement | Émis par | Écouté par |
 |---|---|---|
-| `chp2:opening-ready` / `chp3:intro-ready` | module | scène (lève le rideau noir) |
-| `chp2:navigate-back` / `chp3:navigate-back` | module | scène (navigation réelle) |
+| `chp2:opening-ready` / `chp3:intro-ready` / `chp4:page-ready` | module | scène (lève le rideau noir) |
+| `chp2:navigate-back` / `chp3:navigate-back` / `chp4:navigate-back` | module | scène (navigation réelle) |
 | `chp2:<part>-ready`, `<part>:return/:closed` | sous-parties chp2 | scène (flèches) |
 | `chp2:request-return` | scène (clic flèche) | sous-partie ouverte |
 | `chp2:show/hide-close-cross`, `chp2:close-cross-clicked` | sous-parties ↔ scène | croix média partagée |
@@ -219,6 +232,48 @@ Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
   Réglage retiré plutôt que réparé — décision assumée. Le rétablir demanderait
   un vrai paramètre de cible dans `grow()`, et **changerait ce qu'on voit**.
 
+## Le chapitre 4 : quatre pièges, tous documentés dans le code
+
+Le chapitre 4 anime un export Illustrator (`chp4-images/chapitre4.svg`) inliné
+dans la page. Quatre choses s'y comportent autrement que partout ailleurs.
+
+**1. L'attribut `transform` d'un tracé ne survit pas à une animation CSS.**
+Les 21 tracés de l'export portent tous `transform="translate(-731 0)"` en
+ATTRIBUT. Une animation Web Animations (ou une transition CSS) écrit la
+PROPRIÉTÉ `transform`, qui supplante l'attribut : le tracé perd son translate
+et bondit de 731 unités. Corrigé en emballant chaque élément animé dans un
+`<g>` qui, lui, porte la transformation (`.chp4-dot`, `.chp4-bubble`,
+`.chp4-breath`). **Ne jamais animer un `transform` directement sur un tracé
+venu de l'export.** Symptôme : des bulles qui filent hors du cadre à droite.
+
+**2. L'écran est coupé en deux, et l'interface avec.** Moitié gauche : la photo
+du crâne sur tissu SOMBRE. Moitié droite : le papier. Donc titre, sous-titre et
+flèche de retour (bas-gauche) restent BLANCS/OR comme partout, tandis que le
+seul bouton plein écran (bas-droite, sur le papier) passe à l'encre sombre.
+Tout retourner d'un bloc rend la moitié de l'interface illisible — essayé.
+Voir `style.css` § CHAPITRE 4, et l'en-tête d'`ArrowChapitre4.js`.
+
+**3. Le manifeste repère les tracés PAR INDICE, et se dénonce.** L'export ne
+porte aucun identifiant sémantique : `chp4-manifest.js` nomme chaque tracé par
+sa position dans le document. Si l'œuvre est ré-exportée, les indices peuvent
+glisser — d'où `verify()`, qui compare au montage le centre de chaque tracé à
+celui qu'il annonce et hurle en console. **Après tout ré-export de
+chapitre4.svg, lancer le chapitre et lire la console avant toute chose.**
+
+**4. La carte ne s'affichera pas tant que son hébergeur l'interdit.**
+`soliman-map.netlify.app` répond `X-Frame-Options: SAMEORIGIN` : le navigateur
+refuse de l'afficher dans notre cadre, quoi que fasse notre code. Correctif
+côté carte (fichier `_headers` à sa racine), écrit dans `chp4-config.js` § map.
+En attendant, `map.fallback_after` fait paraître sous le cadre un lien
+« ouvrir dans un nouvel onglet ».
+
+Deux notes de composition : les libellés sont RE-COMPOSÉS en Roboto Condensed
+(la police de l'export, « Edges », n'est pas dans le projet ; ses `<text>` sont
+jetés au chargement), et la fissure est révélée par un masque radial qui grandit
+depuis sa pointe haute — une plume qui suivrait son contour fermé descendrait
+une branche pour remonter par l'autre côté (cf. `propagate()` dans
+`chp4-draw.js`).
+
 ## Test manuel de non-régression (après toute modification)
 
 Parcours sur serveur local, console ouverte (zéro erreur attendue) :
@@ -231,7 +286,13 @@ Parcours sur serveur local, console ouverte (zéro erreur attendue) :
    Violence : diapos), retours (rallumage), sortie.
 5. **Chapitre 3** : quiz complet → travelling → 1 tableau + théâtre de papier
    (hotspots vidéo) → triptyque → sortie.
-6. **Chaque chapitre : entrer/sortir ×2** (le pattern factory doit rejouer
+6. **Chapitre 4** : lever de lumière (noir → page blanche, jamais de flash),
+   crâne, fissure, 5 bulles dessinées ; survol (invite ▶ / ↗), écoute d'une
+   bulle (ondes + pourtour de progression), les 3 sorties d'écoute (re-clic,
+   clic dehors, Échap), bascule directe d'une bulle à l'autre, pop-up carte,
+   sortie. Vérifier que le bouton plein écran (bas-droite, sur le papier) est
+   bien SOMBRE et la flèche (bas-gauche, sur la photo) bien BLANCHE.
+7. **Chaque chapitre : entrer/sortir ×2** (le pattern factory doit rejouer
    à l'identique, sans fuite d'état ni son résiduel).
 
 ## Notes de déploiement

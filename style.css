@@ -1211,6 +1211,94 @@ body.chp3-active #skip-btn {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   CHAPITRE 4 — « Une histoire complexe »
+   ────────────────────────────────────────────────────────────────────
+   LE SEUL ÉCRAN CLAIR DU SITE — mais PAS PARTOUT, et c'est toute la
+   subtilité de cette section. L'écran est coupé en deux : la moitié
+   gauche est occupée par la photographie du crâne, sur un tissu SOMBRE ;
+   la moitié droite est le papier, où se dessine le schéma.
+
+   Conséquence : les éléments d'interface ne se traitent pas en bloc.
+     · Titre, sous-titre (haut-gauche) et flèche de retour (bas-gauche)
+       tombent sur la PHOTO. Ils gardent donc l'or et le blanc du site —
+       les avoir passés à l'encre sombre les avait rendus illisibles
+       (essayé, vérifié en capture).
+     · Le bouton plein écran (bas-DROITE) tombe sur le PAPIER. Lui, et lui
+       seul, doit passer à l'encre sombre : son SVG est tracé en blanc,
+       il disparaîtrait — et avec lui le moyen de quitter le plein écran.
+     · Le curseur traverse les deux : on ne touche pas à sa couleur
+       (ivoire, pensée pour les deux fonds) mais on renforce son liseré,
+       seul garant de sa lisibilité sur le papier.
+
+   Le fond du chapitre lui-même (papier, dessin, bulles, pop-up de la
+   carte) vit dans Chapitre4/chp4-style/chp4-opening.css, injecté par la
+   scène. Ici, seulement ce qui appartient au TRONC COMMUN.
+   ══════════════════════════════════════════════════════════════════ */
+
+#chapitre4-root {
+  z-index: 500;
+  cursor: none;
+}
+
+/* Neutraliser le cursor global pendant le chapitre 4 */
+body.chp4-active,
+body.chp4-active * {
+  cursor: none !important;
+}
+
+/* Remontée au-dessus de #chapitre4-root (z 500) — même mécanique qu'aux
+   chapitres 2 et 3. #chapitre-part-title n'est pas listé : le chapitre 4
+   n'a pas de sous-parties. */
+body.chp4-active #site-title,
+body.chp4-active #chapitre-subtitle,
+body.chp4-active #fs-btn,
+body.chp4-active #chapter-quote,
+body.chp4-active #skip-btn {
+  z-index: 600;
+}
+
+/* Bouton plein écran → encre sombre : il est seul sur le papier.
+   ⚠️ LE SÉLECTEUR VISE LES ENFANTS, et `!important` n'est pas de la
+   paresse. Fullscreen.js réécrit le SVG à chaque rendu en posant
+   `stroke="rgba(255,255,255,0.75)"` sur CHAQUE <polyline> et <line> :
+   une règle sur le <svg> parent ne les atteint pas (un attribut de
+   présentation sur l'enfant l'emporte sur l'héritage). Et au survol, le
+   même fichier écrit la couleur dorée en style EN LIGNE — que seul
+   `!important` peut contredire. Sans lui, le bouton s'effacerait
+   précisément au moment où l'on tend la souris vers lui. */
+body.chp4-active #fs-btn svg,
+body.chp4-active #fs-btn svg * {
+  stroke: rgba(28, 24, 19, 0.72) !important;
+}
+
+body.chp4-active #fs-btn:hover svg * {
+  stroke: rgba(150, 110, 28, 0.95) !important;
+}
+
+/* Curseur À L'ENCRE : sur le papier crème, l'ivoire du curseur du site se
+   dissolvait — la flèche se devinait à son liseré, pas plus.
+   Le liseré est donc INVERSÉ en même temps que le remplissage : flèche
+   sombre cernée de blanc. C'est ce cerne clair qui la sauve quand elle
+   passe sur la photographie sombre de la moitié gauche — sans lui, on
+   n'aurait fait que déplacer le problème d'un fond à l'autre. */
+body.chp4-active #cursor {
+  background-color: rgba(20, 17, 13, 0.95);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.92))
+          drop-shadow(0 1px 2.5px rgba(0, 0, 0, 0.35));
+}
+
+body.chp4-active #cursor.hotspot {
+  background-color: rgba(140, 100, 22, 1);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9))
+          drop-shadow(0 0 9px rgba(176, 132, 42, 0.5));
+}
+
+body.chp4-active #cursor.active {
+  background-color: rgba(96, 68, 14, 1);
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9));
+}
+
+/* ══════════════════════════════════════════════════════════════════
    CURSEUR — flèche élégante (remplace le point pâle)
    ────────────────────────────────────────────────────────────────────
    Placé EN FIN DE FICHIER : ces règles priment sur celles de la section
