@@ -5,6 +5,7 @@
 
 import { applyGoldenHover, applyNeighborPush, clearNeighborPush,
          setLabelLines, unifyFontSizeMultiline } from '../utils/helpers.js';
+import { makeActivatable } from '../utils/a11y.js';
 
 /**
  * Pose le libellé « À Propos » sur UNE SEULE LIGNE, toujours.
@@ -220,12 +221,17 @@ export class DocumentButtons {
     //  - si un bouton « À Propos » existe, il est en tête (index 0) et reçoit
     //    onAboutClick ; les documents suivent (décalés de 1).
     //  - sinon, les documents commencent à l'index 0.
+    const D = this.config.DOCS;
     allBtns.forEach((btn, i) => {
       if (hasAbout && i === 0) {
         btn.onclick = () => onAboutClick?.();
+        makeActivatable(btn, { label: D.about_label });
       } else {
         const docIdx = hasAbout ? i - 1 : i;
         btn.onclick = () => onClickCallbacks?.[docIdx]?.();
+        // Le libellé est dans un <text> SVG : sans aria-label, le bouton
+        // n'aurait aucun nom accessible.
+        makeActivatable(btn, { label: D.labels?.[docIdx] });
       }
     });
 

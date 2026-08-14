@@ -6,6 +6,7 @@ import { runSkippableQuoteSequence } from '../sequences/QuoteSequence.js';
 import { SkipButton }       from '../ui/SkipButton.js';
 import { CONFIG as CHP2 }   from '../../Chapitre2/chp2-src/chp2-config.js';
 import { buildChapitre2DOM } from '../../Chapitre2/chp2-src/chp2-dom.js';
+import { releaseMediaElements } from '../utils/helpers.js';
 
 /**
  * Chapitre2Scene — v4.0 (harmonisation UI)
@@ -550,6 +551,11 @@ export class Chapitre2Scene extends Scene {
 
   _removeDOM() {
     if (!this._container) return;
+    // AVANT le retrait : libérer les <video>/<audio>, sinon le moteur média du
+    // navigateur retient tout l'arbre du chapitre. Mesuré : sans cet appel,
+    // un #chapitre2-root détaché s'accumulait à CHAQUE visite, sans plafond.
+    // Voir releaseMediaElements() pour la bissection qui l'établit.
+    releaseMediaElements(this._container);
     this._container.remove();
     this._container = null;
   }

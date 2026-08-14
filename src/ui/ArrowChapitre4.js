@@ -27,7 +27,8 @@ const PATH_LEFT = 'M48 35 L22 35 M33 24 L22 35 L33 46';
 
 export class ArrowChp4 extends ArrowBase {
   constructor(config) {
-    super(config, 'arrow-chp4', PATH_LEFT);
+    super(config, 'arrow-chp4', PATH_LEFT,
+          "Quitter le chapitre et revenir à l'espace collaboratif");
   }
 
   _applyPosition() {

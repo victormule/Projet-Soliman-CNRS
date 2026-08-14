@@ -207,6 +207,9 @@ LightSystem.prototype.destroy = function() {
   this.canvas = null;
   this.ctx    = null;
   this.lights = [];
+  // `mount` pointe sur #chp2-shake, DANS le DOM du chapitre : le garder
+  // retiendrait tout l'arbre démonté. destroy() est terminal.
+  this.mount  = null;
 };
 
 /* ── Conversion viewport → pixels canvas ──────────────────────────────────
@@ -1311,6 +1314,7 @@ export function stopChapitre2() {
 
   /* 4. Détruire le LightSystem (canvas + RAF internes) */
   if (light) light.destroy();
+  light = null;
 
   /* 5. Déconnecter TOUS les listeners window (mouvement + events sous-parties) */
   if (_mousemoveHandler)  window.removeEventListener("mousemove", _mousemoveHandler);
@@ -1330,4 +1334,24 @@ export function stopChapitre2() {
   ['cartel-open', 'invisibilisation-open', 'peine-demesuree-open'].forEach(function(cls) {
     document.body.classList.remove(cls);
   });
+
+  /* 8. LÂCHER LES RÉFÉRENCES DOM.
+     ─────────────────────────────────────────────────────────────────────────
+     Ce module est importé UNE FOIS et vit autant que la page (pattern factory,
+     sans cache-bust). Entre la sortie et une éventuelle ré-entrée, ces
+     variables pointeraient sinon sur des nœuds d'un #chapitre2-root démonté —
+     et rien ne garantit qu'il y AURA une ré-entrée pour les réassigner.
+
+     ⚠️ CE N'EST PAS CE QUI CAUSAIT LA FUITE DU CHAPITRE. Mesuré : nuller ces
+     variables ne change RIEN au nombre d'arbres détachés retenus. Le vrai
+     coupable était le moteur média du navigateur, qui retient un <video>/
+     <audio> non libéré — et avec lui tout son arbre. La correction vit dans
+     Chapitre2Scene._removeDOM() (voir releaseMediaElements dans helpers.js).
+     Ce bloc-ci est de l'hygiène, pas un correctif : ne pas lui prêter un
+     pouvoir qu'il n'a pas. */
+  imgEl = bar = cursor = hotCursor = null;
+  legend = legNum = legLab = null;
+  shakeEl = fadeEl = null;
+  SKULLS.forEach(function(s) { s.el = null; });
+  hoveredSkull = null;
 }

@@ -19,7 +19,8 @@ export class ArrowChapitre1 extends ArrowBase {
     super(
       config,
       'arrow-chapitre1',
-      'M48 35 L22 35 M33 24 L22 35 L33 46'  // ← pointe vers la gauche
+      'M48 35 L22 35 M33 24 L22 35 L33 46',  // ← pointe vers la gauche
+      "Quitter le chapitre et revenir à l'espace collaboratif"
     );
   }
 

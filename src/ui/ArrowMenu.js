@@ -43,7 +43,8 @@ export class ArrowMenu extends ArrowBase {
     super(
       config,
       'arrow-menu',
-      'M35 48 L35 22 M24 33 L35 22 L46 33'  // ↑ pointe vers le haut
+      'M35 48 L35 22 M24 33 L35 22 L46 33',  // ↑ pointe vers le haut
+      'Remonter à la vitrine'
     );
   }
 

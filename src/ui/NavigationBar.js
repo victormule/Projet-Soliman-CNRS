@@ -4,6 +4,7 @@
  */
 
 import { setLabelLines, unifyFontSizeMultiline } from '../utils/helpers.js';
+import { makeActivatable } from '../utils/a11y.js';
 
 export class NavigationBar {
   constructor(config, arrowSizeFn) {
@@ -239,7 +240,17 @@ export class NavigationBar {
           onClickCallbacks[i]();
         }
       });
+
+      // Clavier : la zone est un <rect> SVG transparent — sans rôle ni
+      // tabindex, elle n'existe pas pour le clavier. Le libellé vit dans un
+      // <text> voisin, d'où l'aria-label explicite.
+      makeActivatable(zone, { label: C.labels[i] });
     });
+
+    // La barre est un groupe de navigation : on le dit une fois, sur le
+    // conteneur, plutôt que de le répéter sur chaque bouton.
+    this.el.setAttribute('role', 'navigation');
+    this.el.setAttribute('aria-label', 'Documents du musée');
   }
 
   /**

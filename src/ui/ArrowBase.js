@@ -14,13 +14,22 @@
  */
 
 import { applyGoldenHover } from '../utils/helpers.js';
+import { makeActivatable } from '../utils/a11y.js';
 
 export class ArrowBase {
 
-  constructor(config, domId, svgPath) {
+  /**
+   * @param {Object} config
+   * @param {string} domId
+   * @param {string} svgPath
+   * @param {string} [label]  nom accessible ; le SVG seul n'en donne aucun.
+   *   Les flèches de retour disent où elles mènent, pas « flèche ».
+   */
+  constructor(config, domId, svgPath, label = 'Continuer') {
     this.config  = config;
     this.domId   = domId;
     this.svgPath = svgPath;
+    this.label   = label;
     this.drawing = false;
     this.el      = this._createElement();
   }
@@ -108,6 +117,9 @@ export class ArrowBase {
         if (!this.drawing) this._rippleClick(svg, c, p, onClick);
       };
     }
+
+    // Atteignable au clavier tant qu'elle est à l'écran.
+    makeActivatable(this.el, { label: this.label });
   }
 
   /* ── Effet dissolution lumineuse au clic ────────────── */
@@ -265,6 +277,10 @@ export class ArrowBase {
     this.el.style.transition = `opacity ${ms}ms ease`;
     this.el.style.opacity    = '0';
     this.el.classList.remove('visible');
+    // Une flèche invisible ne doit pas rester dans l'ordre de tabulation :
+    // sinon le focus disparaît dans une zone vide de l'écran.
+    this.el.setAttribute('tabindex', '-1');
+    this.el.setAttribute('aria-hidden', 'true');
     setTimeout(() => {
       this.el.innerHTML = '';
       this.el.onclick   = null;

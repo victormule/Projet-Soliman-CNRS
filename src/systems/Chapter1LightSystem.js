@@ -263,5 +263,8 @@ export class Chapter1LightSystem {
     this.canvas?.remove();
     this.canvas = null;
     this.ctx = null;
+    // Le point de montage peut appartenir au DOM d'un chapitre démonté :
+    // le garder retiendrait tout l'arbre. destroy() est terminal.
+    this.mount = null;
   }
 }

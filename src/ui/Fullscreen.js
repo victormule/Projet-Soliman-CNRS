@@ -3,6 +3,8 @@
  * Bouton fullscreen avec icône expand/collapse
  */
 
+import { makeActivatable } from '../utils/a11y.js';
+
 export class Fullscreen {
   constructor(config, arrowSizeFn) {
     this.config = config;
@@ -108,6 +110,21 @@ export class Fullscreen {
           style="transition:stroke .3s,filter .3s;"/>
         ${expanded ? iconCollapse : iconExpand}
       </svg>`;
+
+    // Le libellé suit l'état : « Passer en plein écran » / « Quitter le plein
+    // écran ». `aria-pressed` dit l'état sans le dupliquer dans le nom.
+    //
+    // ⚠️ TANT QUE L'ÉCRAN D'ACCUEIL EST LÀ, ce bouton reste hors tabulation :
+    // il vit dans #app, DERRIÈRE l'écran d'accueil, et il le précède dans
+    // l'ordre du document. Focusable, il captait la toute première tabulation —
+    // si bien qu'Entrée basculait en plein écran au lieu de lancer
+    // l'expérience. app.js appelle rebuild() une fois l'expérience démarrée.
+    const started = document.body.classList.contains('experience-started');
+    makeActivatable(this.el, {
+      label: expanded ? 'Quitter le plein écran' : 'Passer en plein écran',
+      disabled: !started,
+    });
+    this.el.setAttribute('aria-pressed', expanded ? 'true' : 'false');
 
     const svgEl = this.el.querySelector('svg');
     const strokes = this.el.querySelectorAll('[stroke]');

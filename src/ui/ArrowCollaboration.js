@@ -19,7 +19,8 @@ export class ArrowCollaboration extends ArrowBase {
     super(
       config,
       'arrow-collaboration',
-      'M48 35 L22 35 M33 24 L22 35 L33 46'  // ← pointe vers la gauche
+      'M48 35 L22 35 M33 24 L22 35 L33 46',  // ← pointe vers la gauche
+      'Revenir à la phrénologie'
     );
   }
 

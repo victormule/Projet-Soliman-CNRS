@@ -8,6 +8,29 @@ export class AudioManager {
     this.config = config;
     this.ctx = null;
 
+    /**
+     * LE SON EST UN AGRÉMENT, PAS UNE DÉPENDANCE DE RENDU.
+     *
+     * Web Audio peut être absent ou refusé : mode Lockdown de Safari,
+     * navigateur durci, extension de confidentialité, politique d'entreprise.
+     * Quand c'était le cas, `new AudioContext()` levait, l'exception remontait
+     * à travers `PhrenologieScene.enter()` (qui `await` startMuseeLoop) et la
+     * scène ne s'affichait JAMAIS : ni fond, ni boutons documents, ni flèche.
+     * Un écran mort pour une panne de son.
+     *
+     * Désormais l'indisponibilité est un ÉTAT, pas une exception : getContext()
+     * retourne null, chaque méthode sort en silence, et le site se joue muet.
+     */
+    this._unavailable = false;
+
+    /**
+     * Cache de décodage : url → Promise<AudioBuffer>. Sans lui, chaque entrée
+     * de scène refaisait fetch + decodeAudioData du même mp3 (plusieurs Mo à
+     * décoder, à chaque aller-retour). On mémoïse la PROMESSE, pas le buffer :
+     * deux appels concurrents partagent alors le même décodage.
+     */
+    this._buffers = new Map();
+
     this.tracks = {
       musee:   { src: null, gain: null },
       phreno:  { src: null, gain: null },
@@ -20,32 +43,68 @@ export class AudioManager {
 
   /* ─────────────────────────────────────────── Contexte WebAudio ── */
 
+  /**
+   * Le contexte audio, ou `null` s'il est indisponible.
+   * NE LÈVE JAMAIS — voir la note de `_unavailable` dans le constructeur.
+   * @returns {?AudioContext}
+   */
   getContext() {
+    if (this._unavailable) return null;
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) {
+        this._unavailable = true;
+        console.warn('[AudioManager] Web Audio indisponible — le site se joue muet.');
+        return null;
+      }
+      try {
+        this.ctx = new Ctor();
+      } catch (e) {
+        this._unavailable = true;
+        console.warn('[AudioManager] AudioContext refusé — le site se joue muet.', e);
+        return null;
+      }
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     return this.ctx;
   }
 
   /**
    * Alias explicite utilisé par MediaPlayer pour créer un MediaElementSource
-   * (analyse waveform audio).
+   * (analyse waveform audio). Peut retourner null — l'appelant doit le gérer.
    */
   getAudioContext() {
     return this.getContext();
   }
 
-  async loadBuffer(url) {
+  /**
+   * Charge et décode un son, une seule fois par URL (voir `_buffers`).
+   * @returns {Promise<?AudioBuffer>} null si indisponible ou en échec
+   */
+  loadBuffer(url) {
     const ctx = this.getContext();
-    try {
-      const response    = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
-      return await ctx.decodeAudioData(arrayBuffer);
-    } catch(e) {
-      console.error('[AudioManager] Load failed:', url, e);
-      return null;
-    }
+    if (!ctx) return Promise.resolve(null);
+
+    const hit = this._buffers.get(url);
+    if (hit) return hit;
+
+    const p = (async () => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const arrayBuffer = await response.arrayBuffer();
+        return await ctx.decodeAudioData(arrayBuffer);
+      } catch (e) {
+        console.error('[AudioManager] Load failed:', url, e);
+        // Un échec ne se met pas en cache : une coupure réseau passagère ne
+        // doit pas condamner le son pour toute la session.
+        this._buffers.delete(url);
+        return null;
+      }
+    })();
+
+    this._buffers.set(url, p);
+    return p;
   }
 
   /* ──────────────────────────────────────────────── MuseeLoop ── */
@@ -74,6 +133,7 @@ export class AudioManager {
     const { gain } = this.tracks.musee;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(toVolume, ctx.currentTime + durationMs / 1000);
@@ -89,6 +149,7 @@ export class AudioManager {
     const { gain } = this.tracks.musee;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(0, ctx.currentTime);
   }
@@ -168,6 +229,7 @@ export class AudioManager {
     const { src, gain } = this.tracks.sanza;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     const ms  = fadeDurationMs ?? this.config.AUDIO.sanza_fade_out;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
@@ -207,6 +269,7 @@ export class AudioManager {
     const { src, gain } = this.tracks.silence;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     const ms  = fadeDurationMs ?? this.config.AUDIO.silence_fade_out;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
@@ -245,6 +308,7 @@ export class AudioManager {
     const { src, gain } = this.tracks.collab;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     const ms  = fadeDurationMs ?? this.config.AUDIO.collab_fade_out;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
@@ -299,6 +363,7 @@ export class AudioManager {
     const { gain } = this.tracks.chp2;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
     gain.gain.linearRampToValueAtTime(toVolume, ctx.currentTime + durationMs / 1000);
@@ -319,6 +384,7 @@ export class AudioManager {
     const { src, gain } = this.tracks.chp2;
     if (!gain) return;
     const ctx = this.getContext();
+    if (!ctx) return;
     const ms  = fadeDurationMs ?? this.config.AUDIO.chp2_fade_out ?? 1600;
     gain.gain.cancelScheduledValues(ctx.currentTime);
     gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);

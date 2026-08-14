@@ -53,9 +53,26 @@ export class MediaPlayer {
     this._videoSeekFill    = null;
     this._videoSepLine     = null;
     this._analyser         = null;
+    this._audioSource      = null;   // MediaElementSource — à DÉCONNECTER (voir _releaseAudioGraph)
     this._waveRaf          = null;
     this._videoScaleAnimRaf = null;
     this._resizeRaf        = null;
+  }
+
+  /**
+   * Débranche le graphe Web Audio du média qui se ferme.
+   *
+   * ⚠️ Sans cela, le contexte audio garde une référence sur le
+   * MediaElementSource, qui garde l'élément <audio> : vider `src` et mettre
+   * `_analyser = null` NE SUFFIT PAS — chaque son ouvert depuis le début de la
+   * session restait vivant dans le graphe. Le contexte, lui, n'est jamais
+   * fermé : il est partagé par tout le site.
+   */
+  _releaseAudioGraph() {
+    try { this._audioSource?.disconnect(); } catch (e) {}
+    try { this._analyser?.disconnect();    } catch (e) {}
+    this._audioSource = null;
+    this._analyser    = null;
   }
 
   get active() { return this._active; }
@@ -306,14 +323,29 @@ export class MediaPlayer {
 
     requestAnimationFrame(() => requestAnimationFrame(() => { bCirc.style.strokeDashoffset='0'; }));
 
-    const ac      = this.audio.getAudioContext();
-    const source  = ac.createMediaElementSource(audio);
-    const analyser = ac.createAnalyser();
-    analyser.fftSize = 2048;
-    source.connect(analyser); analyser.connect(ac.destination);
+    // ── Graphe d'analyse (sinusoïde) ─────────────────────────────────────
+    // Web Audio peut manquer : le son se joue alors NORMALEMENT (élément
+    // <audio> natif), seule la sinusoïde reste éteinte. Un agrément visuel ne
+    // doit jamais coûter la lecture elle-même.
+    const ac = this.audio.getAudioContext();
+    let analyser = null;
+    if (ac) {
+      try {
+        // ⚠️ createMediaElementSource DÉTOURNE le son de l'élément vers le
+        // graphe : sans le brancher sur destination, plus rien ne sort.
+        const source = ac.createMediaElementSource(audio);
+        analyser = ac.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser); analyser.connect(ac.destination);
+        this._audioSource = source;
+      } catch (e) {
+        console.warn('[MediaPlayer] Analyse audio indisponible :', e);
+        analyser = null; this._audioSource = null;
+      }
+    }
     this._analyser = analyser;
 
-    audio.addEventListener('play',  () => { setPlaying(true);  this._drawWaveform(wc, analyser); });
+    audio.addEventListener('play',  () => { setPlaying(true);  if (analyser) this._drawWaveform(wc, analyser); });
     audio.addEventListener('pause', () => { setPlaying(false); if(this._waveRaf){cancelAnimationFrame(this._waveRaf);this._waveRaf=null;} wc.getContext('2d').clearRect(0,0,wc.width,wc.height); });
     audio.addEventListener('ended', () => { setPlaying(false); if(this._waveRaf){cancelAnimationFrame(this._waveRaf);this._waveRaf=null;} wc.getContext('2d').clearRect(0,0,wc.width,wc.height); setTimeout(()=>this._cinematicClose(),400); });
 
@@ -544,6 +576,8 @@ export class MediaPlayer {
     const sid = ++this._closeSessionId;
 
     if (this._waveRaf) { cancelAnimationFrame(this._waveRaf); this._waveRaf = null; }
+    if (this._videoScaleAnimRaf) { cancelAnimationFrame(this._videoScaleAnimRaf); this._videoScaleAnimRaf = null; }
+    if (this._resizeRaf) { cancelAnimationFrame(this._resizeRaf); this._resizeRaf = null; }
     if (this._playerAudio) this._playerAudio.pause();
     if (this._playerVideo) this._playerVideo.pause();
 
@@ -555,9 +589,13 @@ export class MediaPlayer {
 
     setTimeout(() => {
       if (sid !== this._closeSessionId) return;
-      if (this._playerAudio) { this._playerAudio.src = ''; this._playerAudio = null; }
-      if (this._playerVideo) { this._playerVideo.src = ''; this._playerVideo = null; }
-      this._analyser = null; this._src = null; this._videoLayout = null;
+      this._releaseAudioGraph();
+      // removeAttribute + load() plutôt que src='' : une chaîne vide fait
+      // résoudre l'URL vers la PAGE elle-même, que certains navigateurs
+      // retéléchargent alors comme média.
+      if (this._playerAudio) { this._playerAudio.removeAttribute('src'); this._playerAudio.load(); this._playerAudio = null; }
+      if (this._playerVideo) { this._playerVideo.removeAttribute('src'); this._playerVideo.load(); this._playerVideo = null; }
+      this._src = null; this._videoLayout = null;
       this._creditEl = null; this._credit = null;
       this.el.innerHTML = '';
 
@@ -587,9 +625,12 @@ export class MediaPlayer {
 
   _forceClose() {
     this._active = false;
-    if (this._playerAudio) { this._playerAudio.src = ''; this._playerAudio = null; }
-    if (this._playerVideo) { this._playerVideo.src = ''; this._playerVideo = null; }
+    this._releaseAudioGraph();
+    if (this._playerAudio) { this._playerAudio.pause(); this._playerAudio.removeAttribute('src'); this._playerAudio.load(); this._playerAudio = null; }
+    if (this._playerVideo) { this._playerVideo.pause(); this._playerVideo.removeAttribute('src'); this._playerVideo.load(); this._playerVideo = null; }
     if (this._waveRaf) { cancelAnimationFrame(this._waveRaf); this._waveRaf = null; }
+    if (this._videoScaleAnimRaf) { cancelAnimationFrame(this._videoScaleAnimRaf); this._videoScaleAnimRaf = null; }
+    if (this._resizeRaf) { cancelAnimationFrame(this._resizeRaf); this._resizeRaf = null; }
     this.el.innerHTML = '';
     this._creditEl = null; this._credit = null;
     this._playerHoverTitle = null;

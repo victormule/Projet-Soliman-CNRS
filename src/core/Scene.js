@@ -30,17 +30,25 @@ export class Scene {
    */
   wait(ms, signal = this._abortCtrl?.signal) {
     return new Promise((resolve, reject) => {
+      // ⚠️ L'écouteur 'abort' doit être RETIRÉ quand la minuterie se résout
+      // normalement. Sans cela, chaque wait() en laissait un sur le signal de
+      // la scène : une chorégraphie longue (chapitre 1, phrénologie) en
+      // empilait des centaines, tous vivants jusqu'à la sortie de scène.
+      // `{ once: true }` ne suffit pas — il ne libère QUE si l'abort survient.
+      const onAbort = () => {
+        clearTimeout(id);
+        this._timers = this._timers.filter(t => t !== id);
+        reject(new Error('scene_aborted'));
+      };
+
       const id = setTimeout(() => {
         this._timers = this._timers.filter(t => t !== id);
+        signal?.removeEventListener('abort', onAbort);
         resolve();
       }, ms);
       this._timers.push(id);
 
-      signal?.addEventListener('abort', () => {
-        clearTimeout(id);
-        this._timers = this._timers.filter(t => t !== id);
-        reject(new Error('scene_aborted'));
-      }, { once: true });
+      signal?.addEventListener('abort', onAbort, { once: true });
     });
   }
 

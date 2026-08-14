@@ -5,8 +5,20 @@ Site-expérience narratif (SPA JavaScript vanilla, modules ES natifs).
 
 ```bash
 # Lancement local (les modules ES interdisent file://)
-npx serve .        # ou tout autre serveur statique, puis ouvrir l'URL
+node tools/bench/serve.mjs      # → http://127.0.0.1:8791/
+# ou npx serve . , ou tout autre serveur statique
+
+# Outillage (facultatif, jamais en production)
+npm install                     # playwright, pour le banc d'essai seulement
+npm run bench -- --self-test    # non-régression : fluidité, fuites, clavier
+npm run audit:config            # clés de config sans lecteur
+npm run videos:dry              # inventaire des vidéos à compresser
 ```
+
+⚠️ `package.json` n'existe QUE pour cet outillage. **Rien dans `src/`,
+`Chapitre*/` ou `index.html` n'importe quoi que ce soit d'une dépendance**, et
+rien ne doit commencer à le faire : le site se sert tel quel, comme depuis
+toujours.
 
 Dépôt : https://github.com/victormule/Projet-Soliman-CNRS
 
@@ -45,6 +57,14 @@ src/
                           DocumentOverlay/Loupe, AboutReveal (mise en scène
                           « À Propos »), NavigationBar, Title…
   scenes/                 Une classe par scène (contrat Scene : enter/exit)
+  utils/                  helpers.js (SVG, libellés, releaseMediaElements),
+                          a11y.js (clavier + annonces), cursor, viewport…
+audit-config.js           Garde-fou : clés de config sans lecteur
+package.json              OUTILLAGE SEUL (le site n'a aucune dépendance)
+tools/
+  bench/serve.mjs         Serveur statique (gère les Range → mp4)
+  bench/regression.mjs    Non-régression : fluidité, fuites, clavier, console
+  compress-videos.mjs     Compression vidéo NON destructive (→ _compressed/)
 Chapitre1/
   chp1-config.js          Config du chapitre (source unique)
   chp1-images/ chp1-medias/
@@ -232,6 +252,54 @@ Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
   Réglage retiré plutôt que réparé — décision assumée. Le rétablir demanderait
   un vrai paramètre de cible dans `grow()`, et **changerait ce qu'on voit**.
 
+## Trois règles issues de l'audit d'août 2026
+
+**1. Un `<video>`/`<audio>` non libéré retient TOUT son arbre.** C'était la
+seule vraie fuite du site : chaque visite du chapitre 2 laissait un
+`#chapitre2-root` détaché-mais-vivant (~900 nœuds), indéfiniment. Le moteur
+média du navigateur retient un élément dont la « resource selection » a
+commencé — et un nœud retenu retient ses ancêtres. Retirer le DOM ne suffit
+donc pas. **Toute scène qui démonte un DOM contenant des médias appelle
+`releaseMediaElements()` (helpers.js) AVANT `remove()`** — c'est fait dans les
+`_removeDOM()` des chapitres 2, 3 et 4. La bissection qui l'établit est dans
+l'en-tête de la fonction : sans `<img>` ça fuit, sans `<svg>` ça fuit, sans
+`<template>` ça fuit, sans `<video>/<audio>` ça ne fuit plus.
+
+⚠️ **Pour mesurer une fuite, lire `DOM.getDetachedDomNodes` (CDP), jamais le
+compteur `Nodes` de `Performance.getMetrics`.** Ce dernier est COLLANT : il
+monte quand une fuite apparaît et ne redescend JAMAIS quand la référence est
+relâchée. S'y fier a coûté un faux diagnostic (on a d'abord accusé des
+références DOM de module, qui n'y étaient pour rien). `npm run bench --
+--self-test` valide son instrument sur une fuite témoin avant de conclure :
+ne pas retirer cette étape.
+
+**2. Le son est un agrément, jamais une dépendance de rendu.** `new
+AudioContext()` peut lever (mode Lockdown, navigateur durci, extension de
+confidentialité). L'exception remontait à travers `PhrenologieScene.enter()`
+— qui `await` l'audio — et **la scène ne s'affichait jamais** : ni fond, ni
+boutons, ni flèche, un écran mort pour une panne de son. `getContext()` ne
+lève plus : il retourne `null`, chaque méthode sort en silence, le site se
+joue muet. **Aucun `enter()` de scène ne doit dépendre du succès de l'audio.**
+(`loadBuffer` mémoïse aussi le décodage : le même mp3 n'est plus refetché ni
+redécodé à chaque aller-retour.)
+
+**3. Tout ce qui est cliquable doit être atteignable au clavier.** L'interface
+est faite de `<div>` et de `<svg>` : rien n'était focusable, et l'écran
+d'accueil — un `<div>` — ne démarrait rien à la touche Entrée. On ne réécrit
+PAS l'interface en `<button>` natifs (cela casserait les tracés SVG animés et
+le positionnement au pixel) : `src/utils/a11y.js` AJOUTE la sémantique
+manquante (`makeActivatable` pose rôle, `tabindex`, `aria-label`, et fait
+suivre Entrée/Espace au clic) et `announce()` signale les changements de scène
+dans une région live. Le CTA de l'accueil, lui, est un vrai `<button>`
+(`#ss-start`, avec `autofocus`).
+
+⚠️ **Un élément masqué doit sortir de l'ordre de tabulation.** `ArrowBase.hide()`
+pose `tabindex="-1"` + `aria-hidden` ; `makeActivatable` les retire au retour.
+Et **le bouton plein écran reste hors tabulation tant que l'écran d'accueil est
+là** : il vit dans `#app`, DERRIÈRE l'accueil, mais le PRÉCÈDE dans l'ordre du
+document — focusable, il captait la toute première tabulation et Entrée
+basculait en plein écran au lieu de lancer l'expérience.
+
 ## Le curseur : natif partout, dessiné seulement au doigt (août 2026)
 
 Hors appareil tactile, le site montre le curseur de l'OS et son comportement
@@ -329,8 +397,10 @@ et disputait le temps qui restait).
 
   Corollaire général : sur cette page, **rien de plein écran ne doit être en
   `mix-blend-mode`** (le grain du papier y a renoncé) et rien d'animé ne doit
-  toucher un tracé complexe. Le banc d'essai tient en trente lignes de
-  Playwright — le refaire avant d'accuser la machine.
+  toucher un tracé complexe. Le banc d'essai vit désormais dans le dépôt
+  (`npm run bench`) — le LANCER avant d'accuser la machine, et vérifier qu'il
+  tourne bien avec `channel: 'chromium'` : en headless historique le rendu est
+  logiciel et le site y tombe à ~15 i/s pour rien.
 
 Deux notes de composition : les libellés sont RE-COMPOSÉS en Roboto Condensed
 (la police de l'export, « Edges », n'est pas dans le projet ; ses `<text>` sont
@@ -339,8 +409,24 @@ trois branches à la fois — une plume qui suivrait son contour fermé descendr
 une branche pour remonter par l'autre côté (cf. `propagate()` dans
 `chp4-draw.js`).
 
-## Test manuel de non-régression (après toute modification)
+## Test de non-régression (après toute modification)
 
+**D'abord l'automate** — il couvre en trois minutes ce que l'œil ne peut pas
+compter (fluidité, fuites, tabulation, console) :
+
+```bash
+node tools/bench/serve.mjs &                 # laisser tourner
+npm run bench -- --self-test                 # sort en erreur si régression
+npm run audit:config                         # clés de config sans lecteur
+```
+
+Il vérifie : 60 i/s sur chaque scène, aucun arbre détaché supplémentaire entre
+la 1ʳᵉ et la 3ᵉ visite de chaque chapitre, focus au chargement sur le bouton de
+démarrage, Entrée qui démarre, console vide. Les requêtes TIERCES en échec
+(Google Fonts, qui négocie ses fichiers selon l'agent) sont signalées sans
+faire échouer la campagne.
+
+**Ensuite l'œil** — l'automate ne voit pas si c'est BEAU.
 Parcours sur serveur local, console ouverte (zéro erreur attendue) :
 1. Accueil (Playfair/Inter) → vitrine → phrénologie (documents + loupe).
 2. Collaboration : 5 cercles (I-IV ouvrent un chapitre, V à venir), survols, titres.
@@ -365,15 +451,42 @@ Parcours sur serveur local, console ouverte (zéro erreur attendue) :
    ce qui est cliquable (boutons documents, cercles romains, flèches,
    hotspots du chapitre 1, bulles du chapitre 4, pop-up de la carte…), à
    AUCUN moment le halo doré dessiné ne doit apparaître. Console vide.
+9. **Clavier, sans toucher la souris** : au chargement le focus est sur
+   « Cliquez pour commencer » ; Entrée démarre. Puis Tab parcourt flèche,
+   boutons documents, barre de navigation, plein écran — chacun avec un halo
+   doré VISIBLE, et Entrée/Espace l'active. Aucun focus ne doit se perdre sur
+   un élément invisible.
 
 ## Notes de déploiement
 
 - Poids : ~300 Mo, dont ~280 Mo de mp4 (limite GitHub : 100 Mo/fichier — le
-  plus gros fait ~23 Mo, OK). Compression vidéo envisageable (CRF 23-26).
+  plus gros fait ~23 Mo, OK). **`npm run videos` compresse sans écraser les
+  masters** (résultat dans `_compressed/`, gain attendu 50-70 %) : REGARDER
+  les fichiers produits avant tout remplacement — les plans sombres du
+  chapitre 1 et de « Violence et trace » sont les plus exposés. Demande un
+  vrai ffmpeg (celui de Playwright n'a ni H.264 ni AAC).
 - Polices : Google Fonts (Cinzel, Playfair Display, Inter, Cormorant
   Garamond, Old Standard TT, Roboto Condensed) — chargement non bloquant
   depuis index.html. Les fontes locales du chapitre 2 sont dans chp2-fonts/.
-- Favicon : placeholder `data:,` dans index.html (remplacer par un vrai
-  fichier le moment venu).
+  ⚠️ **Dépendance externe à trancher avant une mise en ligne institutionnelle** :
+  disponibilité (Google sert parfois une URL morte selon l'agent) et RGPD
+  (l'appel à fonts.gstatic.com transmet l'IP du visiteur à un tiers, ce que
+  plusieurs décisions européennes ont sanctionné). Les héberger localement
+  règle les deux — les licences OFL/Apache le permettent.
+- Métadonnées : titre éditorial, description, Open Graph et `theme-color` sont
+  en place dans index.html. L'image de partage pointe sur
+  `images/vitrineOrfila.webp` — la remplacer par un visuel dédié en 1200×630
+  le moment venu.
+- Favicon : le master calligraphié est `favicon.png` à la racine (1240 px,
+  900 Ko — **jamais référencé directement**, bien trop lourd pour un onglet).
+  Les trois déclinaisons servies sont `images/favicon-{32,48,180}.png`, rognées
+  de 18 % pour que le glyphe reste lisible en petit. Les regénérer après tout
+  changement du master.
+- **Déclaration d'accessibilité** : reste à rédiger et à publier (obligation
+  RGAA pour un site public). Le socle technique est là (voir « Trois règles
+  issues de l'audit »), mais une expérience narrative sonore et chronométrée ne
+  sera jamais pleinement conforme : la déclaration doit le DIRE, nommer ce qui
+  ne l'est pas, et indiquer un moyen de contact. Elle demande des informations
+  que le code ne contient pas (responsable, date d'audit, voie de recours).
 - Noms de fichiers : **jamais d'espaces, d'accents ni d'apostrophes** dans
   les assets (casse silencieuse possible selon l'hébergeur).
