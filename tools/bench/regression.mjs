@@ -149,6 +149,7 @@ async function main() {
   await page.evaluate(() => import('/src/core/EventBus.js').then((m) => { window.__bus = m.bus; }));
   await sleep(5000);
 
+
   const aller = async (scene) => {
     await page.evaluate((s) => window.__bus.emit('navigate', { to: s }), scene);
     for (let i = 0; i < 80; i++) {
@@ -209,6 +210,48 @@ async function main() {
     const croissance = apresTroisieme - apresPremiere;
     note(croissance <= SEUILS.fuitesMax,
          `${chap} : ${croissance} arbre(s) détaché(s) de plus entre la 1ʳᵉ et la 3ᵉ visite`);
+  }
+
+  /* ── 3bis. LE FOCUS NE DOIT JAMAIS RESTER PIÉGÉ SUR UNE FLÈCHE MASQUÉE ───
+     Les flèches portent tabindex="0" : un CLIC SOURIS leur donne le focus — et
+     c'est ce même clic qui déclenche la navigation, donc leur hide(). On posait
+     ainsi aria-hidden sur l'élément FOCALISÉ (refusé par le navigateur, qui le
+     dit en console) et le focus restait ÉCHOUÉ sur un fantôme vidé et invisible :
+     la tabulation suivante repartait de nulle part.
+
+     ⚠️ CE TEST DOIT CLIQUER POUR DE BON. Une première version cliquait trop tôt,
+     pendant les 2 100 ms où ArrowBase bloque son propre clic (`drawing`) : il ne
+     se passait rien, et le test passait sans rien prouver. On attend donc que la
+     flèche soit dessinée, ET on vérifie que la scène a bien changé avant de
+     regarder où est le focus. Placé ICI, en fin de parcours : plus haut, il
+     aurait navigué avant la mesure de fluidité de la vitrine. */
+  console.log('\n── Focus ──');
+  {
+    await aller('collaboration');
+    await sleep(4000);                       // dessin de la flèche (~2,1 s) + marge
+    const fleche = await page.$('#arrow-collaboration');
+    if (!fleche) {
+      note(false, 'flèche de l’espace collaboratif introuvable');
+    } else {
+      await fleche.click();
+      let change = false;
+      for (let i = 0; i < 40; i++) {
+        await sleep(500);
+        if (await page.evaluate((e) => eval(e), MARK.phrenologie)) { change = true; break; }
+      }
+      const f = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (!el || el === document.body || el === document.documentElement) {
+          return { piege: false, quoi: '(document)' };
+        }
+        const masque = el.getAttribute('aria-hidden') === 'true'
+                    || el.getAttribute('tabindex') === '-1'
+                    || getComputedStyle(el).opacity === '0';
+        return { piege: masque, quoi: (el.id || el.tagName) + (masque ? ' [MASQUÉ]' : '') };
+      });
+      note(change, 'le clic sur la flèche change bien de scène (sinon le test ne prouve rien)');
+      note(!f.piege, `le focus n’est pas piégé sur un élément masqué (${f.quoi})`);
+    }
   }
 
   /* ── 4. Console propre ─────────────────────────────────────────────────── */

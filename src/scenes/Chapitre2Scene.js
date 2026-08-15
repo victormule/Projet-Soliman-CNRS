@@ -56,9 +56,13 @@ const PARTS = {
     ready:   'chp2:peine-ready',
     return:  ['peineDemesuree:return', 'peine-demesuree:closed'],
   },
+  // ⚠️ Le cartel n'a QU'UN événement de retour, et c'est voulu :
+  // chp2-violence-et-trace.js n'a qu'un chemin de sortie terminal, qui émet
+  // toujours 'cartel:return'. Un 'cartel:closed' était listé ici — jamais émis
+  // par personne. Retiré (avec son gestionnaire côté moteur).
   cartel: {
     ready:   'chp2:cartel-ready',
-    return:  ['cartel:return', 'cartel:closed'],
+    return:  ['cartel:return'],
   },
 };
 

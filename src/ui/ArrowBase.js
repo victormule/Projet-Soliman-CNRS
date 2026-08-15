@@ -277,6 +277,25 @@ export class ArrowBase {
     this.el.style.transition = `opacity ${ms}ms ease`;
     this.el.style.opacity    = '0';
     this.el.classList.remove('visible');
+
+    /* ⚠️ RENDRE LE FOCUS AVANT DE MASQUER — et ce n'est pas cosmétique.
+       Ces éléments portent tabindex="0" : un CLIC SOURIS leur donne le focus.
+       Or c'est le clic lui-même qui déclenche la navigation, donc hide(). On
+       posait ainsi aria-hidden sur l'élément FOCALISÉ — ce que le navigateur
+       refuse (« Blocked aria-hidden on an element because its descendant
+       retained focus »), et qui laissait surtout le focus ÉCHOUÉ sur un
+       fantôme : élément vidé, invisible, hors tabulation.
+       Mesuré : après un clic sur la flèche de la vitrine, document.activeElement
+       restait #arrow-opening pendant toute la scène suivante — la tabulation
+       repartait donc de nulle part. Les 10 objets dérivés d'ArrowBase (9
+       flèches + la croix de fermeture) étaient concernés.
+       blur() rend le focus au document ; la scène suivante pose sa propre
+       flèche, atteignable dès la première tabulation.
+       (La spécification suggère `inert`. Écarté : tabindex="-1" retire déjà
+       de la tabulation, et un `inert` mal rendu à la réapparition rendrait la
+       flèche définitivement inerte — un mode de panne pour rien.) */
+    if (document.activeElement === this.el) this.el.blur();
+
     // Une flèche invisible ne doit pas rester dans l'ordre de tabulation :
     // sinon le focus disparaît dans une zone vide de l'écran.
     this.el.setAttribute('tabindex', '-1');

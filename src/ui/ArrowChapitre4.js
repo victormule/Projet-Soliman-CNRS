@@ -16,7 +16,7 @@
  *   faudrait alors — et seulement alors — lui donner une encre sombre.
  *
  * Position : bas-gauche, chevron ← (convention « retour » du projet, identique
- * à ArrowCollaboration / ArrowChapitre1 / ArrowChp2Opening / ArrowChp3Opening).
+ * à ArrowCollaboration / ArrowChp2Opening / ArrowChp3Opening).
  * z 600 : au-dessus du chapitre (#chapitre4-root = 500), sous le curseur.
  */
 

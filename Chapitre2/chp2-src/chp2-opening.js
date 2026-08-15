@@ -1000,14 +1000,14 @@ function openCartelOverlay() {
   });
 }
 
-function _onCartelClosed() {
-  if (!_active) return;
-  _subOpen = false;
-  resume();                       // idempotent — voir _onCartelReturn
-  document.body.classList.remove('cartel-open');
-  showOpeningArrow();
-}
-// (attaché dans init())
+/* Il y avait ici un _onCartelClosed(), à l'écoute de 'cartel:closed'.
+   ÉVÉNEMENT JAMAIS ÉMIS : chp2-violence-et-trace.js n'a qu'un seul chemin de
+   sortie terminal (closeCartel avec skipOutro), et il émet TOUJOURS
+   'cartel:return'. Le gestionnaire était donc mort, et il divergeait de son
+   frère — il rappelait la flèche immédiatement là où _onCartelReturn la
+   diffère de 2,8 s. Retiré avec ses deux écoutes (ici et dans
+   Chapitre2Scene.PARTS). Si un jour le cartel doit se fermer SANS mise en
+   scène, c'est un 'cartel:return' qu'il émettra, comme ses sœurs. */
 
 function _onCartelReturn() {
   if (!_active) return;
@@ -1324,7 +1324,6 @@ function init() {
   _resizeObs.observe(document.documentElement);
 
   /* ── Événements des sous-parties ── */
-  window.addEventListener('cartel:closed',          _onCartelClosed);
   window.addEventListener('cartel:return',          _onCartelReturn);
   window.addEventListener('invisibilisation:closed',  _onInvisibilisationClosed);
   window.addEventListener('invisibilisation:return',  _onInvisibilisationReturn);
@@ -1438,7 +1437,6 @@ export function stopChapitre2() {
   if (_mousemoveHandler)  window.removeEventListener("mousemove", _mousemoveHandler);
   if (_touchmoveHandler)  window.removeEventListener("touchmove", _touchmoveHandler);
   if (_clickHandler)      window.removeEventListener("click",     _clickHandler);
-  window.removeEventListener('cartel:closed',          _onCartelClosed);
   window.removeEventListener('cartel:return',          _onCartelReturn);
   window.removeEventListener('invisibilisation:closed',  _onInvisibilisationClosed);
   window.removeEventListener('invisibilisation:return',  _onInvisibilisationReturn);

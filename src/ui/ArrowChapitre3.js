@@ -14,7 +14,7 @@
  *       fond au noir puis émet 'chp3:navigate-back' → retour Espace collaboratif.
  *
  * Position : bas-gauche, chevron ← (convention « retour » du projet, identique
- * à ArrowCollaboration / ArrowChapitre1 / ArrowChp2Opening).
+ * à ArrowCollaboration / ArrowChp2Opening).
  * z 600 : au-dessus du travelling (#chapitre3-root = 500), sous le curseur.
  */
 

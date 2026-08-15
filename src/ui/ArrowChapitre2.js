@@ -8,7 +8,7 @@
  *
  * Le chapitre 2 comporte deux familles de flèches, toutes positionnées en
  * bas-gauche et pointant vers la gauche ← (convention « retour » du projet,
- * identique à ArrowCollaboration / ArrowChapitre1) :
+ * identique à ArrowCollaboration) :
  *
  *   1. ArrowChp2Opening  (#arrow-chp2-opening)
  *      - Affichée sur l'opening (travelling) une fois la bougie allumée.
@@ -27,7 +27,7 @@
 
 import { ArrowBase } from './ArrowBase.js';
 
-/* Chevron « retour » ← — identique à ArrowCollaboration / ArrowChapitre1. */
+/* Chevron « retour » ← — identique à ArrowCollaboration. */
 const PATH_LEFT = 'M48 35 L22 35 M33 24 L22 35 L33 46';
 
 /** Position commune : bas-gauche, marge proportionnelle à min(vW, vH). */
