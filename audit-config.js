@@ -32,13 +32,22 @@
  * suppression dangereuse. Il ouvre une enquête, il ne tranche pas.
  */
 
-'use strict';
+/* ⚠️ CE FICHIER EST UN MODULE ESM, ET IL DOIT LE RESTER.
+   package.json déclare `"type": "module"` : tout .js du dépôt est chargé comme
+   module. Ce script était écrit en CommonJS (`require`, `__dirname`) et
+   plantait donc à la première ligne — `npm run audit:config` ne tournait plus
+   du tout, en silence, alors que CLAUDE.md demande de le lancer après chaque
+   modification. Un garde-fou qui ne s'exécute pas est pire qu'aucun : il
+   rassure. Ne pas réintroduire `require()` ici ; et si l'on rebasculait un jour
+   le paquet en CommonJS, c'est ce fichier qu'il faudrait suivre.
+   (`'use strict'` a disparu avec : un module l'est déjà.) */
 
-const fs   = require('fs');
-const path = require('path');
-const vm   = require('vm');
+import fs   from 'node:fs';
+import path from 'node:path';
+import vm   from 'node:vm';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = __dirname;
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
 /* ── Sources à fouiller ───────────────────────────────────────────────────── */
 
