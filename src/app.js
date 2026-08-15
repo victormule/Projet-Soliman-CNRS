@@ -145,14 +145,24 @@ if (compass) {
   bus.on('nav-arrow:hidden', () => compass.hide());
 
   /* Le saut. La boussole ne connaît AUCUNE mise en scène : elle nomme une
-     destination, et c'est la scène courante qui décide comment partir —
-     leaveTo() joue sa sortie écrite (bougie, citation, fondu) puis navigue.
-     Voir core/Scene.js → leaveTo. */
+     destination, et c'est la scène courante qui décide comment y aller.
+     DEUX CAS, et un seul avait été prévu :
+       · une autre scène → leaveTo() joue la sortie écrite (bougie, citation,
+         fondu) puis navigue. Voir core/Scene.js → leaveTo.
+       · un autre LIEU de la scène courante → jumpWithin(). Le chapitre 2 a
+         quatre points sur la carte (son ouverture et ses trois installations) :
+         y sauter ne change pas de scène. Ce cas retournait ici sans rien faire,
+         ce qui rendait la carte inopérante à l'intérieur du chapitre 2. */
   compass.setOnJump((to, part) => {
     const scene = manager.currentScene;
-    if (!scene || scene.name === to) return;
+    if (!scene) return;
+    if (scene.name === to) { scene.jumpWithin({ part: part ?? null }); return; }
     scene.leaveTo(to, part ? { part } : {});
   });
+
+  /* Un lieu SUPERPOSÉ (une sous-partie du chapitre 2) : la scène ne change pas,
+     mais le point courant de la carte, si. */
+  bus.on('journey:place', ({ id }) => compass.setCurrent(id));
 }
 
 /* ── 6. Systems injectés ─────────────────────────────────────── */
@@ -184,7 +194,46 @@ manager.register(new Chapitre4Scene(systems));
    qu'une scène joignait à sa demande de navigation (par exemple la sous-partie
    à ouvrir en arrivant, `{ part: 'invisibilisation' }`) était silencieusement
    jeté ici. SceneManager.go les fait suivre à enter(). */
-bus.on('navigate', ({ to, ...params }) => manager.go(to, params));
+bus.on('navigate', ({ to, ...params }) => {
+  // La carte ne traverse jamais une transition dépliée : on quitte un lieu,
+  // elle se referme. Elle se redessinera pliée avec la flèche suivante.
+  compass?.reset();
+  manager.go(to, params);
+});
+
+/* ── 8ter. LE SILENCE DE FRONTIÈRE ───────────────────────────────────────────
+   CHAQUE SCÈNE DÉCLARE CE QU'ON ENTEND CHEZ ELLE. Tout ce qui n'est pas déclaré
+   se tait au moment où l'on entre — dans le noir, entre exit() et enter().
+
+   ⚠️ C'EST LA SEULE TABLE À TENIR À JOUR. Une scène ajoutée sans ligne ici
+   entrera dans le silence complet et le dira en console : c'est le bon mode de
+   panne (on entend un manque, on ne subit pas un débordement).
+
+   Pourquoi une table plutôt qu'un réglage par scène : le sens de « garder »
+   dépend de la scène qui ARRIVE, pas de celle qui part. Une scène ne peut donc
+   pas porter seule la réponse — c'était précisément le défaut d'origine, où
+   chaque exit() devinait sa destination. Le musée est déclaré par les trois
+   scènes du tronc commun (l'espace collaboratif l'atténue à zéro en entrant et
+   le rétablit en partant) : il les traverse sans coupure, comme avant. Aucun
+   chapitre ne le déclare : il s'arrête, quel que soit le chemin emprunté.
+
+   Les noms sont ceux des pistes d'AudioManager.tracks. Les chapitres gèrent
+   leurs propres <audio>/<video> ; le filet du registre les couvre aussi. */
+const AMBIANCE = {
+  vitrine:       ['musee'],
+  phrenologie:   ['musee'],
+  collaboration: ['musee', 'collab'],
+  chapitre1:     [],      // 'phreno' puis 'silence' — démarrées APRÈS la frontière
+  chapitre2:     [],      // 'chp2' (fredonnement) — idem
+  chapitre3:     [],      // ambiance et thèmes internes au chapitre
+  chapitre4:     [],      // aucun fond : seulement les sons des bulles
+};
+
+manager.onBoundary = ({ to }) => {
+  const garder = AMBIANCE[to];
+  if (!garder) console.warn(`[app] AMBIANCE : scène « ${to} » non déclarée — silence total à l'entrée.`);
+  audio.enforceSilence(garder ?? []);
+};
 
 /* ── 8bis. Annonce des changements de scène ──────────────────────────────────
    Le site change de scène sans changer d'URL ni de titre : pour un lecteur

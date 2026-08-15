@@ -1,7 +1,42 @@
 /**
  * AudioManager.js
  * Gestion centralisée de tous les sons du site.
+ *
+ * ⚠️ LE NOIR EST AUSSI UN SILENCE (audit de sortie de scène, août 2026).
+ * Voir `enforceSilence()`, tout en bas : c'est la seule garantie qui vaille,
+ * et elle est appelée d'un seul endroit (app.js, à la frontière entre deux
+ * scènes). Le reste de ce fichier ne fait que jouer des sons.
  */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   REGISTRE DES <audio>/<video> — pourquoi ce crochet sur le prototype
+   ─────────────────────────────────────────────────────────────────────────────
+   L'AudioManager ne connaît QUE ses six pistes Web Audio. Les chapitres, eux,
+   fabriquent leurs propres éléments média : `new Audio()` dans l'ambiance du
+   chapitre 3, dans les bulles du 4, dans « Invisibilisation »… Beaucoup ne sont
+   même pas dans le document — impossible de les retrouver par une requête DOM.
+
+   La seule façon de garantir le silence SANS demander à chaque module de s'en
+   souvenir, c'est de noter au passage tout élément qui commence à jouer. D'où
+   ce crochet, posé UNE fois, qui n'ajoute rien d'autre qu'une référence FAIBLE.
+
+   ⚠️ WeakRef, et pas l'élément : un `<video>` retenu retient tout son arbre —
+   c'est la fuite documentée dans CLAUDE.md (releaseMediaElements). Un registre
+   qui garderait des références fortes recréerait exactement ce qu'on a corrigé.
+───────────────────────────────────────────────────────────────────────────── */
+
+const _MEDIA = [];
+
+(function installerRegistreMedia() {
+  const proto = window.HTMLMediaElement?.prototype;
+  if (!proto || proto.__solimanRegistre || typeof WeakRef !== 'function') return;
+  proto.__solimanRegistre = true;
+  const jouer = proto.play;
+  proto.play = function (...args) {
+    try { _MEDIA.push(new WeakRef(this)); } catch { /* sans registre, tant pis */ }
+    return jouer.apply(this, args);
+  };
+})();
 
 export class AudioManager {
   constructor(config) {
@@ -190,13 +225,22 @@ export class AudioManager {
     return src;
   }
 
+  /**
+   * ⚠️ NE RÉTABLIT PAS L'AMBIANCE MUSÉE, et c'est le correctif de fond.
+   * Cette méthode le faisait (`fadeMusee(musee_vol, …)`), ce qui revenait à
+   * décider, depuis l'AudioManager, de ce qu'on entendrait APRÈS — alors que
+   * son unique appelant est le chapitre 1, où le musée n'a rien à faire. Les
+   * deux seuls appels du chapitre s'écrivaient donc « stopPhrenoSound() ;
+   * fadeMusee(0, …) » : couper, puis défaire le rétablissement qu'on venait
+   * de provoquer. Chaque scène déclare désormais son ambiance (app.js →
+   * AMBIANCE) ; personne d'autre n'a à la deviner.
+   */
   stopPhrenoSound() {
     const { src } = this.tracks.phreno;
     if (src) {
       try { src.onended = null; src.stop(); } catch(e) {}
       this.tracks.phreno = { src: null, gain: null };
     }
-    this.fadeMusee(this.config.AUDIO.musee_vol, this.config.AUDIO.musee_fade);
   }
 
   /* ──────────────────────────────────────────── SanzaLoop ── */
@@ -393,13 +437,116 @@ export class AudioManager {
     setTimeout(() => { try { src.stop(); } catch(e) {} }, ms + 50);
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     LE SILENCE DE FRONTIÈRE
+     ───────────────────────────────────────────────────────────────────────
+     LE PROBLÈME. Chaque scène coupait les sons qu'elle croyait avoir posés,
+     et supposait où elle allait. PhrenologieScene.exit() ne touchait pas au
+     musée : elle savait que la scène suivante le baisserait. Vrai tant qu'on
+     n'allait qu'à la vitrine ou à l'espace collaboratif ; faux le jour où la
+     CARTE a permis d'aller de la phrénologie au chapitre 3. Mesuré au banc
+     (probe-audio) : le musée jouait à plein volume par-dessus le chapitre 3
+     ET le chapitre 4, et la voix d'introduction du chapitre 1 débordait sur
+     le chapitre 2. Cinq chemins testés, cinq fuites.
+
+     LA RÈGLE. Une scène ne décide plus de ce qu'on entendra ailleurs : elle
+     DÉCLARE ce qu'on entend chez elle (app.js → AMBIANCE), et la frontière
+     coupe tout le reste. C'est le pendant sonore du noir garanti : entre deux
+     scènes, l'écran est noir ET le silence est fait.
+
+     LA CONTINUITÉ N'EST PAS PERDUE. Le musée est déclaré par la vitrine, la
+     phrénologie ET l'espace collaboratif (qui l'atténue à zéro en entrant et
+     le rétablit en partant) : il traverse donc le tronc commun sans coupure,
+     exactement comme avant. Aucun chapitre ne le déclare : il s'arrête net
+     quand on entre dans un chapitre, quel que soit le chemin emprunté.
+  ═══════════════════════════════════════════════════════════════════════ */
+
+  /** Fondu de sortie de frontière : assez court pour être inaudible dans le
+      noir, assez long pour qu'aucune piste ne se coupe sur un « clic ». */
+  static get FRONTIERE_MS() { return 260; }
+
+  /**
+   * Arrête une piste centrale par son nom. Générique : les six pistes ont la
+   * même forme ({src, gain}), il n'y avait aucune raison d'avoir six stopXxx
+   * presque identiques pour ce besoin-ci.
+   * @returns {boolean} true si une piste jouait réellement
+   */
+  _stopTrack(nom, ms = AudioManager.FRONTIERE_MS) {
+    const piste = this.tracks[nom];
+    if (!piste || !piste.src) return false;
+
+    const { src, gain } = piste;
+    this.tracks[nom] = { src: null, gain: null };
+
+    const ctx = this.getContext();
+    if (ctx && gain) {
+      try {
+        gain.gain.cancelScheduledValues(ctx.currentTime);
+        gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + ms / 1000);
+      } catch { /* contexte fermé : la source est arrêtée juste après */ }
+    }
+    setTimeout(() => { try { src.onended = null; src.stop(); } catch { /* déjà finie */ } }, ms + 50);
+    return true;
+  }
+
+  /**
+   * Coupe toutes les pistes centrales SAUF celles nommées.
+   * @param {string|string[]} garder
+   * @returns {string[]} les pistes réellement coupées
+   */
+  keepOnly(garder = [], ms = AudioManager.FRONTIERE_MS) {
+    const gardees = new Set([].concat(garder).filter(Boolean));
+    const coupees = [];
+    for (const nom of Object.keys(this.tracks)) {
+      if (gardees.has(nom)) continue;
+      if (this._stopTrack(nom, ms)) coupees.push(nom);
+    }
+    return coupees;
+  }
+
+  /**
+   * Met en pause tout <audio>/<video> encore en lecture (voir le registre en
+   * tête de fichier). Les modules de chapitre restent responsables de leurs
+   * médias — ceci est un filet, pas une dispense : d'où l'avertissement.
+   * @returns {string[]} noms de fichiers des médias trouvés en lecture
+   */
+  silenceMedia() {
+    const fautifs = [];
+    const vivants = [];
+    for (const ref of _MEDIA) {
+      const el = ref.deref();
+      if (!el) continue;                       // ramassé par le GC : rien à faire
+      vivants.push(ref);
+      if (el.paused || el.ended) continue;
+      try { el.pause(); } catch { /* élément déjà démonté */ }
+      fautifs.push((el.currentSrc || el.src || '?').split('/').pop());
+    }
+    _MEDIA.length = 0;
+    _MEDIA.push(...vivants);
+    return fautifs;
+  }
+
+  /**
+   * LA GARANTIE. Appelée par app.js dans le noir, entre exit() et enter().
+   * @param {string[]} garder  pistes que la scène qui ARRIVE conserve
+   */
+  enforceSilence(garder = []) {
+    this.keepOnly(garder);
+    const fautifs = this.silenceMedia();
+    if (fautifs.length) {
+      console.warn(
+        '[AudioManager] Média(s) encore en lecture au changement de scène, ' +
+        'coupé(s) ici par sécurité : ' + fautifs.join(', ') +
+        '. Le module qui les a ouverts devrait les arrêter lui-même.'
+      );
+    }
+  }
+
   /* ───────────────────────────────────────────────── Utilitaire ── */
 
   stopAll() {
-    this.stopPhrenoSound();
-    this.stopSanzaLoop();
-    this.stopSilenceLoop();
-    this.stopCollabLoop();
-    this.stopChp2Loop();
+    this.keepOnly([]);
+    this.silenceMedia();
   }
 }

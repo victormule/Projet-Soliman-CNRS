@@ -66,6 +66,14 @@ const PARTS = {
   },
 };
 
+/* Sous-partie → point de la carte du parcours (cf. CompassMap NODES, dont les
+   identifiants reprennent le numéro du crâne). */
+const NODE_OF_PART = {
+  invisibilisation:  'chp2-136',
+  'peine-demesuree': 'chp2-137',
+  cartel:            'chp2-138',
+};
+
 /* ── Constants ──────────────────────────────────────────────────────────── */
 const CHp2_BODY_CLASSES = ['cartel-open', 'invisibilisation-open', 'peine-demesuree-open'];
 const CSS_LINK_IDS      = [
@@ -433,6 +441,10 @@ export class Chapitre2Scene extends Scene {
     const arrow = this._partArrows[part];
     if (!arrow) return;
     this._openPart = part;
+    // La carte allume le point de la SOUS-PARTIE, pas celui du chapitre : sans
+    // cela, le point « chapitre 2 » restait le lieu courant à l'intérieur d'une
+    // installation, et la carte croyait qu'on y était déjà (clic sans effet).
+    bus.emit('journey:place', { id: NODE_OF_PART[part] ?? 'chapitre2' });
     arrow.show(() => {
       // Une seule sous-partie ouverte à la fois : la sous-partie concernée
       // capte l'événement et rejoue sa séquence de retour vers l'opening.
@@ -444,8 +456,60 @@ export class Chapitre2Scene extends Scene {
   _hidePartArrow(part) {
     this._partArrows[part]?.hide();
     this._closeCross.hide();
-    if (this._openPart === part) this._openPart = null;
+    if (this._openPart === part) {
+      this._openPart = null;
+      bus.emit('journey:place', { id: 'chapitre2' });   // retour au travelling
+    }
     this._hidePartTitle();
+  }
+
+  /* ── Saut d'un lieu à l'autre SANS quitter le chapitre ─────────────────
+     Le chapitre 2 est la seule scène à plusieurs lieux : l'ouverture (le
+     travelling des crânes) et ses trois installations. La carte les montre
+     comme quatre points ; y sauter ne doit donc PAS rejouer l'entrée du
+     chapitre (bougies comprises, soit une quinzaine de secondes).
+
+     ⚠️ ON PASSE TOUJOURS PAR LE RETOUR ÉCRIT. Fermer une installation d'autorité
+     pour en ouvrir une autre sauterait son extinction — la seule chose qui
+     raccorde les deux. On demande donc le retour normal (le même que la flèche),
+     on attend qu'il soit joué, et alors seulement on ouvre la destination.
+  ─────────────────────────────────────────────────────────────────────────── */
+
+  async jumpWithin({ part = null } = {}) {
+    if (!this.isActive || !this._module) return false;
+    if (this._openPart === part) return true;          // déjà sur place
+
+    if (this._openPart) {
+      await this._playPartReturn(this._openPart);
+      if (!this.isActive) return false;
+    }
+
+    if (!part) return true;                            // destination : l'ouverture
+    return !!this._module.openPart?.(part);
+  }
+
+  /**
+   * Rejoue la sortie de la sous-partie ouverte et attend qu'elle soit finie.
+   * Le garde-fou de 12 s couvre le cas où un module cesserait d'émettre son
+   * événement de retour : la carte resterait sinon bloquée sans rien dire.
+   */
+  _playPartReturn(part) {
+    const evts = PARTS[part]?.return ?? [];
+    return new Promise((resolve) => {
+      let fini = false;
+      const finir = () => {
+        if (fini) return;
+        fini = true;
+        clearTimeout(secours);
+        evts.forEach(e => window.removeEventListener(e, finir));
+        // Le moteur remet ses états (_subOpen, éclairage) DANS le gestionnaire
+        // de ce même événement : on lui laisse finir son tour avant d'ouvrir.
+        setTimeout(resolve, 700);
+      };
+      evts.forEach(e => window.addEventListener(e, finir));
+      const secours = setTimeout(finir, 12000);
+      window.dispatchEvent(new CustomEvent('chp2:request-return'));
+    });
   }
 
   /* ── Titres (3 niveaux) ────────────────────────────────────────────────

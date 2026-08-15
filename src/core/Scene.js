@@ -44,6 +44,22 @@ export class Scene {
     bus.emit('navigate', { to, ...params });
   }
 
+  /* ── Déplacement SANS quitter la scène ────────────────
+     Certaines scènes contiennent plusieurs LIEUX : les trois sous-parties du
+     chapitre 2 en sont, et la carte les montre comme des points à part entière.
+     Y sauter n'est pas une navigation — la scène ne change pas, il n'y a donc
+     ni exit(), ni noir, ni enter().
+
+     Sans ce chemin, la carte était MUETTE à l'intérieur du chapitre 2 : le saut
+     passait par `leaveTo`, que app.js refuse quand la destination est la scène
+     courante. Aller de « Taire le passé » à l'ouverture du chapitre — un clic
+     parfaitement légitime, et le premier qu'on essaie — ne faisait rien du tout.
+
+     @param {Object} params  ex. { part: 'peine-demesuree' }, ou { part: null }
+                             pour revenir au lieu principal de la scène.
+     @returns {Promise<boolean>|boolean} false si la scène n'a qu'un seul lieu */
+  jumpWithin(params = {}) { return false; }
+
   /* ── Mécaniques Temporelles Centralisées ─────────── */
 
   /**

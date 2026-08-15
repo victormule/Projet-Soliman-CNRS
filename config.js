@@ -640,9 +640,13 @@ window.CONFIG = {
                             // taille d'une flèche
     compass_open:    0.55,  // taille de la boussole une fois la carte ouverte
                             // (fraction de sa taille repliée)
+    compass_dx:     -0.20,  // glissement de la boussole quand la carte s'ouvre,
+    compass_dy:     -0.20,  // en fraction de sa taille (négatif = vers le haut
+                            // et vers la gauche). Elle se pose ainsi au coin du
+                            // cadre, PAR-DESSUS la carte, comme un fleuron.
 
     // ── CADENCES (ms) ─────────────────────────────────────────────────
-    draw_duration:   1700,  // dessin de la boussole à son apparition
+    draw_duration:   2000,  // dessin de la boussole à son apparition
     fold_duration:    620,  // rotation + rétrécissement au clic
     fold_turn:        180,  // degrés de rotation à l'ouverture
     panel_frame:      520,  // dessin du cadre de la carte
@@ -655,15 +659,15 @@ window.CONFIG = {
     // scènes (SceneManager) ; les trois derniers sont les sous-parties du
     // chapitre 2, nommées comme leurs crânes.
     labels: {
-      vitrine:       'La vitrine',
-      phrenologie:   'La salle',
+      vitrine:       'Accueil',
+      phrenologie:   'A propos',
       carnet:        'Carnet de recherche',
       collaboration: 'Espace collaboratif',
-      chapitre1:     'I · Le crâne',
-      chapitre2:     'II · L’héritage colonial',
-      chapitre3:     'III · La Galerie des Batailles',
+      chapitre1:     'I · Les interprétation du geste de Soliman al-Halabi',
+      chapitre2:     'II · L’héritage colonial du musée',
+      chapitre3:     'III · Le Général Jean-Baptiste Kléber',
       chapitre4:     'IV · Une histoire complexe',
-      cercle5:       'V',
+      cercle5:       'V · Le devenir du corps de Soliman al-Halabi' ,
       'chp2-136':    'Taire le passé',
       'chp2-137':    'Une peine démesurée',
       'chp2-138':    'La violence et ses traces',

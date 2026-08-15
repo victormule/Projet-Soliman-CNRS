@@ -3,10 +3,12 @@
  *
  * PRINCIPE ULTRA-SIMPLE :
  *   await currentScene.exit()   → noir garanti
+ *   await onBoundary()          → silence garanti  (contenu posé par app.js)
  *   await nextScene.enter()     → visible garanti
  *
  * Le SceneManager ne connaît ni l'audio, ni la torche, ni le DOM.
- * Il orchestre seulement les appels enter/exit.
+ * Il orchestre les appels enter/exit et ménage entre les deux un RENDEZ-VOUS
+ * DANS LE NOIR (onBoundary) dont il ignore le contenu.
  * La logique de transition (fade fond, torche, UI) est dans chaque scène.
  */
 
@@ -15,6 +17,26 @@ export class SceneManager {
     this.scenes          = new Map();
     this.currentScene    = null;
     this.isTransitioning = false;
+
+    /**
+     * LA FRONTIÈRE. Appelée DANS LE NOIR, entre exit() et enter() : le seul
+     * instant où plus aucune scène n'est à l'écran. app.js y garantit le
+     * SILENCE, comme les scènes garantissent le noir — voir
+     * AudioManager.enforceSilence.
+     *
+     * Le manager ne sait toujours rien de l'audio : il ne connaît que ce
+     * rendez-vous et le nom des deux scènes.
+     *
+     * @type {?function({from: ?string, to: string}): (void|Promise<void>)}
+     */
+    this.onBoundary = null;
+  }
+
+  /** Le rendez-vous de frontière, sans laisser une panne casser la navigation. */
+  async _boundary(from, to) {
+    if (!this.onBoundary) return;
+    try { await this.onBoundary({ from, to }); }
+    catch (e) { console.error('[SceneManager] Frontière :', e); }
   }
 
   register(scene) {
@@ -32,6 +54,7 @@ export class SceneManager {
       return;
     }
 
+    await this._boundary(null, name);
     this.currentScene = scene;
     await scene.enter(params);
   }
@@ -70,6 +93,11 @@ export class SceneManager {
       if (this.currentScene) {
         await this.currentScene.exit({ to: name, ...params });
       }
+
+      // ── ÉTAPE 1bis : la frontière → silence garanti ─
+      // L'écran est noir, la scène précédente a fini de se raconter : c'est
+      // ici, et seulement ici, qu'on coupe ce qui traînerait encore.
+      await this._boundary(from, name);
 
       // ── ÉTAPE 2 : Enter → visible garanti ──────────
       this.currentScene = next;

@@ -324,6 +324,39 @@ export class ArrowBase {
     if (this.estFlecheDeNavigation) bus.emit('nav-arrow:hidden', { id: this.domId });
   }
 
+  /* ── eclipse() : s'effacer sans être démontée ───────── */
+
+  /**
+   * La flèche s'efface le temps d'un média puis revient telle quelle : elle
+   * n'est ni vidée, ni sortie de la tabulation, ni reconstruite.
+   *
+   * ⚠️ ÉMET LES MÊMES SIGNAUX QUE show()/hide(). Le chapitre 1 faisait cela à
+   * la main (`this._arrow.el.style.opacity = '0'`) — donc en silence : la
+   * BOUSSOLE, qui n'écoute que ces deux signaux, restait seule à l'écran
+   * au-dessus du lecteur média, alors que la règle d'auteur est qu'elle
+   * paraisse avec une flèche et seulement là. Toute autre façon d'effacer une
+   * flèche recréera le même défaut : passer par ici.
+   *
+   * @param {boolean} masquee  true pendant le média, false au retour
+   * @param {number}  [ms]     durée du fondu
+   */
+  eclipse(masquee, ms = 800) {
+    this.el.style.transition = `opacity ${ms}ms ease`;
+
+    if (masquee) {
+      this.el.style.opacity = '0';
+      this.el.style.pointerEvents = 'none';
+      if (this.estFlecheDeNavigation) bus.emit('nav-arrow:hidden', { id: this.domId });
+      return;
+    }
+
+    // Au retour : on ne rallume que si la flèche est réellement en scène.
+    const enScene = this.el.classList.contains('visible');
+    this.el.style.opacity = enScene ? '1' : '0';
+    this.el.style.pointerEvents = enScene ? 'auto' : 'none';
+    if (enScene && this.estFlecheDeNavigation) bus.emit('nav-arrow:shown', { id: this.domId });
+  }
+
   /* ── resize() ───────────────────────────────────────── */
 
   resize() {

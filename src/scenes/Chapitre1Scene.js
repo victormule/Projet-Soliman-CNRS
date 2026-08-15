@@ -196,7 +196,7 @@ export class Chapitre1Scene extends Scene {
 
       // Si aucun son n'a pu être joué, on passe directement à l'interactif.
       if (!src) {
-        await this._startInteractivePhase(false);
+        await this._startInteractivePhase();
         return;
       }
 
@@ -205,7 +205,7 @@ export class Chapitre1Scene extends Scene {
       // afin de ne jamais rater l'événement "ended".
       src.addEventListener('ended', () => {
         if (!this.isActive || this._isInteractive || this._isTransitioningOut) return;
-        this._startInteractivePhase(false);
+        this._startInteractivePhase();
       }, { once: true });
 
       // Signal d'entrée de scène pour le reste de l'application
@@ -222,7 +222,7 @@ export class Chapitre1Scene extends Scene {
       // Le bouton "Passer" force la transition vers la phase interactive.
       this._showSkipButton(() => {
         if (!this.isActive || this._isInteractive || this._isTransitioningOut) return;
-        this._startInteractivePhase(true);
+        this._startInteractivePhase();
       });
     } catch {
       // Interruption silencieuse volontaire :
@@ -233,7 +233,9 @@ export class Chapitre1Scene extends Scene {
   /**
    * Lance la phase interactive.
    * -----------------------------------------------------------------------------
-   * @param {boolean} fromSkip
+   * (Cette méthode prenait un `fromSkip` qui ne servait qu'à choisir la vitesse
+   * d'atténuation du musée — un son qui ne joue plus ici depuis que l'ambiance
+   * est coupée à la frontière de scène. Paramètre retiré avec son seul usage.)
    * - true  : la transition a été déclenchée par le bouton "Passer"
    * - false : la transition s'est faite naturellement à la fin du son
    *
@@ -243,23 +245,19 @@ export class Chapitre1Scene extends Scene {
    * - réalise la transition visuelle intro -> base interactive,
    * - active ensuite la flèche, les hotspots, la classe body et l'ambiance audio.
    */
-  async _startInteractivePhase(fromSkip) {
+  async _startInteractivePhase() {
     if (!this.isActive || this._isInteractive || this._isTransitioningOut) return;
 
     this._isInteractive = true;
     this._interactiveReady = false;
     this._phase = 'transition-to-interactive';
 
-    // Gestion audio :
-    // - on coupe le son phrénologique,
-    // - on réduit le fond musée, plus ou moins vite selon l'origine du basculement.
-    if (fromSkip) {
-      this.audio.stopPhrenoSound();
-      this.audio.fadeMusee(0, 260);
-    } else {
-      this.audio.stopPhrenoSound();
-      this.audio.fadeMusee(0, 700);
-    }
+    // On coupe la voix d'introduction — c'est tout ce que ce chapitre a posé.
+    // (Il y avait ici un « fadeMusee(0, …) » qui ne servait qu'à DÉFAIRE le
+    //  rétablissement du musée que stopPhrenoSound() provoquait lui-même ;
+    //  celui-ci ne le fait plus, et le musée est coupé à la frontière de scène
+    //  quel que soit le chemin qui mène ici. Voir AudioManager.enforceSilence.)
+    this.audio.stopPhrenoSound();
 
     // Le bouton skip n'a plus de raison d'être après bascule
     this._hideSkipButton();
@@ -595,11 +593,10 @@ export class Chapitre1Scene extends Scene {
         );
       }
 
-      // Restauration visuelle de la flèche si la scène est toujours interactive
+      // Restauration visuelle de la flèche (et de la boussole) si la scène est
+      // toujours interactive.
       if (this.isActive && this._interactiveReady && !this._isTransitioningOut) {
-        const ms = window.CONFIG.PLAYER.torch_ms || 800;
-        this._arrow.el.style.transition = `opacity ${ms / 1000}s ease`;
-        this._arrow.el.style.opacity = this._arrow.el.classList.contains('visible') ? '1' : '0';
+        this._arrow.eclipse(false, window.CONFIG.PLAYER.torch_ms || 800);
       }
 
       bus.emit('player:close', {});
@@ -1028,10 +1025,10 @@ export class Chapitre1Scene extends Scene {
         const mediaDur = L?.media_duration ?? 800;
         this._light.animateToFraction(this._getMediaLightFrac(), mediaDur, 1);
 
-        // La flèche est masquée pendant qu'un média est au premier plan
-        const P = window.CONFIG.PLAYER;
-        this._arrow.el.style.transition = `opacity ${(P.torch_ms || 800) / 1000}s ease`;
-        this._arrow.el.style.opacity = '0';
+        // La flèche s'éclipse pendant qu'un média est au premier plan — et la
+        // boussole avec elle (eclipse() émet les signaux ; l'écriture directe
+        // de l'opacité qu'il y avait ici ne les émettait pas).
+        this._arrow.eclipse(true, window.CONFIG.PLAYER.torch_ms || 800);
 
         bus.emit('player:open', { src: h.media, label: h.label, credit: h.credit });
       });

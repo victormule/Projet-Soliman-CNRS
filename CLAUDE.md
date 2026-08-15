@@ -293,7 +293,74 @@ piège n°1 du chapitre 4, à l'identique.
 ⚠️ **Aucun canvas ici.** Le SVG n'a pas le défaut qui a valu l'invariant des
 canvas-masques (ci-dessous) : on ne rouvre pas cette porte pour une boussole.
 
-**Le saut passe par `Scene.leaveTo(to, params)`** — voir ci-dessous.
+**Le saut passe par `Scene.leaveTo(to, params)`** — voir ci-dessous — SAUF quand
+la destination est un autre lieu de la scène courante : là, c'est
+`Scene.jumpWithin({ part })`. Le chapitre 2 est la seule scène à plusieurs lieux
+(son ouverture et ses trois installations) et il les montre comme quatre points.
+Sans ce second chemin la carte était **muette à l'intérieur du chapitre 2** :
+`app.js` refuse `leaveTo` quand la destination est la scène courante, si bien
+qu'aller de « Taire le passé » à l'ouverture — le premier clic qu'on essaie — ne
+faisait rien. `jumpWithin` demande le retour ÉCRIT de l'installation ouverte
+(le même que la flèche), l'attend, puis ouvre la destination : on ne ferme
+jamais une installation d'autorité.
+
+⚠️ **La boussole ne traverse jamais une transition dépliée.** `compass.reset()`
+est appelé sur `navigate`, et `show()` referme une carte restée ouverte. Elle se
+redessine pliée avec la flèche suivante.
+
+⚠️ **Une flèche qui s'efface sans passer par `hide()` laisse la boussole seule
+à l'écran.** Le chapitre 1 écrivait `this._arrow.el.style.opacity = '0'` pour
+éclipser sa flèche pendant un média : aucun signal émis, donc la boussole
+restait au-dessus du lecteur. D'où `ArrowBase.eclipse(masquée, ms)`, qui efface
+sans démonter ET émet les mêmes signaux que `show()`/`hide()`. Toute autre façon
+d'effacer une flèche recréera le défaut.
+
+⚠️ **Le point courant se peint par `style.stroke`, jamais par l'attribut.**
+`_paintCurrent` posait `setAttribute('stroke', …)` quand le survol
+(`applyGoldenHover`) écrit `style.stroke` : un style en ligne bat un attribut,
+donc l'or du survol ne s'effaçait plus JAMAIS et la carte finissait toute
+allumée. Même piège que celui du curseur, plus bas.
+
+## Le noir est aussi un SILENCE (audit d'août 2026)
+
+`SceneManager.go()` garantissait le noir entre deux scènes ; il garantit
+maintenant aussi le silence. Entre `exit()` et `enter()` il tient un
+**rendez-vous dans le noir** (`onBoundary`) dont il ignore le contenu ; `app.js`
+y appelle `audio.enforceSilence(AMBIANCE[destination])`.
+
+**Chaque scène DÉCLARE ce qu'on entend chez elle**, dans la table `AMBIANCE`
+d'`app.js` — et tout ce qui n'est pas déclaré se tait à l'entrée.
+
+⚠️ **Pourquoi une table, et pas un réglage par scène.** Le sens de « garder »
+dépend de la scène qui ARRIVE, pas de celle qui part : une scène ne peut donc
+pas porter seule la réponse. C'était exactement le défaut d'origine — chaque
+`exit()` devinait sa destination. `PhrenologieScene.exit()` ne touchait pas au
+musée parce qu'elle « savait » que la suivante le baisserait : vrai tant qu'on
+n'allait qu'à la vitrine ou à l'espace collaboratif, **faux le jour où la carte
+a permis d'aller de la phrénologie au chapitre 3**. Mesuré : le musée jouait à
+plein volume par-dessus les chapitres 3 et 4, et la voix d'introduction du
+chapitre 1 débordait sur le chapitre 2. Cinq chemins testés, cinq fuites.
+
+La continuité voulue est préservée : le musée est déclaré par les trois scènes
+du tronc commun (l'espace collaboratif l'atténue à zéro en entrant et le
+rétablit en partant), il les traverse donc sans coupure. Aucun chapitre ne le
+déclare : il s'arrête, quel que soit le chemin emprunté.
+
+⚠️ **Une scène ajoutée sans ligne dans `AMBIANCE` entre dans le silence complet
+et le dit en console.** C'est le bon mode de panne : on entend un manque, on ne
+subit pas un débordement.
+
+⚠️ **`stopPhrenoSound()` ne rétablit plus le musée.** Elle le faisait — c'était
+décider, depuis l'AudioManager, de ce qu'on entendrait APRÈS. Son unique
+appelant est le chapitre 1, qui écrivait donc « couper, puis défaire le
+rétablissement qu'on vient de provoquer ». Ne pas le réintroduire.
+
+⚠️ **Le registre des `<audio>`/`<video>` est un FILET, pas une dispense.**
+`AudioManager` accroche `HTMLMediaElement.prototype.play` une fois et retient
+des **WeakRef** — jamais l'élément (une référence forte recréerait la fuite
+d'arbre détaché documentée plus bas). À la frontière, tout média encore en
+lecture est mis en pause ET **dénoncé en console**, nommément. Les modules de
+chapitre restent responsables de leurs médias.
 
 ## Un seul chemin pour quitter une scène : `leaveTo(to)`
 

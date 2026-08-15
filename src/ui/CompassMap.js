@@ -124,6 +124,7 @@ export class CompassMap {
     this._timers    = [];
     this._onKey     = null;
     this._nodeEls   = new Map();
+    this._survole   = false;
   }
 
   /* ── Cycle de vie ─────────────────────────────────────────────────────── */
@@ -137,9 +138,25 @@ export class CompassMap {
   /** @param {Function} fn  (to, part) => void */
   setOnJump(fn) { this._onJump = fn; }
 
+  /**
+   * Repli IMMÉDIAT, sans animation. Appelée par app.js à chaque demande de
+   * navigation : la carte ne traverse jamais une transition dépliée, et se
+   * redessine pliée avec la flèche suivante. C'est une remise à l'état, pas
+   * une mise en scène — d'où l'absence de fondu.
+   */
+  reset() {
+    if (this.open) this._fold(true);
+  }
+
   /** Dessine la boussole. Appelée quand une flèche paraît. */
   show() {
-    if (this.visible) return;
+    // Déjà à l'écran : une nouvelle flèche ne redessine pas la boussole, mais
+    // elle change de LIEU — la carte se referme (on entre dans une sous-partie,
+    // un média s'ouvre…). Sans cela, un panneau déplié pouvait survivre à un
+    // changement d'arrière-plan et flotter au-dessus d'une autre scène.
+    if (this.visible) { this.reset(); return; }
+
+    this._clearTimers();       // aucune minuterie d'un cycle précédent ne survit
     this.visible = true;
     this._ensureEl();
     this._layout();
@@ -217,8 +234,7 @@ export class CompassMap {
   }
 
   destroy() {
-    this._timers.forEach(clearTimeout);
-    this._timers = [];
+    this._clearTimers();
     if (this._onKey) window.removeEventListener('keydown', this._onKey, true);
     this._onKey = null;
     this.el?.remove();
@@ -282,15 +298,16 @@ export class CompassMap {
     svg.style.transformOrigin = 'center';
 
     const dedans = () => {
+      this._survole = true;
       if (this.open) return;
       svg.style.transform = 'scale(1.18)';
-      applyGoldenHover([rose], []);
+      this._dorer(true);
     };
     const dehors = () => {
+      this._survole = false;
       if (this.open) return;
       svg.style.transform = 'scale(1)';
-      rose.style.stroke = TRAIT;
-      rose.style.filter = '';
+      this._dorer(false);
     };
     this.el.onpointerenter = dedans;
     this.el.onpointerleave = dehors;
@@ -305,6 +322,22 @@ export class CompassMap {
     makeActivatable(this.el, {
       label: this.open ? 'Fermer la carte du parcours' : 'Ouvrir la carte du parcours',
     });
+  }
+
+  /**
+   * Dore ou éteint la rose des vents.
+   * Carte OUVERTE : elle reste dorée, elle est le fleuron du cadre — c'était
+   * déjà ce qu'on voyait, mais par accident (l'or du survol qui précédait le
+   * clic n'était jamais retiré, si bien qu'ouvrir au clavier donnait une
+   * boussole blanche et ouvrir à la souris une boussole dorée). C'est décidé
+   * ici, une fois.
+   */
+  _dorer(oui) {
+    const rose = this.el?.querySelector('.cm-rose');
+    if (!rose) return;
+    if (oui) { applyGoldenHover([rose], []); return; }
+    rose.style.stroke = TRAIT;
+    rose.style.filter = '';
   }
 
   /* ── Dépliage / repliage ──────────────────────────────────────────────── */
@@ -327,11 +360,19 @@ export class CompassMap {
       tour.style.transform = `rotate(${this.C.fold_turn}deg)`;
     }
     if (svg) {
+      // La boussole ne fait pas que rétrécir : elle GLISSE vers le coin
+      // haut-gauche du cadre pendant qu'elle tourne, et s'y pose comme le
+      // fleuron d'une carte ancienne. Le déplacement se fait donc dans le
+      // MÊME transform que la rotation — une seule propriété animée, une
+      // seule cadence, rien à resynchroniser.
+      const dx = Math.round(S * (this.C.compass_dx ?? 0));
+      const dy = Math.round(S * (this.C.compass_dy ?? 0));
       svg.style.transition = instantane ? 'none'
         : `transform ${this.C.fold_duration}ms cubic-bezier(0.4,0,0.2,1)`;
-      svg.style.transform = `scale(${this.C.compass_open})`;
+      svg.style.transform = `translate(${dx}px, ${dy}px) scale(${this.C.compass_open})`;
     }
 
+    this._dorer(true);            // fleuron du cadre tant que la carte est là
     this._buildPanel(k, S, instantane);
     makeActivatable(this.el, { label: 'Fermer la carte du parcours' });
 
@@ -360,7 +401,7 @@ export class CompassMap {
     if (svg) {
       svg.style.transition = instantane ? 'none'
         : `transform ${this.C.fold_duration}ms cubic-bezier(0.4,0,0.2,1)`;
-      svg.style.transform = 'scale(1)';
+      svg.style.transform = 'translate(0px, 0px) scale(1)';
     }
 
     const panel = this.el?.querySelector('.cm-panel');
@@ -372,6 +413,10 @@ export class CompassMap {
         this._addTimer(() => panel.remove(), this.C.fold_duration + 40);
       }
     }
+    // Repliée, elle redevient blanche — sauf si le curseur est encore dessus
+    // (c'est le cas juste après un clic de fermeture : le survol reprend ses
+    // droits sans qu'aucun pointerenter ne vienne le rappeler).
+    this._dorer(!!this._survole);
     this._nodeEls.clear();
     if (this.el) makeActivatable(this.el, { label: 'Ouvrir la carte du parcours' });
   }
@@ -444,7 +489,7 @@ export class CompassMap {
       svg.appendChild(g);
       points.push({ el: g, cercle: c, node: n });
       this._nodeEls.set(n.id, { g, c, n });
-      this._wireNode(g, c, n, k, panel);
+      this._wireNode(g, c, n, panel);
     });
 
     panel.appendChild(svg);
@@ -475,19 +520,30 @@ export class CompassMap {
     points.forEach((p) => tard(p.cercle, rang(p.node.id), this.C.panel_route));
   }
 
-  /** Illumine le point courant, éteint les autres. */
+  /**
+   * Illumine le point courant, ÉTEINT LES AUTRES.
+   *
+   * ⚠️ ÉCRIT LE MÊME CANAL QUE LE SURVOL, et c'est tout le correctif. Cette
+   * méthode posait `setAttribute('stroke', …)` quand applyGoldenHover écrit
+   * `style.stroke` : un style en ligne bat toujours un attribut, si bien que
+   * remettre l'attribut à blanc ne rendait RIEN — les points survolés
+   * restaient dorés pour de bon, et la carte finissait toute allumée. On
+   * repasse donc par le style, et `''` rend la main à l'attribut d'origine
+   * (TRAIT), posé une fois à la construction. C'est le même piège que celui
+   * du curseur documenté dans CLAUDE.md.
+   */
   _paintCurrent() {
-    this._nodeEls.forEach(({ c, n }, id) => {
+    this._nodeEls.forEach(({ c }, id) => {
       const ici = id === this.current;
-      c.setAttribute('stroke', ici ? OR : TRAIT);
-      c.setAttribute('fill', ici ? 'rgba(255,205,95,0.16)' : 'none');
+      c.style.stroke = ici ? OR : '';
       c.style.filter = ici ? OR_HALO : '';
+      c.setAttribute('fill', ici ? 'rgba(255,205,95,0.16)' : 'none');
     });
   }
 
   /* ── Un point : survol, infobulle, clic ───────────────────────────────── */
 
-  _wireNode(g, c, n, k, panel) {
+  _wireNode(g, c, n, panel) {
     const libelle = this.C.labels?.[n.id];
     if (!libelle) console.warn(`[CompassMap] MAP.labels.${n.id} absent : point sans nom.`);
 
@@ -496,7 +552,7 @@ export class CompassMap {
     g.addEventListener('pointerenter', () => {
       if (!ici()) { applyGoldenHover([c], []); }
       c.setAttribute('r', n.r * 1.18);
-      this._showTip(libelle, n, k, panel);
+      this._showTip(libelle, panel);
     });
     g.addEventListener('pointerleave', () => {
       c.setAttribute('r', n.r);
@@ -515,7 +571,7 @@ export class CompassMap {
     makeActivatable(g, { label: libelle ? `Aller à : ${libelle}` : 'Point du parcours' });
   }
 
-  _showTip(texte, n, k, panel) {
+  _showTip(texte, panel) {
     const tip = this.el?.querySelector('.cm-tip');
     if (!tip || !texte) return;
 
@@ -528,24 +584,25 @@ export class CompassMap {
     }
     tip.textContent = texte;
 
-    /* Position : TOUJOURS à droite de la carte, à la hauteur du point.
+    /* Position : SOUS la carte, alignée sur son bord gauche. Une légende,
+       exactement — elle ne bouge pas d'un point à l'autre, seul le mot change.
        ─────────────────────────────────────────────────────────────────
-       Deux essais écartés, et il vaut mieux dire pourquoi.
+       Trois placements écartés, et il vaut mieux dire pourquoi.
        · « à côté du point » : pour les deux colonnes de droite (chapitres et
          sous-parties), le texte recouvrait le dessin qu'il commente.
        · « à gauche quand le point est à droite » : lisible, mais l'infobulle
          SAUTAIT d'un bord à l'autre au fil du survol — et pour les points les
-         plus à droite elle sortait de l'écran (le calcul du décalage prenait
-         la largeur de la carte au lieu de celle du conteneur, qui vaut la
-         taille de la boussole).
-       En colonne fixe, elle se lit comme une légende : elle ne bouge que
-       verticalement, ne recouvre rien, et ne peut pas déborder. */
-    const py   = parseFloat(panel.style.top) + n.y * k;
+         plus à droite elle sortait de l'écran.
+       · « en colonne à droite du cadre » : ne débordait pas, mais poussait la
+         lecture hors de la carte et déplaçait le regard verticalement à chaque
+         survol. Sous le cadre, l'œil revient toujours au même endroit.
+       (Le point survolé ne sert donc plus au placement : la légende est fixe.
+        C'est ce qui a permis de retirer `n` et `k` de la signature.) */
     const cote = parseFloat(panel.style.width);
 
     tip.style.right = 'auto';
-    tip.style.top   = Math.round(py) + 'px';
-    tip.style.left  = Math.round(parseFloat(panel.style.left) + cote + 12) + 'px';
+    tip.style.left  = Math.round(parseFloat(panel.style.left)) + 'px';
+    tip.style.top   = Math.round(parseFloat(panel.style.top) + cote + 14) + 'px';
 
     tip.style.transition = `opacity ${this.C.tooltip_fade}ms ease, transform ${this.C.tooltip_fade}ms cubic-bezier(0.25,0.46,0.45,0.94)`;
     requestAnimationFrame(() => tip.classList.add('visible'));
@@ -556,6 +613,14 @@ export class CompassMap {
   }
 
   /* ── Minuteries nettoyables ───────────────────────────────────────────── */
+
+  /** Purge les minuteries en vol (repli différé, effacement du DOM, fin de
+      dessin). Sans cela, une minuterie née avant un changement de scène venait
+      agir sur le cycle suivant. */
+  _clearTimers() {
+    this._timers.forEach(clearTimeout);
+    this._timers = [];
+  }
 
   _addTimer(fn, ms) {
     const id = setTimeout(() => {

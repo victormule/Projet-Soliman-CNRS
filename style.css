@@ -2663,9 +2663,15 @@ body.chp4-active #compass-map {
   z-index: 600;
 }
 
+/* ⚠️ LA BOUSSOLE PASSE PAR-DESSUS LA CARTE (z 3 contre z 1). Elle est écrite
+   AVANT le panneau dans le DOM : sans z-index, la carte la recouvrait, et le
+   fleuron du coin disparaissait sous le cadre au moment même où il se pose.
+   `pointer-events: none` reste indispensable — sinon le dessin, désormais
+   au-dessus, intercepterait les clics destinés aux points du coin haut-gauche. */
 #compass-map .cm-compass {
   position: absolute;
   inset: 0;
+  z-index: 3;
   pointer-events: none;         /* le conteneur porte le clic, pas le dessin */
 }
 
@@ -2678,6 +2684,7 @@ body.chp4-active #compass-map {
    tombe sur le centre de la boussole (voir _buildPanel). */
 #compass-map .cm-panel {
   position: absolute;
+  z-index: 1;                   /* sous la boussole — voir .cm-compass */
   pointer-events: auto;
 }
 
@@ -2697,12 +2704,14 @@ body.chp4-active #compass-map {
               filter 0.25s ease;
 }
 
-/* ── L'infobulle ──────────────────────────────────────────────────
-   Sobre : le nom, et un filet qui s'ouvre sous lui. Aucun cadre, aucun fond —
-   l'ombre portée suffit à la détacher du dessin, comme pour #hover-title. */
+/* ── La légende ───────────────────────────────────────────────────
+   SOUS la carte, alignée sur son bord gauche : elle se lit comme la légende
+   d'une planche, toujours au même endroit, et seul le mot change d'un point à
+   l'autre. Sobre : le nom, et un filet qui s'ouvre sous lui. Aucun cadre,
+   aucun fond — l'ombre portée suffit à la détacher, comme pour #hover-title. */
 #compass-map .cm-tip {
   position: absolute;
-  z-index: 2;
+  z-index: 4;                   /* au-dessus de la carte ET de la boussole */
   pointer-events: none;
   white-space: nowrap;
   text-transform: uppercase;
@@ -2712,12 +2721,12 @@ body.chp4-active #compass-map {
     0 0 8px rgba(0, 0, 0, 0.95),
     0 2px 5px rgba(0, 0, 0, 0.9);
   opacity: 0;
-  transform: translateY(-50%) translateX(-4px);
+  transform: translateY(-5px);
 }
 
 #compass-map .cm-tip.visible {
   opacity: 1;
-  transform: translateY(-50%) translateX(0);
+  transform: translateY(0);
 }
 
 
