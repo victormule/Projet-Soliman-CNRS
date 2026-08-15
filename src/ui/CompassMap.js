@@ -89,13 +89,57 @@ const ROUTES = [
 /* Ordre de dessin : on suit le parcours, du premier écran vers les feuilles. */
 const ORDRE = NODES.map((n) => n.id);
 
-/* Tracé de la boussole — export Illustrator (images/boussole-source.svg),
-   viewBox 93 × 93.17, tracés OUVERTS (fill:none) : il se dessine donc au
-   stroke-dashoffset comme les flèches. Son `transform` reste un ATTRIBUT
-   (voir l'avertissement en tête de fichier). */
-const BOUSSOLE_VB = '0 0 93 93.17';
-const BOUSSOLE_TR = 'translate(-36.96 -35.84)';
-const BOUSSOLE_D = 'M38,37a3.18,3.18,0,0,1,.71-.17M84.21,37A15.84,15.84,0,0,1,85,38.87c.8,3,1.56,6,2.32,9a.86.86,0,0,0,.81.77,32.09,32.09,0,0,1,10.08,3c1.25.61,2.46,1.31,3.66,2a1.37,1.37,0,0,1,.66,1.75,1.32,1.32,0,0,1-1.46.92,2.67,2.67,0,0,1-1.14-.46,31.69,31.69,0,0,0-8.12-3.53c-1.1-.31-2.22-.51-3.51-.8L91.55,64.2c.37-.17.64-.28.9-.41L106.76,57c.74-.36,1.48-.57,2.13.11s.4,1.35.06,2.06c-1.14,2.38-2.26,4.77-3.39,7.16l-3.8,8,12.58,3.27a2.23,2.23,0,0,0,0-.46c-.62-2.16-1.1-4.37-1.9-6.46a55.67,55.67,0,0,0-2.64-5.23,1.47,1.47,0,0,1,1-2.31,1.61,1.61,0,0,1,1.57,1,34.32,34.32,0,0,1,4.67,11.65c.18.89.11,2,.65,2.59s1.69.56,2.58.79l2.53.65c-.48-2.61-.78-5-1.38-7.31A39.37,39.37,0,0,0,93.76,44.63c-.83-.23-1.68-.41-2.48-.7a1.26,1.26,0,0,1-.83-1.58,1.28,1.28,0,0,1,1.39-1.11,3.58,3.58,0,0,1,.8.1,41.71,41.71,0,0,1,15.23,6.81,41.27,41.27,0,0,1,16.27,23.31c.79,3,1.16,6,1.75,9.2.87.42,2.29.22,3.07,1.4v1.07c-.78,1.21-2.26,1-3.32,1.53-1.15,22.35-19.43,39.51-40.15,40.23L84.26,128H82.48l-1.23-3.12C59.93,124,42,106.19,41.08,84.72L38,83.49V81.71l3.16-1.25c.07-.83.13-1.75.24-2.66a25.27,25.27,0,0,1,.39-2.73c3.56-16.71,13.51-27.69,29.7-33a25.67,25.67,0,0,1,2.84-.72,1.44,1.44,0,0,1,1.76,1,1.41,1.41,0,0,1-1,1.76,7.26,7.26,0,0,1-.94.27,39.32,39.32,0,0,0-29.6,31.83c-.2,1.18-.29,2.37-.44,3.67,1.69-.43,3.19-.79,4.66-1.22a1.1,1.1,0,0,0,.56-.75,34,34,0,0,1,8-17.64,1.29,1.29,0,0,0,.28-1.48,1.87,1.87,0,0,1,.3-1.59,1.68,1.68,0,0,1,1.5-.3,1.33,1.33,0,0,0,1.63-.33,33.65,33.65,0,0,1,17.41-7.9,1,1,0,0,0,1-.88c.73-3,1.5-5.92,2.3-8.86A16.83,16.83,0,0,1,82.53,37m3.65,84.74c19.65-1,35.64-17.89,36.35-36.35-1.57.41-3.12.78-4.65,1.22-.21.07-.41.45-.48.72-.4,1.73-.67,3.5-1.17,5.2a33.25,33.25,0,0,1-6.89,12.52c-.32.37-.61.68-.28,1.24a1.36,1.36,0,0,1-.21,1.79,1.45,1.45,0,0,1-1.81.19.87.87,0,0,0-1.09.18c-1.36,1.06-2.69,2.16-4.13,3.09a34,34,0,0,1-13.73,5.08,1,1,0,0,0-.7.5C87,118.63,86.59,120.16,86.18,121.75ZM44.24,85.41c.24,8.09,4.18,19.28,13.85,27.36a38.68,38.68,0,0,0,22.5,9.06c-.44-1.69-.8-3.22-1.24-4.72-.06-.21-.44-.42-.71-.48-1.73-.41-3.5-.67-5.19-1.17a33.48,33.48,0,0,1-12.53-6.88c-.32-.28-.59-.65-1.14-.34a1.47,1.47,0,0,1-1.89-.15,1.63,1.63,0,0,1-.21-1.9,1.13,1.13,0,0,0-.13-.91c-.49-.7-1.09-1.33-1.61-2a34.58,34.58,0,0,1-6.6-15.92,1.1,1.1,0,0,0-.56-.74C47.31,86.16,45.81,85.81,44.24,85.41Zm39.19-5c.3-.28.52-.47.72-.67,2-2,4-4.08,6.12-6.08a1.32,1.32,0,0,0,.38-1.47q-3.5-13.36-7-26.73c-.06-.23-.15-.44-.27-.79Zm-2.21,2.12-.69-.74c-2-2-4-4-6-6a1.49,1.49,0,0,0-1.68-.48C67,76.9,61.14,78.41,55.27,79.94l-9.69,2.51,0,.1Zm39.94.19,0-.08H85.54c.28.3.47.52.67.72,2,2,4.05,4,6,6.05a1.44,1.44,0,0,0,1.62.42c5.9-1.55,11.81-3.07,17.71-4.61Zm-37.82,2C81,87,78.81,89.26,76.58,91.42a1.48,1.48,0,0,0-.45,1.69c1.73,6.55,3.42,13.12,5.12,19.68l2,7.61.11,0ZM75.19,101l-12.07,5.7a31.24,31.24,0,0,0,15.35,7ZM114.42,87.5l-12.67,3.28c1.92,4.06,3.79,8,5.72,12.07A31.31,31.31,0,0,0,114.42,87.5Zm-62.11,0a31.4,31.4,0,0,0,7,15.34L65,90.78ZM91.56,101l-3.28,12.67a31.41,31.41,0,0,0,15.34-7ZM65,74.41,59.34,62.46C56.23,65.34,52,74.78,52.52,77.65ZM78.47,51.54a31.46,31.46,0,0,0-15.32,7l12,5.69ZM73.16,72l1.28-5L62.67,61.51ZM98.9,73.67c1.91-4.06,3.79-8,5.36-11.35L94.12,72.43ZM67.85,91.53l-5.36,11.35L72.62,92.76Zm35.79,11.94L93.53,93.35l-1.22,4.77Z';
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA BOUSSOLE — transcrite de BoussoleMap.svg (export Illustrator)
+   ───────────────────────────────────────────────────────────────────────────
+   Ce n'est plus UN tracé mais une figure : l'étoile à huit branches, les
+   quatre chevrons des points cardinaux, les arcs du limbe, la croisée
+   centrale. Chaque forme se dessine à son tour (stroke-dashoffset), dans
+   l'ordre de cette liste — c'est cet ordre qui fait courir le tracé.
+
+   `w` = largeur de trait, `c` = bouts arrondis, `tr` = le translate que
+   l'export porte EN ATTRIBUT sur certains arcs (voir l'avertissement en tête :
+   on ne l'écrase jamais par une animation, la rotation vit sur le <g>).
+
+   ⚠️ L'export contient six <path> réduits à un seul « M » — des points sans
+   longueur, invisibles. Ils ne sont pas repris : avec pathLength="1" ils
+   n'auraient rien dessiné tout en consommant un temps de la cadence.
+
+   ⚠️ `pathLength` s'applique ici à des <polygon>, <polyline> et <line>, pas
+   seulement à des <path> : c'est du SVG 2, bien rendu par les navigateurs
+   visés, et c'est ce qui permet de faire courir le tracé sans mesurer
+   quoi que ce soit (cf. la leçon getPointAtLength du chapitre 4).
+═══════════════════════════════════════════════════════════════════════════ */
+
+const BOUSSOLE_VB = '0 0 99.58 99.58';
+const BOUSSOLE_TR = 'translate(-33.75 -32.75)';
+
+const BOUSSOLE = [
+  /* L'étoile */
+  { t: 'polygon',  p: '49.75 3.33 60.25 38.25 96.17 49.75 60.25 60.25 49.75 96.17 38.25 60.25 3.33 49.75 38.25 38.25 49.75 3.33', w: 2 },
+  /* Les quatre chevrons */
+  { t: 'polyline', p: '41.7 71.04 23.13 76.55 28.68 57.37', w: 2 },
+  { t: 'polyline', p: '70.85 57.15 76.55 76.37 57.17 70.77', w: 2 },
+  { t: 'polyline', p: '57.34 28.59 76.37 22.95 70.95 41.68', w: 2 },
+  { t: 'polyline', p: '28.39 41.49 22.95 23.13 41.47 28.48', w: 2 },
+  /* Le limbe : neuf arcs et le cercle presque fermé */
+  { t: 'path', d: 'M61.24,57.19c.59-.52,1.2-1,1.83-1.49a32.74,32.74,0,0,1,13.08-6', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M50.22,78.17c.1-.84.23-1.67.38-2.49a32.89,32.89,0,0,1,6.1-13.61c.43-.57.88-1.12,1.34-1.66', w: 1.5, tr: 1 },
+  { t: 'path', d: 'M58.41,104c-.6-.67-1.17-1.36-1.71-2.08a32.8,32.8,0,0,1-6-12.93', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M79,114.76a32.88,32.88,0,0,1-16.38-6.83', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M104.14,107.34a32.88,32.88,0,0,1-16.47,7.33', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M115.67,86.67a32.84,32.84,0,0,1-7,16', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M110.32,63.48a33.08,33.08,0,0,1,5.08,12.2q.21,1.13.36,2.28', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M90.19,49.79a32.63,32.63,0,0,1,12.53,5.75', w: 1.5, c: 1, tr: 1 },
+  { t: 'path', d: 'M87.45,37.22a45,45,0,1,1-7.09-.14', w: 1.5, c: 1, tr: 1 },
+  /* La croisée centrale */
+  { t: 'line', a: [38.25, 38.25, 60.25, 60.25], w: 1, c: 1 },
+  { t: 'line', a: [60.25, 38.25, 38.25, 60.25], w: 1, c: 1 },
+  { t: 'line', a: [49.25, 96.25, 49.25, 49.25], w: 1, c: 1 },
+  { t: 'line', a: [49.25,  3.25, 49.25, 49.25], w: 1, c: 1 },
+  { t: 'line', a: [96.25, 49.25, 49.25, 49.25], w: 1, c: 1 },
+  { t: 'line', a: [ 3.25, 50.25, 49.25, 49.25], w: 1, c: 1 },
+];
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -139,13 +183,48 @@ export class CompassMap {
   setOnJump(fn) { this._onJump = fn; }
 
   /**
-   * Repli IMMÉDIAT, sans animation. Appelée par app.js à chaque demande de
-   * navigation : la carte ne traverse jamais une transition dépliée, et se
-   * redessine pliée avec la flèche suivante. C'est une remise à l'état, pas
-   * une mise en scène — d'où l'absence de fondu.
+   * La carte se referme, POSÉMENT. Appelée par app.js à chaque demande de
+   * navigation : on quitte un lieu, la carte se replie — et on lui laisse le
+   * temps de le faire. Elle se redessinera pliée avec la flèche suivante.
+   *
+   * ⚠️ CE REPLI ÉTAIT INSTANTANÉ, et c'était le seul geste brutal de l'objet :
+   * au moment précis où la scène commence sa sortie écrite, la carte
+   * disparaissait d'un coup. Elle se retire maintenant comme elle est venue,
+   * à rebours (voir _fold). Les sorties de scène durent au minimum une
+   * seconde : le repli a toujours le temps de se jouer entièrement.
    */
   reset() {
-    if (this.open) this._fold(true);
+    if (this.open) this._fold();
+  }
+
+  /**
+   * ÉCLIPSE — s'effacer sans être démontée, le temps d'un média.
+   * Même mot, même sens que dans ArrowBase : la boussole suit la flèche.
+   *
+   * ⚠️ ELLE NE REPARAÎT PAS TOUTE SEULE. `visible` reste vrai : un show()
+   * déclenché pendant l'éclipse (la flèche d'une sous-partie qui finit de se
+   * dessiner alors qu'on a DÉJÀ ouvert un média) ne la ramène pas à l'écran.
+   * C'est ce qui traite le cas « média lancé vite », exactement comme la règle
+   * CSS !important qui protège la flèche du chapitre 2.
+   */
+  eclipse(masquee, ms = 400) {
+    if (!this.el) return;
+    this._eclipsee = !!masquee;
+
+    if (masquee) {
+      if (this.open) this._fold();
+      this.el.style.transition = `opacity ${ms}ms ease`;
+      this.el.style.opacity = '0';
+      this.el.style.pointerEvents = 'none';
+      const foc = document.activeElement;
+      if (foc && this.el.contains(foc)) foc.blur();
+      return;
+    }
+
+    if (!this.visible) return;               // la flèche est partie entre-temps
+    this.el.style.transition = `opacity ${ms}ms ease`;
+    this.el.style.opacity = '1';
+    this.el.style.pointerEvents = '';
   }
 
   /** Dessine la boussole. Appelée quand une flèche paraît. */
@@ -155,69 +234,113 @@ export class CompassMap {
     // un média s'ouvre…). Sans cela, un panneau déplié pouvait survivre à un
     // changement d'arrière-plan et flotter au-dessus d'une autre scène.
     if (this.visible) { this.reset(); return; }
+    if (this._eclipsee) return;              // un média est au premier plan
 
     this._clearTimers();       // aucune minuterie d'un cycle précédent ne survit
     this.visible = true;
     this._ensureEl();
     this._layout();
 
-    const S = this._size();
-    this.el.innerHTML = `
-      <div class="cm-compass">
-        <svg viewBox="${BOUSSOLE_VB}" width="${S}" height="${S}" overflow="visible">
-          <g class="cm-turn">
-            <path class="cm-rose" d="${BOUSSOLE_D}" transform="${BOUSSOLE_TR}"
-                  fill="none" stroke="${TRAIT}" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round"
-                  pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
-          </g>
-        </svg>
-      </div>
-      <div class="cm-tip" aria-hidden="true"></div>`;
-
-    const rose = this.el.querySelector('.cm-rose');
-    // pathLength="1" : le tracé se dessine en unités normalisées, sans avoir à
-    // mesurer sa longueur réelle (getTotalLength est linéaire, et ce tracé est
-    // long — cf. la leçon du chapitre 4 sur getPointAtLength).
-    rose.style.transition = `stroke-dashoffset ${this.C.draw_duration}ms cubic-bezier(0.4,0,0.2,1)`;
+    this.el.innerHTML = '<div class="cm-compass"></div><div class="cm-tip" aria-hidden="true"></div>';
+    this.el.querySelector('.cm-compass').appendChild(this._dessinerBoussole());
 
     this.drawing = true;
     this._addTimer(() => { this.drawing = false; }, this.C.draw_duration);
 
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      rose.setAttribute('stroke-dashoffset', '0');
-    }));
-
     this.el.style.transition = 'opacity 1.0s ease';
     this.el.style.opacity = '1';
+    this.el.style.pointerEvents = '';
     this.el.classList.add('visible');
 
     this._attachCompass();
   }
 
-  /** Efface la boussole (et referme la carte si elle est ouverte). */
+  /**
+   * Construit la figure et la met en marche : chaque forme se dessine à son
+   * tour, dans l'ordre de BOUSSOLE. La dernière finit à `draw_duration`.
+   */
+  _dessinerBoussole() {
+    const S   = this._size();
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', BOUSSOLE_VB);
+    svg.setAttribute('width', S);
+    svg.setAttribute('height', S);
+    svg.setAttribute('overflow', 'visible');
+
+    // La rotation vit sur ce <g>, JAMAIS sur les tracés : plusieurs d'entre eux
+    // portent leur translate en ATTRIBUT (voir l'en-tête du fichier).
+    const tour = document.createElementNS(NS, 'g');
+    tour.setAttribute('class', 'cm-turn');
+
+    // Le trait court d'une forme à l'autre : chacune met la MOITIÉ du temps
+    // total, l'autre moitié étant répartie en retards. La figure se compose
+    // ainsi sous l'œil au lieu d'apparaître d'un bloc.
+    const duree = this.C.draw_duration * 0.5;
+    const pas   = (this.C.draw_duration - duree) / Math.max(1, BOUSSOLE.length - 1);
+
+    BOUSSOLE.forEach((f, i) => {
+      const n = document.createElementNS(NS, f.t);
+      if (f.t === 'line') {
+        n.setAttribute('x1', f.a[0]); n.setAttribute('y1', f.a[1]);
+        n.setAttribute('x2', f.a[2]); n.setAttribute('y2', f.a[3]);
+      } else if (f.d) {
+        n.setAttribute('d', f.d);
+      } else {
+        n.setAttribute('points', f.p);
+      }
+      n.setAttribute('class', 'cm-rose');
+      n.setAttribute('fill', 'none');
+      n.setAttribute('stroke', TRAIT);
+      n.setAttribute('stroke-width', f.w);
+      n.setAttribute('stroke-linejoin', 'round');
+      if (f.c)  n.setAttribute('stroke-linecap', 'round');
+      if (f.tr) n.setAttribute('transform', BOUSSOLE_TR);
+      n.setAttribute('pathLength', 1);
+      n.setAttribute('stroke-dasharray', 1);
+      n.setAttribute('stroke-dashoffset', 1);
+      n.style.transition = `stroke-dashoffset ${duree}ms cubic-bezier(0.4,0,0.2,1) ${Math.round(i * pas)}ms`;
+      tour.appendChild(n);
+    });
+
+    svg.appendChild(tour);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      tour.querySelectorAll('.cm-rose').forEach(n => n.setAttribute('stroke-dashoffset', '0'));
+    }));
+    return svg;
+  }
+
+  /**
+   * Efface la boussole. Si la carte est ouverte, elle se replie D'ABORD, et le
+   * fondu de la boussole ne part qu'ensuite : on ne fait pas disparaître un
+   * panneau entier d'un coup d'opacité. Les deux gestes se chevauchent
+   * légèrement — c'est un seul mouvement, pas une file d'attente.
+   */
   hide() {
     if (!this.visible) return;
     this.visible = false;
-    if (this.open) this._fold(true);
-
-    const ms = this.config.ARROW.hide_duration;
     if (!this.el) return;
-    this.el.style.transition = `opacity ${ms}ms ease`;
-    this.el.style.opacity = '0';
-    this.el.classList.remove('visible');
 
-    // Même précaution que dans ArrowBase.hide() : ne pas laisser le focus
-    // échoué sur un élément qu'on masque (voir l'avertissement là-bas).
-    const foc = document.activeElement;
-    if (foc && this.el.contains(foc)) foc.blur();
-    this.el.setAttribute('aria-hidden', 'true');
+    const attendre = this.open ? this._fold() : 0;
+    const ms = this.config.ARROW.hide_duration;
 
     this._addTimer(() => {
       if (this.visible || !this.el) return;
-      this.el.innerHTML = '';
-      this._nodeEls.clear();
-    }, ms + 20);
+      this.el.style.transition = `opacity ${ms}ms ease`;
+      this.el.style.opacity = '0';
+      this.el.classList.remove('visible');
+
+      // Même précaution que dans ArrowBase.hide() : ne pas laisser le focus
+      // échoué sur un élément qu'on masque (voir l'avertissement là-bas).
+      const foc = document.activeElement;
+      if (foc && this.el.contains(foc)) foc.blur();
+      this.el.setAttribute('aria-hidden', 'true');
+
+      this._addTimer(() => {
+        if (this.visible || !this.el) return;
+        this.el.innerHTML = '';
+        this._nodeEls.clear();
+      }, ms + 20);
+    }, Math.round(attendre * 0.55));
   }
 
   resize() {
@@ -290,27 +413,20 @@ export class CompassMap {
   /* ── La boussole : survol, clic ───────────────────────────────────────── */
 
   _attachCompass() {
-    const svg  = this.el.querySelector('.cm-compass svg');
-    const rose = this.el.querySelector('.cm-rose');
-    if (!svg || !rose) return;
+    const svg = this.el.querySelector('.cm-compass svg');
+    if (!svg) return;
 
-    svg.style.transition = 'transform .35s cubic-bezier(0.34,1.56,0.64,1)';
     svg.style.transformOrigin = 'center';
+    this._poser(false);
 
-    const dedans = () => {
-      this._survole = true;
-      if (this.open) return;
-      svg.style.transform = 'scale(1.18)';
-      this._dorer(true);
-    };
-    const dehors = () => {
-      this._survole = false;
-      if (this.open) return;
-      svg.style.transform = 'scale(1)';
-      this._dorer(false);
-    };
-    this.el.onpointerenter = dedans;
-    this.el.onpointerleave = dehors;
+    /* ⚠️ LE SURVOL VAUT AUSSI CARTE OUVERTE. Il était neutralisé (`if (this.open)
+       return`), si bien que la petite boussole du coin — le seul moyen de
+       refermer la carte à la souris — ne disait plus rien du tout : ni
+       grossissement, ni dorure. Un bouton qui ne réagit pas ne se lit pas
+       comme un bouton. Elle est donc BLANCHE au repos, dorée et légèrement
+       grossie au survol, dans les deux états. */
+    this.el.onpointerenter = () => { this._survole = true;  this._survoler(true); };
+    this.el.onpointerleave = () => { this._survole = false; this._survoler(false); };
 
     this.el.onclick = (e) => {
       // Un clic sur un point de la carte ne doit pas replier la carte.
@@ -324,20 +440,37 @@ export class CompassMap {
     });
   }
 
+  /** Le survol : dorure + léger grossissement, à la cadence d'un survol. */
+  _survoler(dessus) {
+    const svg = this.el?.querySelector('.cm-compass svg');
+    if (svg) svg.style.transition = 'transform .35s cubic-bezier(0.34,1.56,0.64,1)';
+    this._poser(dessus);
+    this._dorer(dessus);
+  }
+
   /**
-   * Dore ou éteint la rose des vents.
-   * Carte OUVERTE : elle reste dorée, elle est le fleuron du cadre — c'était
-   * déjà ce qu'on voyait, mais par accident (l'or du survol qui précédait le
-   * clic n'était jamais retiré, si bien qu'ouvrir au clavier donnait une
-   * boussole blanche et ouvrir à la souris une boussole dorée). C'est décidé
-   * ici, une fois.
+   * Pose la transformation de la boussole : sa place et sa taille découlent de
+   * DEUX états seulement — carte ouverte ou non, survolée ou non. Les écrire
+   * ici, en un seul endroit, évite les combinaisons contradictoires (ouvrir
+   * pendant un survol, replier sans que le curseur ait bougé…).
    */
+  _poser(survol) {
+    const svg = this.el?.querySelector('.cm-compass svg');
+    if (!svg) return;
+    const S    = this._size();
+    const dx   = this.open ? Math.round(S * (this.C.compass_dx ?? 0)) : 0;
+    const dy   = this.open ? Math.round(S * (this.C.compass_dy ?? 0)) : 0;
+    const base = this.open ? this.C.compass_open : 1;
+    const k    = survol ? base * (this.C.compass_hover ?? 1.18) : base;
+    svg.style.transform = `translate(${dx}px, ${dy}px) scale(${k})`;
+  }
+
+  /** Dore ou éteint la rose des vents — toutes ses formes. */
   _dorer(oui) {
-    const rose = this.el?.querySelector('.cm-rose');
-    if (!rose) return;
-    if (oui) { applyGoldenHover([rose], []); return; }
-    rose.style.stroke = TRAIT;
-    rose.style.filter = '';
+    const traits = [...(this.el?.querySelectorAll('.cm-rose') ?? [])];
+    if (!traits.length) return;
+    if (oui) { applyGoldenHover(traits, []); return; }
+    traits.forEach((n) => { n.style.stroke = ''; n.style.filter = ''; });
   }
 
   /* ── Dépliage / repliage ──────────────────────────────────────────────── */
@@ -359,20 +492,16 @@ export class CompassMap {
         : `transform ${this.C.fold_duration}ms cubic-bezier(0.4,0,0.2,1)`;
       tour.style.transform = `rotate(${this.C.fold_turn}deg)`;
     }
+    // La boussole ne fait pas que rétrécir : elle GLISSE vers le coin
+    // haut-gauche du cadre pendant qu'elle tourne, et s'y pose comme le fleuron
+    // d'une carte ancienne. Place, taille et survol sortent tous de _poser() :
+    // une seule propriété animée, une seule cadence, rien à resynchroniser.
     if (svg) {
-      // La boussole ne fait pas que rétrécir : elle GLISSE vers le coin
-      // haut-gauche du cadre pendant qu'elle tourne, et s'y pose comme le
-      // fleuron d'une carte ancienne. Le déplacement se fait donc dans le
-      // MÊME transform que la rotation — une seule propriété animée, une
-      // seule cadence, rien à resynchroniser.
-      const dx = Math.round(S * (this.C.compass_dx ?? 0));
-      const dy = Math.round(S * (this.C.compass_dy ?? 0));
       svg.style.transition = instantane ? 'none'
         : `transform ${this.C.fold_duration}ms cubic-bezier(0.4,0,0.2,1)`;
-      svg.style.transform = `translate(${dx}px, ${dy}px) scale(${this.C.compass_open})`;
     }
+    this._poser(this._survole);
 
-    this._dorer(true);            // fleuron du cadre tant que la carte est là
     this._buildPanel(k, S, instantane);
     makeActivatable(this.el, { label: 'Fermer la carte du parcours' });
 
@@ -384,8 +513,21 @@ export class CompassMap {
     window.addEventListener('keydown', this._onKey, true);
   }
 
+  /**
+   * LE REPLI — la carte se retire comme elle est venue, à rebours.
+   *
+   * Les points s'effacent d'abord, du plus lointain au plus proche (l'ordre du
+   * parcours, remonté), puis les routes, puis le cadre : le dessin se DÉ-trace.
+   * Pendant ce temps la boussole revient sur elle-même et reprend sa taille.
+   * Un simple fondu d'opacité aurait suffi à faire disparaître le panneau —
+   * mais faire disparaître n'est pas refermer.
+   *
+   * @param {boolean} [instantane] sans animation (redimensionnement, démontage)
+   * @returns {number} la durée du geste, en ms — hide() s'en sert pour
+   *          enchaîner son propre fondu au bon moment.
+   */
   _fold(instantane = false) {
-    if (!this.open) return;
+    if (!this.open) return 0;
     this.open = false;
 
     if (this._onKey) { window.removeEventListener('keydown', this._onKey, true); this._onKey = null; }
@@ -401,24 +543,52 @@ export class CompassMap {
     if (svg) {
       svg.style.transition = instantane ? 'none'
         : `transform ${this.C.fold_duration}ms cubic-bezier(0.4,0,0.2,1)`;
-      svg.style.transform = 'translate(0px, 0px) scale(1)';
     }
-
-    const panel = this.el?.querySelector('.cm-panel');
-    if (panel) {
-      if (instantane) { panel.remove(); }
-      else {
-        panel.style.transition = `opacity ${this.C.fold_duration}ms ease`;
-        panel.style.opacity = '0';
-        this._addTimer(() => panel.remove(), this.C.fold_duration + 40);
-      }
-    }
+    this._poser(this._survole);
     // Repliée, elle redevient blanche — sauf si le curseur est encore dessus
     // (c'est le cas juste après un clic de fermeture : le survol reprend ses
     // droits sans qu'aucun pointerenter ne vienne le rappeler).
     this._dorer(!!this._survole);
+
+    const panel = this.el?.querySelector('.cm-panel');
+    const parts = this._panelParts;
+    this._panelParts = null;
     this._nodeEls.clear();
     if (this.el) makeActivatable(this.el, { label: 'Ouvrir la carte du parcours' });
+
+    if (!panel) return instantane ? 0 : this.C.fold_duration;
+    if (instantane) { panel.remove(); return 0; }
+
+    const dur = this.C.fold_out;
+    const pas = this.C.fold_stagger;
+
+    /* Le dé-tracé : chaque forme rembobine son propre trait. On remonte
+       l'ordre du parcours — les feuilles d'abord, la vitrine en dernier. */
+    let rang = 0;
+    const effacer = (el) => {
+      el.style.transition = `stroke-dashoffset ${dur}ms cubic-bezier(0.4,0,0.2,1) ${rang * pas}ms`;
+      el.setAttribute('stroke-dashoffset', '1');
+      rang++;
+    };
+    const aRebours = (liste) => [...liste].sort(
+      (a, b) => ORDRE.indexOf(b.node) - ORDRE.indexOf(a.node));
+
+    if (parts) {
+      aRebours(parts.points).forEach((p) => effacer(p.el));
+      aRebours(parts.routes).forEach((r) => effacer(r.el));
+      // Les points s'illuminent par un `fill` : il doit partir avec eux.
+      parts.points.forEach((p) => {
+        p.el.style.transition += `, fill ${dur}ms ease, filter ${dur}ms ease`;
+        p.el.setAttribute('fill', 'none');
+        p.el.style.filter = '';
+      });
+      effacer(parts.cadre);          // le cadre se referme en dernier
+    }
+
+    const total = rang * pas + dur;
+    // Le panneau ne s'efface pas : il est déjà dé-tracé quand on le retire.
+    this._addTimer(() => panel.remove(), total + 60);
+    return total;
   }
 
   /* ── La carte ─────────────────────────────────────────────────────────── */
@@ -443,11 +613,16 @@ export class CompassMap {
     svg.setAttribute('overflow', 'visible');
     markDecorative(svg);
 
-    /* Cadre */
+    /* Cadre. Son fond se règle dans config.js (MAP.fond_opacite) : à 5 % la
+       scène reste pleinement visible sous la carte, qui n'est plus un panneau
+       posé dessus mais un calque. La lisibilité des traits ne tient alors plus
+       au fond mais à l'ombre portée (style.css → .cm-panel svg). */
+    const opacite = this.C.fond_opacite;
+    if (opacite == null) console.warn('[CompassMap] MAP.fond_opacite absent : fond transparent.');
     const cadre = document.createElementNS(NS, 'rect');
     Object.entries({
       x: 1, y: 1, width: VB - 2, height: VB - 2, rx: 21,
-      fill: 'rgba(8,7,6,0.82)', stroke: TRAIT_MAT, 'stroke-width': 1.6,
+      fill: `rgba(8,7,6,${opacite ?? 0})`, stroke: TRAIT_MAT, 'stroke-width': 1.6,
       pathLength: 1, 'stroke-dasharray': 1, 'stroke-dashoffset': instantane ? 0 : 1,
     }).forEach(([k2, v]) => cadre.setAttribute(k2, v));
     svg.appendChild(cadre);
@@ -494,6 +669,13 @@ export class CompassMap {
 
     panel.appendChild(svg);
     this.el.appendChild(panel);
+
+    // Gardées pour le repli : c'est le même dessin qu'on rembobine (voir _fold).
+    this._panelParts = {
+      cadre,
+      routes,
+      points: points.map((p) => ({ el: p.cercle, node: p.node.id })),
+    };
 
     if (!instantane) this._drawPanel(cadre, routes, points);
     this._paintCurrent();
@@ -584,8 +766,11 @@ export class CompassMap {
     }
     tip.textContent = texte;
 
-    /* Position : SOUS la carte, alignée sur son bord gauche. Une légende,
-       exactement — elle ne bouge pas d'un point à l'autre, seul le mot change.
+    /* Position : SOUS la carte, CENTRÉE sur elle et large comme elle. Une
+       légende de planche, exactement — elle ne bouge pas d'un point à l'autre,
+       seul le mot change, et un nom long passe à la ligne au lieu de dépasser
+       le bord droit du cadre (« III · La Galerie des Batailles » débordait de
+       près de la moitié de la largeur).
        ─────────────────────────────────────────────────────────────────
        Trois placements écartés, et il vaut mieux dire pourquoi.
        · « à côté du point » : pour les deux colonnes de droite (chapitres et
@@ -603,6 +788,7 @@ export class CompassMap {
     tip.style.right = 'auto';
     tip.style.left  = Math.round(parseFloat(panel.style.left)) + 'px';
     tip.style.top   = Math.round(parseFloat(panel.style.top) + cote + 14) + 'px';
+    tip.style.width = Math.round(cote) + 'px';
 
     tip.style.transition = `opacity ${this.C.tooltip_fade}ms ease, transform ${this.C.tooltip_fade}ms cubic-bezier(0.25,0.46,0.45,0.94)`;
     requestAnimationFrame(() => tip.classList.add('visible'));

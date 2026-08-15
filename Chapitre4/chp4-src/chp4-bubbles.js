@@ -489,6 +489,10 @@ export class BubbleLayer {
 
     this._startPlayLoop(b);
     this._openSession();
+    // Une bulle qu'on écoute est un MÉDIA au premier plan : la scène efface sa
+    // flèche de retour, et la boussole avec elle — comme aux chapitres 1 et 2.
+    // La croix d'arrêt, Échap et le clic au-dehors restent : on n'enferme pas.
+    window.dispatchEvent(new CustomEvent('chp4:listen', { detail: { ouvert: true } }));
   }
 
   /**
@@ -588,6 +592,13 @@ export class BubbleLayer {
     const b = this.bubbles.get(id);
     const L = this.cfg.listen;
     if (!o.keepSession) this._closeSession();
+    // ⚠️ AVANT le `return` qui suit : même une bulle introuvable doit rendre la
+    // flèche, sinon la sortie du chapitre resterait cachée pour de bon.
+    // (`keepSession` = on enchaîne sur une autre bulle : le média reste au
+    //  premier plan, inutile de faire clignoter la flèche entre les deux.)
+    if (!o.keepSession) {
+      window.dispatchEvent(new CustomEvent('chp4:listen', { detail: { ouvert: false } }));
+    }
     if (!b) return;
 
     const el = b.audio;

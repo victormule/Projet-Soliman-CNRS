@@ -163,6 +163,11 @@ if (compass) {
   /* Un lieu SUPERPOSÉ (une sous-partie du chapitre 2) : la scène ne change pas,
      mais le point courant de la carte, si. */
   bus.on('journey:place', ({ id }) => compass.setCurrent(id));
+
+  /* Un média passe au premier plan : la boussole s'éclipse avec la flèche, et
+     revient avec elle. Émis par les scènes qui superposent un lecteur à leur
+     décor — la règle d'auteur ne change pas d'un chapitre à l'autre. */
+  bus.on('place:media', ({ ouvert }) => compass.eclipse(!!ouvert));
 }
 
 /* ── 6. Systems injectés ─────────────────────────────────────── */

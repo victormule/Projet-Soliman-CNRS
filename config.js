@@ -640,10 +640,20 @@ window.CONFIG = {
                             // taille d'une flèche
     compass_open:    0.55,  // taille de la boussole une fois la carte ouverte
                             // (fraction de sa taille repliée)
-    compass_dx:     -0.20,  // glissement de la boussole quand la carte s'ouvre,
-    compass_dy:     -0.20,  // en fraction de sa taille (négatif = vers le haut
+    compass_hover:   1.18,  // grossissement au survol — il dit « cliquable »,
+                            // repliée comme dépliée (dépliée, elle REFERME)
+    compass_dx:     -0.17,  // glissement de la boussole quand la carte s'ouvre,
+    compass_dy:     -0.16,  // en fraction de sa taille (négatif = vers le haut
                             // et vers la gauche). Elle se pose ainsi au coin du
                             // cadre, PAR-DESSUS la carte, comme un fleuron.
+
+    // ── LE FOND DE LA CARTE ───────────────────────────────────────────
+    // Opacité du noir sous le dessin. 0 = la carte n'est qu'un tracé posé sur
+    // la scène ; 1 = un panneau opaque qui la masque. À 0,05 la scène reste
+    // pleinement visible : ce qui détache alors les traits, ce n'est plus le
+    // fond mais l'OMBRE PORTÉE (style.css → .cm-panel svg). Les deux se
+    // règlent ensemble — monter l'un permet d'alléger l'autre.
+    fond_opacite:    0.1,
 
     // ── CADENCES (ms) ─────────────────────────────────────────────────
     draw_duration:   2000,  // dessin de la boussole à son apparition
@@ -652,6 +662,11 @@ window.CONFIG = {
     panel_frame:      520,  // dessin du cadre de la carte
     panel_route:      340,  // dessin d'une route
     panel_stagger:     90,  // décalage entre deux routes
+    // LE REPLI. La carte se DÉ-TRACE, à rebours du parcours : les points
+    // lointains d'abord, les routes ensuite, le cadre en dernier. Ce n'est
+    // pas un fondu — faire disparaître n'est pas refermer.
+    fold_out:         300,  // dé-tracé d'une forme
+    fold_stagger:      38,  // décalage entre deux formes
     tooltip_fade:     260,  // apparition de l'infobulle
 
     // ── LIBELLÉS DES POINTS ───────────────────────────────────────────

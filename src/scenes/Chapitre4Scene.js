@@ -272,6 +272,19 @@ export class Chapitre4Scene extends Scene {
     };
     window.addEventListener('chp4:navigate-back', onNavBack);
     this._windowListeners.push({ event: 'chp4:navigate-back', fn: onNavBack });
+
+    /* ⚠️ UNE BULLE QU'ON ÉCOUTE EST UN MÉDIA. Partout ailleurs, un média au
+       premier plan efface la flèche de retour — et la boussole avec elle, qui
+       ne paraît qu'avec une flèche. Le chapitre 4 était le seul à laisser les
+       deux en place pendant la lecture. `eclipse` et non `hide` : la flèche
+       n'est pas démontée, elle revient telle quelle, et c'est elle qui émet le
+       signal que la boussole écoute (voir ArrowBase.eclipse). */
+    const onListen = (e) => {
+      if (!this.isActive) return;
+      this._arrow.eclipse(!!e.detail?.ouvert, 400);
+    };
+    window.addEventListener('chp4:listen', onListen);
+    this._windowListeners.push({ event: 'chp4:listen', fn: onListen });
   }
 
   _unregisterWindowListeners() {

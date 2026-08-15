@@ -2688,9 +2688,16 @@ body.chp4-active #compass-map {
   pointer-events: auto;
 }
 
+/* ⚠️ L'OMBRE PORTÉE REMPLACE LE FOND. Le cadre de la carte est presque
+   transparent (config.js → MAP.fond_opacite, 5 %) : ce n'est plus lui qui
+   détache les traits de la scène, c'est cette ombre. La retirer rendrait la
+   carte illisible sur un fond clair — la page du chapitre 4, notamment. */
 #compass-map .cm-panel svg {
   display: block;
   overflow: visible;
+  filter:
+    drop-shadow(0 0 3px rgba(0, 0, 0, 0.85))
+    drop-shadow(0 0 10px rgba(0, 0, 0, 0.55));
 }
 
 /* Un point du parcours. Le curseur dit qu'il mène quelque part. */
@@ -2705,23 +2712,37 @@ body.chp4-active #compass-map {
 }
 
 /* ── La légende ───────────────────────────────────────────────────
-   SOUS la carte, alignée sur son bord gauche : elle se lit comme la légende
-   d'une planche, toujours au même endroit, et seul le mot change d'un point à
-   l'autre. Sobre : le nom, et un filet qui s'ouvre sous lui. Aucun cadre,
-   aucun fond — l'ombre portée suffit à la détacher, comme pour #hover-title. */
+   SOUS la carte, centrée sur elle et large comme elle : elle se lit comme la
+   légende d'une planche, toujours au même endroit, et seul le mot change d'un
+   point à l'autre. Un nom long passe à la ligne — il ne déborde jamais du bord
+   droit du cadre. Sobre : le nom, et un filet qui s'ouvre sous lui. Aucune
+   boîte, aucun fond — l'ombre portée suffit, comme pour #hover-title. */
 #compass-map .cm-tip {
   position: absolute;
   z-index: 4;                   /* au-dessus de la carte ET de la boussole */
   pointer-events: none;
-  white-space: nowrap;
+  text-align: center;
+  line-height: 1.35;
   text-transform: uppercase;
-  color: rgba(255, 226, 160, 0.96);
+  color: rgba(255, 255, 255, 0.94);
   text-shadow:
     0 0 20px rgba(0, 0, 0, 1),
     0 0 8px rgba(0, 0, 0, 0.95),
     0 2px 5px rgba(0, 0, 0, 0.9);
   opacity: 0;
   transform: translateY(-5px);
+}
+
+/* ⚠️ CHAPITRE 4 : ENCRE SOMBRE. La page y est claire (le papier occupe la
+   moitié droite et remonte jusque sous la carte) : un texte blanc à halo noir
+   s'y lit comme une tache. Même arbitrage que pour le bouton plein écran de ce
+   chapitre — voir la section CHAPITRE 4 et l'en-tête d'ArrowChapitre4.js. */
+body.chp4-active #compass-map .cm-tip {
+  color: rgba(28, 24, 20, 0.92);
+  text-shadow:
+    0 0 18px rgba(255, 252, 245, 0.95),
+    0 0 6px rgba(255, 252, 245, 0.9),
+    0 1px 3px rgba(255, 252, 245, 0.8);
 }
 
 #compass-map .cm-tip.visible {
@@ -2733,15 +2754,20 @@ body.chp4-active #compass-map {
 #compass-map .cm-tip::after {
   content: '';
   display: block;
-  width: 0;
+  width: 40%;
+  max-width: 0;
   height: 1px;
-  margin-top: 0.35em;
+  margin: 0.4em auto 0;
   background: rgba(255, 214, 120, 0.45);
-  transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
+  transition: max-width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
+}
+
+body.chp4-active #compass-map .cm-tip::after {
+  background: rgba(60, 48, 32, 0.5);
 }
 
 #compass-map .cm-tip.visible::after {
-  width: 100%;
+  max-width: 100%;
 }
 
 

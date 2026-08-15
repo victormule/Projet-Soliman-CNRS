@@ -308,12 +308,49 @@ jamais une installation d'autorité.
 est appelé sur `navigate`, et `show()` referme une carte restée ouverte. Elle se
 redessine pliée avec la flèche suivante.
 
+**LE REPLI EST UN GESTE, PAS UNE DISPARITION.** La carte se DÉ-TRACE : les points
+s'effacent à rebours du parcours (les plus lointains d'abord), puis les routes,
+puis le cadre, pendant que la boussole revient sur elle-même. `_fold()` renvoie
+la durée du geste, et `hide()` s'en sert pour ne lancer son fondu qu'ensuite —
+on ne fait pas disparaître un panneau entier d'un coup d'opacité au moment
+précis où une scène commence sa sortie écrite. Cadences : `MAP.fold_out` et
+`MAP.fold_stagger`.
+
+⚠️ **Le fond de la carte est presque transparent** (`MAP.fond_opacite`) : ce qui
+détache les traits de la scène n'est plus lui mais l'**ombre portée** posée sur
+`.cm-panel svg` (style.css). Les deux se règlent ensemble — retirer l'ombre rend
+la carte illisible sur fond clair, la page du chapitre 4 en particulier.
+
+⚠️ **La boussole est BLANCHE au repos, dorée et grossie au survol — dépliée
+comme repliée.** Le survol était neutralisé quand la carte était ouverte : la
+petite boussole du coin, seul moyen de refermer à la souris, ne réagissait plus
+du tout. Un bouton qui ne répond pas ne se lit pas comme un bouton.
+`_poser(survol)` écrit place et taille à partir des deux seuls états (ouverte,
+survolée) : ne pas réintroduire de transformation ailleurs.
+
 ⚠️ **Une flèche qui s'efface sans passer par `hide()` laisse la boussole seule
 à l'écran.** Le chapitre 1 écrivait `this._arrow.el.style.opacity = '0'` pour
 éclipser sa flèche pendant un média : aucun signal émis, donc la boussole
 restait au-dessus du lecteur. D'où `ArrowBase.eclipse(masquée, ms)`, qui efface
 sans démonter ET émet les mêmes signaux que `show()`/`hide()`. Toute autre façon
 d'effacer une flèche recréera le défaut.
+
+**UN MÉDIA AU PREMIER PLAN EFFACE LA FLÈCHE ET LA BOUSSOLE — partout.** Trois
+mécaniques, une seule règle :
+- chapitre 1 et chapitre 4 → `ArrowBase.eclipse()` sur leur flèche ; la boussole
+  suit par le signal. Au chapitre 4, « un média » veut dire **une bulle qu'on
+  écoute** (`chp4:listen`) : elle garde ses trois sorties (croix, Échap, clic
+  au-dehors), on n'enferme donc personne.
+- chapitre 2 → la flèche d'une sous-partie est masquée par une règle **CSS**
+  (`body.invisibilisation-media`, `!important`), qui n'émet rien. La scène
+  relaie donc `chp2:show/hide-close-cross` sur le bus (`place:media`), et
+  `CompassMap.eclipse()` fait le reste.
+
+⚠️ **`CompassMap.eclipse(true)` NE LAISSE PAS `show()` la ramener.** C'est le cas
+« média lancé vite » : la flèche d'une sous-partie finit de se dessiner alors
+qu'on a déjà ouvert un média. Pour la flèche, c'est le `!important` du CSS qui
+tient ; pour la boussole, c'est le drapeau `_eclipsee`. Sans lui elle
+reparaîtrait seule au-dessus du lecteur.
 
 ⚠️ **Le point courant se peint par `style.stroke`, jamais par l'attribut.**
 `_paintCurrent` posait `setAttribute('stroke', …)` quand le survol

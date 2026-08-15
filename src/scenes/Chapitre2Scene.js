@@ -599,12 +599,24 @@ export class Chapitre2Scene extends Scene {
     // un média/zoom s'ouvre, et son retrait à la fermeture. Le clic sur la croix
     // (avec explosion dorée, comme une flèche) émet 'chp2:close-cross-clicked'
     // que la sous-partie concernée écoute pour fermer son média.
+    /* ⚠️ LA BOUSSOLE SUIT LA FLÈCHE, ICI AUSSI. Dans une sous-partie, ouvrir un
+       média efface la flèche de retour — mais par une règle CSS
+       (body.invisibilisation-media, !important), sans le moindre signal : la
+       boussole restait donc seule au-dessus du média. Ces deux événements sont
+       le seul point commun aux trois sous-parties ; on s'y accroche.
+       `eclipse` et non `hide` : la carte doit REVENIR telle quelle, et surtout
+       ne pas reparaître si la flèche finit de se dessiner alors qu'on a déjà
+       ouvert un média (c'est ce que la règle !important garantit à la flèche). */
     const onShowCloseCross = () => {
+      bus.emit('place:media', { ouvert: true });
       this._closeCross.show(() =>
         window.dispatchEvent(new CustomEvent('chp2:close-cross-clicked'))
       );
     };
-    const onHideCloseCross = () => this._closeCross.hide();
+    const onHideCloseCross = () => {
+      bus.emit('place:media', { ouvert: false });
+      this._closeCross.hide();
+    };
     window.addEventListener('chp2:show-close-cross', onShowCloseCross);
     window.addEventListener('chp2:hide-close-cross', onHideCloseCross);
     this._windowListeners.push({ event: 'chp2:show-close-cross', fn: onShowCloseCross });
