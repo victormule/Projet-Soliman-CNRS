@@ -22,6 +22,8 @@ import { NavigationBar }      from './ui/NavigationBar.js';
 import { RomanCircles }       from './ui/RomanCircles.js';
 import { MediaPlayer }        from './ui/MediaPlayer.js';
 import { Fullscreen }         from './ui/Fullscreen.js';
+import { CompassMap }         from './ui/CompassMap.js';
+import * as Journey           from './systems/Journey.js';
 import { VitrineScene }       from './scenes/VitrineScene.js';
 import { PhrenologieScene }   from './scenes/PhrenologieScene.js';
 import { CollaborationScene } from './scenes/CollaborationScene.js';
@@ -125,6 +127,34 @@ const circles    = new RomanCircles(C);
 const player     = new MediaPlayer(C, refSizeFn, torch, audio);
 const fullscreen = new Fullscreen(C, refSizeFn);
 
+/* ── 5bis. La boussole / carte du parcours ───────────────────────────────────
+   UN SEUL INTERRUPTEUR, lu ici et nulle part ailleurs : CONFIG.MAP.active.
+   À false, l'objet n'est jamais construit — pas de DOM, pas d'écouteur, pas de
+   coût. La carte demande de la place et du survol : elle reste réservée à
+   l'ordinateur (MAP.ordinateur_seulement), d'où la lecture de IS_TOUCH_DEVICE,
+   déjà calculée plus haut.
+
+   Elle paraît EN MÊME TEMPS QU'UNE FLÈCHE, et seulement là : ArrowBase émet
+   'nav-arrow:shown' / ':hidden' pour ses neuf flèches (la croix de fermeture
+   d'un média en est explicitement exclue). Aucune scène n'a à s'en occuper. */
+const carteActive = !!C.MAP?.active && !(C.MAP?.ordinateur_seulement && IS_TOUCH_DEVICE);
+const compass = carteActive ? new CompassMap(C, refSizeFn) : null;
+
+if (compass) {
+  bus.on('nav-arrow:shown',  () => compass.show());
+  bus.on('nav-arrow:hidden', () => compass.hide());
+
+  /* Le saut. La boussole ne connaît AUCUNE mise en scène : elle nomme une
+     destination, et c'est la scène courante qui décide comment partir —
+     leaveTo() joue sa sortie écrite (bougie, citation, fondu) puis navigue.
+     Voir core/Scene.js → leaveTo. */
+  compass.setOnJump((to, part) => {
+    const scene = manager.currentScene;
+    if (!scene || scene.name === to) return;
+    scene.leaveTo(to, part ? { part } : {});
+  });
+}
+
 /* ── 6. Systems injectés ─────────────────────────────────────── */
 const systems = {
   audio,
@@ -149,8 +179,12 @@ manager.register(new Chapitre2Scene(systems));
 manager.register(new Chapitre3Scene(systems));
 manager.register(new Chapitre4Scene(systems));
 
-/* ── 8. Navigation ───────────────────────────────────────────── */
-bus.on('navigate', ({ to }) => manager.go(to));
+/* ── 8. Navigation ─────────────────────────────────────────────
+   ⚠️ LES PARAMÈTRES SONT TRANSMIS. Cette ligne ne passait que `to` : tout ce
+   qu'une scène joignait à sa demande de navigation (par exemple la sous-partie
+   à ouvrir en arrivant, `{ part: 'invisibilisation' }`) était silencieusement
+   jeté ici. SceneManager.go les fait suivre à enter(). */
+bus.on('navigate', ({ to, ...params }) => manager.go(to, params));
 
 /* ── 8bis. Annonce des changements de scène ──────────────────────────────────
    Le site change de scène sans changer d'URL ni de titre : pour un lecteur
@@ -172,6 +206,9 @@ bus.on('scene:entered', ({ name }) => {
   if (!label) return;
   announce(label);
   document.title = `${label} — ${BASE_TITLE}`;
+  // La carte retient le chemin parcouru et allume le point où l'on se trouve.
+  Journey.visit(name);
+  compass?.setCurrent(name);
 });
 
 /* ── 9. Player ───────────────────────────────────────────────── */
@@ -234,6 +271,7 @@ window.addEventListener('resize', () => {
     manager.onResize();
     player.resize();
     fullscreen.resize();
+    compass?.resize();
   });
 }, { passive: true });
 
@@ -249,6 +287,7 @@ window.addEventListener('resize', () => {
       manager.onResize();
       player.resize();
       fullscreen.resize();
+      compass?.resize();
     }, 150);
   }));
 

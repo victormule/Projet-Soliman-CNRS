@@ -80,6 +80,9 @@ export class Chapitre4Scene extends Scene {
   async enter(params = {}) {
     await super.enter(params);
 
+    this._pendingTo = null;       // réarmé à chaque entrée
+    this._pendingParams = null;
+
     try {
       // Contexte chapitre 4 : curseur custom, remontée z des titres et du
       // bouton plein écran au-dessus du root (z 500), et bascule de tout ce
@@ -132,6 +135,11 @@ export class Chapitre4Scene extends Scene {
 
       await pageReady;
       this._raiseBootCurtain();
+
+      // Le site change de scène sans changer d'URL : sans ce signal, ni le
+      // lecteur d'écran ni le titre de l'onglet n'apprennent l'arrivée — et
+      // la carte ne sait pas où allumer son point.
+      bus.emit('scene:entered', { name: 'chapitre4' });
 
     } catch (err) {
       if (err?.message === 'scene_aborted') return;
@@ -225,6 +233,17 @@ export class Chapitre4Scene extends Scene {
     this._arrow.show(() => this._leaveToCollaboration());
   }
 
+  /**
+   * Départ vers une destination QUELCONQUE en gardant la sortie écrite du
+   * chapitre (fondu, son coupé). La flèche de retour est le cas particulier
+   * leaveTo('collaboration') ; la carte peut viser plus loin.
+   */
+  leaveTo(to, params = {}) {
+    this._pendingTo     = to;
+    this._pendingParams = params;
+    this._leaveToCollaboration();
+  }
+
   _leaveToCollaboration() {
     // Le fondu #chp4-fade vit DANS #chapitre4-root (z 500) alors que le
     // sous-titre est remonté à z 600 : sans ceci il flotterait au-dessus du
@@ -236,7 +255,7 @@ export class Chapitre4Scene extends Scene {
       this._module.leaveToCollaboration();
     } else {
       // Filet de sécurité : navigation directe si le module n'expose rien.
-      bus.emit('navigate', { to: 'collaboration', from: 'chapitre4' });
+      bus.emit('navigate', { to: this._pendingTo ?? 'collaboration', from: 'chapitre4', ...(this._pendingParams ?? {}) });
     }
   }
 
@@ -248,7 +267,7 @@ export class Chapitre4Scene extends Scene {
     // Émis par le moteur une fois le fondu au noir atteint et le son coupé.
     const onNavBack = () => {
       if (this.isActive) {
-        bus.emit('navigate', { to: 'collaboration', from: 'chapitre4' });
+        bus.emit('navigate', { to: this._pendingTo ?? 'collaboration', from: 'chapitre4', ...(this._pendingParams ?? {}) });
       }
     };
     window.addEventListener('chp4:navigate-back', onNavBack);

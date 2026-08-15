@@ -202,9 +202,9 @@ export class PhrenologieScene extends Scene {
       await this._waitUntil(t0, C.arrow.appear_at);
 
       // La flèche est affichée avec un callback de navigation protégé par le
-      // verrou `_navigationActive` (vérifié dans _leaveTo). Si le texte
+      // verrou `_navigationActive` (vérifié dans leaveTo). Si le texte
       // « À Propos » est posé à l'écran, sa fumée de sortie précède le départ.
-      this._arrow.show(() => this._leaveTo('vitrine'));
+      this._arrow.show(() => this.leaveTo('vitrine'));
 
       // ─────────────────────────────────────────────────────────────────────
       // 6) Apparition programmée des boutons documents
@@ -251,11 +251,11 @@ export class PhrenologieScene extends Scene {
         /**
          * Adaptation des actions déclaratives en callbacks concrets.
          * La scène reste l'unique responsable de la navigation réelle — via
-         * _leaveTo, qui vérifie le verrou et laisse passer la fumée de
+         * leaveTo, qui vérifie le verrou et laisse passer la fumée de
          * l'« À Propos » avant le départ.
          */
         const navCallbacks = C.navbar.actions.map((action) => () => {
-          if (action === 'collab') this._leaveTo('collaboration');
+          if (action === 'collab') this.leaveTo('collaboration');
         });
 
         this.navBar.show(navCallbacks);
@@ -373,14 +373,14 @@ export class PhrenologieScene extends Scene {
    *
    * @param {string} to - Scène de destination (clé SceneManager).
    */
-  _leaveTo(to) {
+  leaveTo(to, params = {}) {
     if (!this._navigationActive) return;
     const wait = this._docOverlay.close() || 0;
     if (wait > 0) {
       this._navigationActive = false;
-      this.addTimer(() => bus.emit('navigate', { to }), wait);
+      this.addTimer(() => bus.emit('navigate', { to, ...params }), wait);
     } else {
-      bus.emit('navigate', { to });
+      bus.emit('navigate', { to, ...params });
     }
   }
 

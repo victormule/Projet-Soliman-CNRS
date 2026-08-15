@@ -26,7 +26,10 @@ export class CloseCross extends ArrowBase {
    * @param {string} [domId] identifiant DOM (défaut : 'close-cross-chp2')
    */
   constructor(config, domId = 'close-cross-chp2') {
-    super(config, domId, PATH_CROSS);
+    // Dernier argument à false : ce n'est PAS une flèche de navigation. Sans
+    // cela, la boussole (qui écoute 'nav-arrow:shown' émis par ArrowBase)
+    // surgirait au-dessus d'un média en cours de lecture.
+    super(config, domId, PATH_CROSS, 'Fermer', false);
   }
 
   /* Haut-droite, marge à 3.5% de min(vW,vH) — comme la croix du chapitre 1.

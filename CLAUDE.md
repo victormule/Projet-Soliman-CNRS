@@ -52,10 +52,12 @@ src/
   core/                   Scene (classe de base), SceneManager, EventBus,
                           TransitionManager, Blackout (mécanique du voile noir)
   systems/                AudioManager, TorchSystem, BackgroundManager,
-                          Chapter1LightSystem, OrientationLock, TouchHover
+                          Chapter1LightSystem, OrientationLock, TouchHover,
+                          Journey (mémoire du parcours, pour la carte)
   ui/                     Flèches (ArrowBase + variantes), MediaPlayer,
                           DocumentOverlay/Loupe, AboutReveal (mise en scène
-                          « À Propos »), NavigationBar, Title…
+                          « À Propos »), NavigationBar, Title,
+                          CompassMap (boussole + carte du parcours)…
   scenes/                 Une classe par scène (contrat Scene : enter/exit)
   utils/                  helpers.js (SVG, libellés, releaseMediaElements),
                           a11y.js (clavier + annonces), media.js (variantes
@@ -147,6 +149,7 @@ Toujours chercher par NOM DE CLÉ, jamais par chemin.
 | Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) et se coupent en 2 lignes ; « À Propos » se calibre SEUL, TOUJOURS sur 1 ligne (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
 | Torche de la phrénologie : `PHRENOLOGIE.torch.mode` = `'follow'` (suit le curseur, `size`) ou `'fixed'` (fixe au centre, large, `size_fixed`) | `config.js` |
 | Voile derrière un document ouvert : `DOCS.overlay.veil_opacity` (0 = image nue, 1 = noir) et `veil_hides_torch` (la torche s'efface pour qu'on voie l'image ailleurs que dans son halo) | `config.js` |
+| **Carte du parcours** : l'interrupteur `MAP.active`, la réserve à l'ordinateur, les libellés des points, les cadences | `config.js` → `MAP` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : **sous-titre**, textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
@@ -254,6 +257,61 @@ Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
   `MediaPlayer` passait `torcheAvant × PLAYER.torch_dim` à `grow()`, qui l'ignore.
   Réglage retiré plutôt que réparé — décision assumée. Le rétablir demanderait
   un vrai paramètre de cible dans `grow()`, et **changerait ce qu'on voit**.
+
+## La carte du parcours (boussole, haut-gauche)
+
+Une boussole de la taille d'une flèche, alignée sur la colonne des titres. Elle
+se déplie en une carte du site où ne figure **que ce qu'on a déjà parcouru** :
+un point n'apparaît, et la route qui y mène ne se trace, qu'une fois l'endroit
+atteint. Le point courant s'illumine ; cliquer un point déjà visité y conduit.
+
+**Un seul interrupteur** : `CONFIG.MAP.active`. À `false`, l'objet n'est jamais
+construit — pas de DOM, pas d'écouteur, pas de coût. `MAP.ordinateur_seulement`
+la réserve à l'ordinateur (elle demande de la place et du survol).
+
+**Elle paraît avec une flèche, et seulement là.** `ArrowBase.show()/hide()`
+émettent `nav-arrow:shown` / `:hidden` — un seul point d'accroche pour les neuf
+flèches du site, y compris celles que les moteurs de chapitre pilotent par
+callback. ⚠️ `CloseCross` hérite d'`ArrowBase` : il passe `false` au dernier
+argument du constructeur, sinon la boussole surgirait au-dessus d'un média.
+
+**Deux mémoires, jamais recopiées.** `src/systems/Journey.js` retient les
+SCÈNES (`soliman.journey.v1`) ; les trois sous-parties du chapitre 2 restent
+gouvernées par `chp2-progress.js`, que Journey **lit**. Corollaire : la carte ne
+peut pas ouvrir une porte que le chapitre garde fermée — `computeUnlocked`
+renvoie un préfixe, donc « visité » est toujours inclus dans « déverrouillé ».
+Remise à zéro : `window.__solimanResetJourney()`.
+
+⚠️ **La géométrie n'est pas un réglage.** Les coordonnées des points et le tracé
+des routes vivent dans `CompassMap.js`, transcrits de `images/carte-source.svg`
+(le dessin d'origine). `config.js` ne porte que ce qu'un éditeur veut changer.
+
+⚠️ **Le `transform` de la boussole est un ATTRIBUT** (export Illustrator) : la
+rotation au clic vit sur un `<g>` qui l'enveloppe, jamais sur le tracé. C'est le
+piège n°1 du chapitre 4, à l'identique.
+
+⚠️ **Aucun canvas ici.** Le SVG n'a pas le défaut qui a valu l'invariant des
+canvas-masques (ci-dessous) : on ne rouvre pas cette porte pour une boussole.
+
+**Le saut passe par `Scene.leaveTo(to, params)`** — voir ci-dessous.
+
+## Un seul chemin pour quitter une scène : `leaveTo(to)`
+
+Dix `bus.emit('navigate')` portaient une destination écrite en dur. Les scènes
+qui ont une sortie ÉCRITE (la bougie et la citation du chapitre 2, la fumée de
+l'« À Propos », le fondu du chapitre 4) la jouent maintenant AVANT de naviguer,
+**vers la destination demandée**. La flèche de retour n'est plus qu'un cas
+particulier : `leaveTo('collaboration')`. C'est ce qui permet à la carte de
+sauter plus loin sans réécrire une seule mise en scène — elle nomme une cible
+et se tait.
+
+⚠️ **Les paramètres de navigation sont transmis** (`app.js` : `bus.on('navigate',
+({to, ...params}) => manager.go(to, params))`). Ils ne l'étaient pas : tout ce
+qu'une scène joignait à sa demande était jeté. C'est par là que passe
+`{ part: 'invisibilisation' }`, qui fait entrer DIRECTEMENT dans une sous-partie
+du chapitre 2 — sans allumer les bougies pour les souffler deux secondes plus
+tard (12–15 s économisées ; mesuré à 3,8 s au lieu de ~15). Voir
+`startChapitre2({ part })` et `openPart()`.
 
 ## Les transitions : trois invariants (audit de septembre 2026)
 

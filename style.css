@@ -2633,3 +2633,113 @@ body.peine-aim #cursor.aim-hot {
 @media (prefers-reduced-motion: reduce) {
   :focus-visible { transition: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   CARTE DU PARCOURS — la boussole du coin haut-gauche
+   ──────────────────────────────────────────────────────────────────
+   Réglages dans config.js → MAP (interrupteur, libellés, cadences).
+   Géométrie et comportement : src/ui/CompassMap.js.
+
+   ⚠️ z-index 600 SOUS body.chpX-active — sans cette remontée, la boussole
+   serait ENTERRÉE dans les quatre chapitres : leurs roots sont en
+   position:fixed / z-index:500 et couvrent tout l'écran. C'est la même
+   mécanique que pour les titres et le bouton plein écran, et le même piège :
+   il ne se voit qu'en entrant dans un chapitre.
+   ══════════════════════════════════════════════════════════════════ */
+
+#compass-map {
+  position: absolute;
+  z-index: 16;                  /* au-dessus des titres (15) du tronc commun */
+  opacity: 0;
+  cursor: pointer;
+  /* La carte dépliée déborde largement du conteneur (qui fait la taille de la
+     boussole) : ne jamais la rogner. */
+  overflow: visible;
+}
+
+body.chp2-active #compass-map,
+body.chp3-active #compass-map,
+body.chp4-active #compass-map {
+  z-index: 600;
+}
+
+#compass-map .cm-compass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;         /* le conteneur porte le clic, pas le dessin */
+}
+
+#compass-map .cm-compass svg {
+  display: block;
+  overflow: visible;
+}
+
+/* La carte dépliée. Positionnée en JS pour que le coin libre de son dessin
+   tombe sur le centre de la boussole (voir _buildPanel). */
+#compass-map .cm-panel {
+  position: absolute;
+  pointer-events: auto;
+}
+
+#compass-map .cm-panel svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Un point du parcours. Le curseur dit qu'il mène quelque part. */
+#compass-map .cm-node {
+  cursor: pointer;
+}
+
+#compass-map .cm-node circle {
+  transition: r 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              stroke 0.25s ease,
+              filter 0.25s ease;
+}
+
+/* ── L'infobulle ──────────────────────────────────────────────────
+   Sobre : le nom, et un filet qui s'ouvre sous lui. Aucun cadre, aucun fond —
+   l'ombre portée suffit à la détacher du dessin, comme pour #hover-title. */
+#compass-map .cm-tip {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: rgba(255, 226, 160, 0.96);
+  text-shadow:
+    0 0 20px rgba(0, 0, 0, 1),
+    0 0 8px rgba(0, 0, 0, 0.95),
+    0 2px 5px rgba(0, 0, 0, 0.9);
+  opacity: 0;
+  transform: translateY(-50%) translateX(-4px);
+}
+
+#compass-map .cm-tip.visible {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+
+#compass-map .cm-tip::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: 1px;
+  margin-top: 0.35em;
+  background: rgba(255, 214, 120, 0.45);
+  transition: width 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.1s;
+}
+
+#compass-map .cm-tip.visible::after {
+  width: 100%;
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  #compass-map .cm-node circle,
+  #compass-map .cm-tip,
+  #compass-map .cm-tip::after {
+    transition: none;
+  }
+}

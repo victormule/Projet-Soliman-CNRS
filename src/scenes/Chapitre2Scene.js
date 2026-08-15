@@ -146,6 +146,8 @@ export class Chapitre2Scene extends Scene {
 
     this._openPart = null;
     this._outroPlaying = false;
+    this._pendingTo = null;        // réarmé à chaque entrée : un départ ne
+    this._pendingParams = null;    // doit pas survivre à la visite suivante
 
     try {
       // Active le contexte chapitre 2 : curseur custom + remontée z des titres
@@ -199,12 +201,21 @@ export class Chapitre2Scene extends Scene {
       // ⚠️ S'abonner AVANT de démarrer : le signal peut arriver très vite.
       const openingReady = this._waitOpeningReady();
 
-      await this._module.startChapitre2?.();
+      // `params.part` : la carte du parcours peut demander d'arriver
+      // DIRECTEMENT dans une sous-partie déjà visitée, sans rallumer les
+      // bougies pour les souffler aussitôt (voir startChapitre2).
+      await this._module.startChapitre2?.(params.part ? { part: params.part } : undefined);
 
       // On attend que la nuit soit posée (canvas d'obscurité affiché), puis on
       // lève le rideau. Jusque-là l'écran est noir, quoi qu'il arrive.
       await openingReady;
       this._raiseBootCurtain();
+
+      // Le site change de scène sans changer d'URL : sans ce signal, ni le
+      // lecteur d'écran ni le titre de l'onglet n'apprennent l'arrivée — et
+      // la carte ne sait pas où allumer son point. Les chapitres 2, 3 et 4
+      // ne l'émettaient pas, alors que app.js tenait leurs libellés prêts.
+      bus.emit('scene:entered', { name: 'chapitre2' });
 
     } catch (err) {
       if (err.message === 'scene_aborted') return;
@@ -287,6 +298,27 @@ export class Chapitre2Scene extends Scene {
               qui se termine par 'chp2:navigate-back' → navigation réelle.
   ─────────────────────────────────────────────────────────────────────────── */
 
+  /**
+   * Départ vers une destination QUELCONQUE, en gardant la sortie écrite du
+   * chapitre : la bougie s'éteint, le fondu passe, la citation du lycéen se
+   * joue — et ce n'est qu'ensuite qu'on navigue, vers `to` au lieu de
+   * l'espace collaboratif. La flèche de retour est le cas particulier
+   * leaveTo('collaboration') ; la carte, elle, peut viser plus loin.
+   */
+  leaveTo(to, params = {}) {
+    this._pendingTo     = to;
+    this._pendingParams = params;
+    this._leaveToCollaboration();
+  }
+
+  /** Destination réelle du départ en cours (défaut : l'espace collaboratif). */
+  _destination() {
+    return {
+      to: this._pendingTo ?? 'collaboration',
+      params: this._pendingParams ?? {},
+    };
+  }
+
   _showOpeningArrow() {
     if (!this.isActive) return;
     // Garantie explicite : aucune flèche de sous-partie ne doit subsister au
@@ -308,7 +340,8 @@ export class Chapitre2Scene extends Scene {
       this._module.leaveToCollaboration();
     } else {
       // Filet de sécurité : navigation directe si le module n'expose rien.
-      bus.emit('navigate', { to: 'collaboration', from: 'chapitre2' });
+      const d = this._destination();
+      bus.emit('navigate', { to: d.to, from: 'chapitre2', ...d.params });
     }
   }
 
@@ -383,9 +416,10 @@ export class Chapitre2Scene extends Scene {
     if (!this.isActive) return;
 
     // Navigation réelle. L'écran reste noir (#chp2-fade) jusqu'à exit(), qui
-    // bascule sur le blackout global avant le fondu d'entrée de Collaboration :
-    // aucune coupure visible entre les deux scènes.
-    bus.emit('navigate', { to: 'collaboration', from: 'chapitre2' });
+    // bascule sur le blackout global avant le fondu d'entrée de la scène
+    // suivante : aucune coupure visible entre les deux.
+    const d = this._destination();
+    bus.emit('navigate', { to: d.to, from: 'chapitre2', ...d.params });
   }
 
   /* ── Flèches de SOUS-PARTIE → opening ─────────────────────────────────

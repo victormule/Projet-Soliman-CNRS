@@ -601,6 +601,77 @@ window.CONFIG = {
 
 
 /* ══════════════════════════════════════════════════════════════════
+   CARTE — la boussole du coin haut-gauche et la carte qu'elle déplie
+   ──────────────────────────────────────────────────────────────────
+   La boussole paraît EN MÊME TEMPS QU'UNE FLÈCHE, et seulement là : tant
+   qu'aucune flèche n'invite à partir, on ne propose pas de raccourci.
+
+   Un point (et la route qui y mène) ne se dessine QUE si l'on y est allé.
+   Deux destinations ne sont pas encore ouvertes — le « Carnet de recherche »
+   et le cercle V — et elles n'ont donc besoin d'aucun cas particulier : on ne
+   peut pas les visiter, elles ne se dessineront pas.
+
+   La GÉOMÉTRIE (position des points, tracé des routes) n'est pas ici : c'est
+   un DESSIN, pas un réglage. Elle vit dans src/ui/CompassMap.js, transcrite
+   de map.svg. Ici : ce qu'un éditeur veut changer.
+   ══════════════════════════════════════════════════════════════════ */
+
+  MAP: {
+    // ── L'INTERRUPTEUR ────────────────────────────────────────────────
+    // false → la boussole n'est JAMAIS construite : aucun DOM, aucun
+    // écouteur, aucun coût. Elle n'est pas masquée, elle est absente.
+    active: true,
+
+    // La carte demande de la place et du survol : elle reste réservée à
+    // l'ordinateur. Sur téléphone et tablette (body.is-touch), elle ne
+    // paraît pas, même si `active` vaut true.
+    ordinateur_seulement: true,
+
+    // ── MISE EN PLACE ─────────────────────────────────────────────────
+    // La boussole a la TAILLE d'une flèche (CONFIG.ARROW) et s'aligne sur
+    // la colonne des titres. Sa hauteur se calcule pour passer SOUS les
+    // trois niveaux de titre, qu'ils soient affichés ou non — la place est
+    // réservée dans tous les cas, pour que la boussole ne bouge jamais.
+    left_pct:        3.5,   // % de la largeur — même colonne que #site-title
+    sous_titres_em:  7.4,   // marge sous #site-title, en em de la police
+                            // de sous-titre (les titres s'empilent à 2,6 et
+                            // 5,0 em ; on passe sous le troisième)
+    panel_scale:     3.4,   // côté de la carte dépliée, en multiples de la
+                            // taille d'une flèche
+    compass_open:    0.55,  // taille de la boussole une fois la carte ouverte
+                            // (fraction de sa taille repliée)
+
+    // ── CADENCES (ms) ─────────────────────────────────────────────────
+    draw_duration:   1700,  // dessin de la boussole à son apparition
+    fold_duration:    620,  // rotation + rétrécissement au clic
+    fold_turn:        180,  // degrés de rotation à l'ouverture
+    panel_frame:      520,  // dessin du cadre de la carte
+    panel_route:      340,  // dessin d'une route
+    panel_stagger:     90,  // décalage entre deux routes
+    tooltip_fade:     260,  // apparition de l'infobulle
+
+    // ── LIBELLÉS DES POINTS ───────────────────────────────────────────
+    // Ce que dit l'infobulle au survol. Les identifiants sont ceux des
+    // scènes (SceneManager) ; les trois derniers sont les sous-parties du
+    // chapitre 2, nommées comme leurs crânes.
+    labels: {
+      vitrine:       'La vitrine',
+      phrenologie:   'La salle',
+      carnet:        'Carnet de recherche',
+      collaboration: 'Espace collaboratif',
+      chapitre1:     'I · Le crâne',
+      chapitre2:     'II · L’héritage colonial',
+      chapitre3:     'III · La Galerie des Batailles',
+      chapitre4:     'IV · Une histoire complexe',
+      cercle5:       'V',
+      'chp2-136':    'Taire le passé',
+      'chp2-137':    'Une peine démesurée',
+      'chp2-138':    'La violence et ses traces',
+    },
+  },
+
+
+/* ══════════════════════════════════════════════════════════════════
    TORCHE — rendu commun
    La TAILLE se règle par scène (VITRINE.torch.size, PHRENOLOGIE.torch.size,
    COLLABORATION.torch.size) ; il ne reste ici que ce qui vaut partout.

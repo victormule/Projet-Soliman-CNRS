@@ -15,6 +15,7 @@
 
 import { applyGoldenHover } from '../utils/helpers.js';
 import { makeActivatable } from '../utils/a11y.js';
+import { bus } from '../core/EventBus.js';
 
 export class ArrowBase {
 
@@ -24,13 +25,25 @@ export class ArrowBase {
    * @param {string} svgPath
    * @param {string} [label]  nom accessible ; le SVG seul n'en donne aucun.
    *   Les flèches de retour disent où elles mènent, pas « flèche ».
+   * @param {boolean} [estFlecheDeNavigation]  true pour les NEUF flèches du
+   *   site, false pour la croix de fermeture d'un média.
+   *
+   *   ⚠️ CE DRAPEAU N'EST PAS DÉCORATIF. show()/hide() émettent
+   *   'nav-arrow:shown' / 'nav-arrow:hidden' — le seul point d'accroche par
+   *   lequel la boussole sait qu'une flèche paraît (règle d'auteur : la carte
+   *   n'apparaît qu'avec une flèche, et en même temps qu'elle). Instrumenter
+   *   la classe de base couvre les neuf flèches d'un coup, y compris celles
+   *   que les moteurs de chapitre pilotent par callback. Mais CloseCross en
+   *   hérite aussi : sans exclusion, la boussole surgirait au-dessus d'un
+   *   média en train d'être lu.
    */
-  constructor(config, domId, svgPath, label = 'Continuer') {
+  constructor(config, domId, svgPath, label = 'Continuer', estFlecheDeNavigation = true) {
     this.config  = config;
     this.domId   = domId;
     this.svgPath = svgPath;
     this.label   = label;
     this.drawing = false;
+    this.estFlecheDeNavigation = estFlecheDeNavigation;
     this.el      = this._createElement();
   }
 
@@ -120,6 +133,9 @@ export class ArrowBase {
 
     // Atteignable au clavier tant qu'elle est à l'écran.
     makeActivatable(this.el, { label: this.label });
+
+    // La boussole paraît avec la flèche (voir le drapeau en tête de classe).
+    if (this.estFlecheDeNavigation) bus.emit('nav-arrow:shown', { id: this.domId });
   }
 
   /* ── Effet dissolution lumineuse au clic ────────────── */
@@ -304,6 +320,8 @@ export class ArrowBase {
       this.el.innerHTML = '';
       this.el.onclick   = null;
     }, ms + 20);
+
+    if (this.estFlecheDeNavigation) bus.emit('nav-arrow:hidden', { id: this.domId });
   }
 
   /* ── resize() ───────────────────────────────────────── */

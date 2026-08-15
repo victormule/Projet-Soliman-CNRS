@@ -1,6 +1,8 @@
 /**
  * Scene.js — Classe de base v2.1 (Refactorisée)
  */
+import { bus } from './EventBus.js';
+
 export class Scene {
   constructor(name) {
     this.name        = name;
@@ -21,6 +23,25 @@ export class Scene {
     this.isActive = false;
     this._abortCtrl?.abort();
     this._cleanup();
+  }
+
+  /* ── Départ ───────────────────────────────────────
+     UN SEUL CHEMIN POUR QUITTER UNE SCÈNE, quelle que soit la destination.
+
+     Les scènes qui ont une sortie ÉCRITE (la bougie qui s'éteint et la
+     citation du chapitre 2, la fumée de l'« À Propos » en phrénologie, le
+     fondu du chapitre 4) la redéfinissent — et la jouent AVANT de naviguer,
+     vers la destination demandée. La flèche de retour n'est plus qu'un cas
+     particulier : leaveTo('collaboration').
+
+     C'est ce qui permet à la carte de sauter plus loin sans réécrire une
+     seule mise en scène : elle appelle leaveTo(cible) et se tait.
+
+     @param {string} to        scène de destination (clé SceneManager)
+     @param {Object} [params]  transmis à enter() de la destination
+                               (ex. { part: 'invisibilisation' }) */
+  leaveTo(to, params = {}) {
+    bus.emit('navigate', { to, ...params });
   }
 
   /* ── Mécaniques Temporelles Centralisées ─────────── */

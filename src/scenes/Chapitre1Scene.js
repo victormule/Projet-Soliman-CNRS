@@ -113,6 +113,9 @@ export class Chapitre1Scene extends Scene {
   async enter(params = {}) {
     await super.enter(params);
 
+    this._pendingTo = null;       // réarmé à chaque entrée
+    this._pendingParams = null;
+
     // Remise à zéro interne
     this._resetState();
 
@@ -296,6 +299,17 @@ export class Chapitre1Scene extends Scene {
   }
 
   /**
+   * Départ vers une destination QUELCONQUE en gardant la sortie écrite du
+   * chapitre (voile, silence, citation typée). La flèche de retour est le cas
+   * particulier leaveTo('collaboration') ; la carte peut viser plus loin.
+   */
+  leaveTo(to, params = {}) {
+    this._pendingTo     = to;
+    this._pendingParams = params;
+    this.transitionOutWithQuote();
+  }
+
+  /**
    * Déclenche la sortie de scène avec citation.
    * -----------------------------------------------------------------------------
    * Cette méthode orchestre une outro cinématique relativement complexe :
@@ -385,7 +399,7 @@ export class Chapitre1Scene extends Scene {
 
       // 5) Sortie audio + ouverture vers la scène suivante
       await this.transition.fadeVeil(0, 280);
-      bus.emit('navigate', { to: 'collaboration', from: 'chapitre1' });
+      bus.emit('navigate', { to: this._pendingTo ?? 'collaboration', from: 'chapitre1', ...(this._pendingParams ?? {}) });
     };
 
     // ─────────────────────────────────────────────────────────────────────────────

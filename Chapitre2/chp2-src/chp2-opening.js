@@ -1383,21 +1383,84 @@ export function leaveToCollaboration() {
   }, 2000);
 }
 
-export function startChapitre2() {
+/**
+ * @param {Object} [opts]
+ * @param {string} [opts.part]  ouvrir DIRECTEMENT une sous-partie déjà visitée
+ *   ('invisibilisation' | 'peine-demesuree' | 'cartel'), sans allumer les
+ *   bougies. Employé par la carte du parcours.
+ *
+ *   ⚠️ POURQUOI LES BOUGIES NE S'ALLUMENT PAS. Chaque ouverture de sous-partie
+ *   COMMENCE par les éteindre (light.animateAll(0, …)). Rejouer l'entrée
+ *   complète coûterait 2,6 s d'attente + 5 s d'allumage, pour souffler les
+ *   bougies 2 s plus tard : douze secondes pour arriver là où l'on a demandé
+ *   d'aller tout de suite. On saute donc l'ignition — et le code d'ouverture
+ *   fonctionne INCHANGÉ, puisqu'éteindre un noir est un non-événement. Ce qui
+ *   est préservé, c'est la mise en scène de la DESTINATION : la sous-partie
+ *   joue la sienne intégralement.
+ */
+export function startChapitre2(opts) {
   init();
   if (!imgEl) {
     console.error('[Chapitre2] #chp2-img introuvable');
     return;
   }
   _active = true;
+
+  var direct = opts && opts.part;
+  var lancer = direct
+    ? function () {
+        if (!_active) return;
+        // measure() d'abord : les lumières et les zones dérivent de imgW.
+        measure();
+        light.show();
+        // Le rideau se lève sur un noir plein — c'est ce que la scène attend
+        // pour émettre son signal de disponibilité.
+        window.dispatchEvent(new CustomEvent('chp2:opening-ready'));
+        interactive = true;
+        openPart(opts.part);
+      }
+    : safeIgnite;
+
   if (imgEl.complete && imgEl.naturalWidth > 0) {
-    safeIgnite();
+    lancer();
   } else {
-    imgEl.addEventListener("load",  safeIgnite, { once: true });
-    imgEl.addEventListener("error", safeIgnite, { once: true });
-    var _igniteTimeout = setTimeout(safeIgnite, 10000);
+    imgEl.addEventListener("load",  lancer, { once: true });
+    imgEl.addEventListener("error", lancer, { once: true });
+    var _igniteTimeout = setTimeout(lancer, 10000);
     imgEl.addEventListener("load", function() { clearTimeout(_igniteTimeout); }, { once: true });
   }
+}
+
+/**
+ * Ouvre une sous-partie sans passer par le clic sur un crâne.
+ *
+ * GARDE : on n'ouvre que ce qui est DÉVERROUILLÉ, exactement comme le survol.
+ * En pratique la carte ne propose que du déjà-visité, et « visité » est
+ * toujours inclus dans « déverrouillé » (computeUnlocked renvoie un préfixe) —
+ * mais la garde reste : ce point d'entrée est public, il ne doit pas pouvoir
+ * contourner la progression des crânes.
+ *
+ * @param {string} part  'invisibilisation' | 'peine-demesuree' | 'cartel'
+ * @returns {boolean} true si l'ouverture a été lancée
+ */
+export function openPart(part) {
+  if (!_active || navigating || _subOpen) return false;
+
+  var skull = null;
+  for (var i = 0; i < SKULLS.length; i++) {
+    if (SKULLS[i].action === part) { skull = SKULLS[i]; break; }
+  }
+  if (!skull) { console.warn('[Chapitre2] openPart : sous-partie inconnue « ' + part + ' »'); return false; }
+
+  if (computeUnlocked(SKULL_ORDER).indexOf(skull.id) === -1) {
+    console.warn('[Chapitre2] openPart : le crâne ' + skull.id + ' n’est pas déverrouillé.');
+    return false;
+  }
+
+  if (part === 'invisibilisation')    { openInvisibilisationOverlay(); return true; }
+  if (part === 'peine-demesuree')     { openPeineDemesureeOverlay();   return true; }
+  if (part === 'cartel')              { openCartelOverlay();           return true; }
+  return false;
 }
 
 export function stopChapitre2() {

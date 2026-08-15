@@ -76,6 +76,9 @@ export class Chapitre3Scene extends Scene {
   async enter(params = {}) {
     await super.enter(params);
 
+    this._pendingTo = null;       // réarmé à chaque entrée
+    this._pendingParams = null;
+
     try {
       // Contexte chapitre 3 : curseur custom + remontée z des titres et du
       // bouton plein écran au-dessus du root plein écran (cf. body.chp3-active
@@ -135,6 +138,12 @@ export class Chapitre3Scene extends Scene {
       // image non décodée, init différé, prefers-reduced-motion…).
       await introReady;
       this._raiseBootCurtain();
+
+      // Le site change de scène sans changer d'URL : sans ce signal, ni le
+      // lecteur d'écran ni le titre de l'onglet n'apprennent l'arrivée — et
+      // la carte ne sait pas où allumer son point. Les chapitres 2, 3 et 4
+      // ne l'émettaient pas, alors que app.js tenait leurs libellés prêts.
+      bus.emit('scene:entered', { name: 'chapitre3' });
 
     } catch (err) {
       if (err?.message === 'scene_aborted') return;
@@ -224,6 +233,17 @@ export class Chapitre3Scene extends Scene {
     this._arrow.show(() => this._leaveToCollaboration());
   }
 
+  /**
+   * Départ vers une destination QUELCONQUE en gardant la sortie écrite du
+   * chapitre (fondu, son coupé). La flèche de retour est le cas particulier
+   * leaveTo('collaboration') ; la carte peut viser plus loin.
+   */
+  leaveTo(to, params = {}) {
+    this._pendingTo     = to;
+    this._pendingParams = params;
+    this._leaveToCollaboration();
+  }
+
   _leaveToCollaboration() {
     // Le fondu #chp3-fade vit DANS #chapitre3-root (z 500) alors que le
     // sous-titre est remonté à z 600 : sans ceci il flotterait au-dessus du noir
@@ -235,7 +255,7 @@ export class Chapitre3Scene extends Scene {
       this._module.leaveToCollaboration();
     } else {
       // Filet de sécurité : navigation directe si le module n'expose rien.
-      bus.emit('navigate', { to: 'collaboration', from: 'chapitre3' });
+      bus.emit('navigate', { to: this._pendingTo ?? 'collaboration', from: 'chapitre3', ...(this._pendingParams ?? {}) });
     }
   }
 
@@ -247,7 +267,7 @@ export class Chapitre3Scene extends Scene {
     // Émis par le module une fois le fondu au noir atteint et l'audio coupé.
     const onNavBack = () => {
       if (this.isActive) {
-        bus.emit('navigate', { to: 'collaboration', from: 'chapitre3' });
+        bus.emit('navigate', { to: this._pendingTo ?? 'collaboration', from: 'chapitre3', ...(this._pendingParams ?? {}) });
       }
     };
     window.addEventListener('chp3:navigate-back', onNavBack);
