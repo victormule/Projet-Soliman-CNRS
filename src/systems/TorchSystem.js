@@ -213,11 +213,17 @@ export class TorchSystem {
     );
   }
 
-  render(t) {
+  /**
+   * @param {number}  t       horodatage rAF
+   * @param {boolean} [force] passe outre la pause. UN SEUL appelant le pose :
+   *   resize(), qui doit repeindre un canvas que le navigateur vient d'effacer.
+   *   Voir l'invariant écrit en tête de resize().
+   */
+  render(t, force = false) {
     // Rendu gelé : la torche est cachée sous un overlay opaque. On saute tout le
     // travail (clear + 6 dégradés plein écran). Le callback rAF reste vivant mais
     // ne coûte rien → reprise instantanée à resume().
-    if (this._paused) return;
+    if (this._paused && !force) return;
 
     const W = this.canvas.width;
     const H = this.canvas.height;
@@ -319,11 +325,33 @@ export class TorchSystem {
 
   /* ─────────────────────────────────────── Resize ── */
 
+  /**
+   * ⚠️ INVARIANT — UN CANVAS QUI SERT DE MASQUE EST REPEINT DANS LE MÊME TOUR
+   * QUE SON REDIMENSIONNEMENT. Pas « à la frame suivante » : ici, synchrone.
+   *
+   * Écrire `canvas.width` EFFACE le canvas — comportement standard, et c'est
+   * précisément ce qui rend la règle nécessaire. Ce canvas-ci ne décore pas :
+   * il PORTE le noir de la scène et y perce un trou. Effacé, il ne masque plus
+   * rien : le fond apparaît en pleine lumière, d'un coup.
+   *
+   * Le repeint ne peut pas être laissé à la boucle, parce que la boucle a le
+   * droit de ne pas venir : render() sort immédiatement quand `_paused` est posé
+   * (overlay documents / « À Propos » ouvert). Un redimensionnement pendant
+   * cette pause — et le bouton plein écran, lui, reste cliquable — laisserait le
+   * canvas vide jusqu'à resume(). D'où l'appel forcé.
+   *
+   * Le même défaut, MESURÉ, existait dans le LightSystem du chapitre 2, où la
+   * pause dure plusieurs SECONDES : l'image du travelling y restait à nu 1,4 s,
+   * puis le noir retombait d'un bloc. Chapter1LightSystem portait la même forme.
+   * Les trois portent désormais la même ligne — ne pas la retirer d'un seul des
+   * trois, le défaut est silencieux et ne se voit qu'au redimensionnement.
+   */
   resize() {
     this.canvas.width  = this._vW();
     this.canvas.height = this._vH();
     // La fraction est la source de vérité ; le rayon en pixels en découle.
     // (_targetFrac n'a rien à recalculer : c'est déjà une fraction.)
     this.torchBaseRadius = Math.min(this._vW(), this._vH()) * this._baseFrac;
+    this.render(performance.now(), true);
   }
 }

@@ -52,6 +52,11 @@ export class Chapter1LightSystem {
     this.canvas.style.width = w + 'px';
     this.canvas.style.height = h + 'px';
     if (this._radiusFrac > 0) this.radius = this._minDim() * this._radiusFrac;
+    // Écrire canvas.width vient d'EFFACER ce canvas — et il porte le noir du
+    // chapitre : vide, il ne masque plus rien. On le repeint dans le même tour,
+    // sans attendre la boucle. Invariant commun aux trois canvas-masques du
+    // site ; l'exposé complet est dans src/systems/TorchSystem.js → resize().
+    this._render();
   }
 
   show() {

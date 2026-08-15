@@ -118,6 +118,20 @@ LightSystem.prototype.resize = function() {
   this.canvas.style.width  = w + 'px';
   this.canvas.height       = h;
   this.canvas.style.height = h + 'px';
+  // ⚠️ Écrire canvas.width vient d'EFFACER ce canvas — et ce canvas EST le noir
+  // du chapitre. Le repeindre ICI, dans le même tour, n'est pas une précaution :
+  // c'est ce qui rend sûr le saut de rendu de _startLoop (plus bas), lequel
+  // refuse de repeindre tant qu'une sous-partie couvre l'écran.
+  //
+  // Sans cette ligne, un redimensionnement pendant une sous-partie — bascule
+  // plein écran (le bouton reste cliquable), rotation, ou simplement la barre
+  // d'URL du téléphone qui se rétracte — laissait le canvas VIDE jusqu'au
+  // retour. Mesuré au banc : le panorama restait à nu 1,4 s pendant que la
+  // sous-partie s'effaçait, puis le noir retombait d'un bloc à 2,16 s. C'était
+  // le « saut d'affichage de l'image de l'opening avant que le fond noir
+  // s'allume ». Invariant partagé par les trois canvas-masques du site :
+  // l'exposé complet est dans src/systems/TorchSystem.js → resize().
+  this._render(performance.now());
 };
 
 LightSystem.prototype.show = function() {
@@ -362,6 +376,12 @@ LightSystem.prototype._startLoop = function() {
     // inutile de le repeindre (130 % du viewport) 60×/s. On continue tant qu'une
     // lumière s'anime, pour que le fondu de sortie reste visible ; on ne saute
     // qu'une fois toutes les lumières éteintes. (`_subOpen` : état module.)
+    //
+    // ⚠️ CE SAUT N'EST SÛR QUE PARCE QUE resize() REPEINT LUI-MÊME. Le canvas
+    // garde son dernier cadre — sauf si on le redimensionne, ce qui l'efface.
+    // Sans le repaint synchrone posé dans resize(), un canvas effacé pendant une
+    // sous-partie ne serait jamais restauré, et le panorama apparaîtrait nu au
+    // retour. Les deux lignes se tiennent : ne pas en retirer une seule.
     if (_subOpen && !self._hasActiveLight()) return;
     self._render(t);
   };
