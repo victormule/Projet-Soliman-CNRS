@@ -24,6 +24,7 @@
 
 import { markVisited, computeUnlocked } from './chp2-progress.js';
 import { CONFIG } from './chp2-config.js';
+import * as Blackout from '../../src/core/Blackout.js';
 
 /* =============================================================================
    OSCILLATEURS
@@ -634,6 +635,116 @@ function onMove(clientX, clientY) {
 // Handlers créés et attachés dans init() — voir la section INIT plus bas.
 
 /* =============================================================================
+   SUSPENSION — l'opening s'arrête VRAIMENT pendant une sous-partie
+   ─────────────────────────────────────────────────────────────────────────────
+   TROIS RÈGLES, et elles se tiennent. Elles remplacent une vigilance qui avait
+   déjà échoué deux fois.
+
+   I.  ON NE SE SUSPEND NI NE SE REPREND HORS DU NOIR.
+       suspend() n'est appelé qu'une fois l'écran couvert, resume() tant qu'il
+       l'est encore. Avant, le gel tombait à l'instant du clic : le panorama,
+       encore en train de glisser vers le crâne, s'arrêtait NET — et le voile
+       ne devenait opaque qu'une demi-seconde plus tard. Mesuré : arrêt à
+       -181 px alors que le glissé courait à ~1000 px/s, voile à 14 % seulement
+       120 ms après. C'était le « saut d'affichage » vu à chaque entrée.
+
+   II. UNE PLACE SUSPENDUE N'ÉCOUTE PLUS RIEN : ON DÉTACHE, ON NE TESTE PAS UN
+       DRAPEAU. C'est la règle qui compte le plus ici. Les deux boucles étaient
+       gardées par `if (!_subOpen)` — mais `onMove`, lui, ne l'était pas et
+       continuait d'écrire `targetX` et `velocity`. Au retour, la boucle
+       repartait et RATTRAPAIT tout : 517 px avalés à 2 480 px/s, mesurés.
+       Un écouteur détaché ne peut pas oublier de consulter un drapeau.
+
+   III. ON REPREND SUR LE PRÉSENT, ON NE REJOUE PAS LE MANQUÉ.
+       resume() ramène la cible sur la position réelle (targetX = currentX) et
+       remet la vélocité à zéro. Le panorama reste donc là où le visiteur l'a
+       laissé ; son prochain vrai mouvement de souris le fait paner normalement.
+       (On ne le recale PAS sur le pointeur : pendant la suspension on ne sait
+       plus où il est — les écouteurs sont détachés — et prétendre le savoir,
+       c'est réintroduire un saut.)
+
+   GAIN DE PERFORMANCE, au passage. Les gardes `if (!_subOpen)` laissaient les
+   `requestAnimationFrame` se reprogrammer : deux chaînes tournaient à 60 i/s
+   pour ne rien faire pendant toute la sous-partie. Elles sont maintenant
+   réellement annulées.
+============================================================================= */
+
+/** true entre suspend() et resume() : l'opening est gelé, écouteurs détachés. */
+var _suspended = false;
+
+function startLoops() {
+  if (_travelRaf === null) {
+    (function travelLoop() {
+      var d = targetX - currentX;
+      currentX = Math.abs(d) < 0.05 ? targetX : currentX + d * 0.08;
+      applyTx(currentX);
+      _travelRaf = requestAnimationFrame(travelLoop);
+    })();
+  }
+
+  if (_shakeRaf === null) {
+    (function shakeLoop() {
+      var t = performance.now();
+      velocity *= 0.92;
+      var target = 1 + Math.min(SHAKE.boost, velocity / SHAKE.velocityRef * SHAKE.boost);
+      target = Math.min(SHAKE.maxBoost, target);
+      shakeMul += (target - shakeMul) * SHAKE.smoothing;
+
+      var sx = (Math.sin(t * 0.001 * O.shx1.freq * Math.PI * 2 + O.shx1.phase)
+              + Math.sin(t * 0.001 * O.shx2.freq * Math.PI * 2 + O.shx2.phase) * 0.5
+              + Math.sin(t * 0.001 * O.shx3.freq * Math.PI * 2 + O.shx3.phase) * 0.25) / 1.75;
+      var sy = (Math.sin(t * 0.001 * O.shy1.freq * Math.PI * 2 + O.shy1.phase)
+              + Math.sin(t * 0.001 * O.shy2.freq * Math.PI * 2 + O.shy2.phase) * 0.5
+              + Math.sin(t * 0.001 * O.shy3.freq * Math.PI * 2 + O.shy3.phase) * 0.25) / 1.75;
+      var rot = sx * SHAKE.rotation * shakeMul;
+
+      if (shakeEl) {
+        shakeEl.style.transform =
+          "translate(" + (sx * SHAKE.amplitudeX * shakeMul).toFixed(2) + "px,"
+                       + (sy * SHAKE.amplitudeY * shakeMul).toFixed(2) + "px) "
+          + "rotate(" + rot.toFixed(3) + "deg)";
+      }
+      _shakeRaf = requestAnimationFrame(shakeLoop);
+    })();
+  }
+}
+
+function stopLoops() {
+  if (_travelRaf !== null) { cancelAnimationFrame(_travelRaf); _travelRaf = null; }
+  if (_shakeRaf  !== null) { cancelAnimationFrame(_shakeRaf);  _shakeRaf  = null; }
+}
+
+/**
+ * Gèle l'opening. À N'APPELER QUE SOUS LE NOIR (règle I). Idempotent : les
+ * sous-parties émettent parfois `:closed` ET `:return`, les deux passent ici.
+ */
+function suspend() {
+  if (_suspended || !_active) return;
+  _suspended = true;
+  if (_mousemoveHandler) window.removeEventListener("mousemove", _mousemoveHandler);
+  if (_touchmoveHandler) window.removeEventListener("touchmove", _touchmoveHandler);
+  stopLoops();
+}
+
+/**
+ * Reprend l'opening. À N'APPELER QUE SOUS LE NOIR (règle I) : la
+ * resynchronisation ci-dessous est un saut, il ne doit pas se voir. Idempotent.
+ */
+function resume() {
+  if (!_suspended || !_active) return;
+  _suspended = false;
+
+  // Règle III — on repart de l'état réel, sans rattrapage.
+  targetX  = currentX;
+  velocity = 0;
+  shakeMul = 1;
+
+  if (_mousemoveHandler) window.addEventListener("mousemove", _mousemoveHandler);
+  if (_touchmoveHandler) window.addEventListener("touchmove", _touchmoveHandler, { passive: false });
+  startLoops();
+}
+
+/* =============================================================================
    CLIC — invisibilisation | cartel | peine-demesuree | navigation retour
    ─────────────────────────────────────────────────────────────────────────────
    La navigation externe (window.location.href) est remplacée par un
@@ -830,7 +941,12 @@ function openPeineDemesureeOverlay() {
   audio.duck(800);
   document.body.classList.add('peine-demesuree-open');
 
+  // Ici, le NOIR n'est pas un voile : c'est l'extinction des bougies elle-même.
+  // Quand animateAll résout, le canvas d'obscurité est plein — donc opaque.
   light.animateAll(0, 2000, 0).then(function() {
+    // RÈGLE I — l'écran est couvert (canvas noir plein) : gel invisible.
+    suspend();
+
     var root = document.getElementById('peine-demesuree-root');
     if (!root) return;
     root.style.opacity = '0';
@@ -844,6 +960,8 @@ function openPeineDemesureeOverlay() {
     }).catch(function(err) {
       console.error('[Peine] Échec chargement :', err);
       document.body.classList.remove('peine-demesuree-open');
+      _subOpen = false;
+      resume();
       audio.unduck(400);
       applyProgressLighting({ ms: 800 });
     });
@@ -857,17 +975,25 @@ function openCartelOverlay() {
   if (hoveredSkull && hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
   if (_arrowHide) _arrowHide();
   audio.duck(800);
+  // Comme « Peine démesurée » : le noir, ici, c'est l'extinction des bougies.
   light.animateAll(0, 2000, 0).then(function() {
+    // RÈGLE I — l'écran est couvert (canvas noir plein) : gel invisible.
+    suspend();
+
     loadCartelModule().then(function(mod) {
       var ok = mod.openCartel();
       if (ok) {
         markVisited('138');   // « La violence et ses traces » vue (dernier crâne)
       } else {
+        _subOpen = false;
+        resume();
         applyProgressLighting({ ms: 800 });
         audio.unduck(400);
       }
     }).catch(function(err) {
       console.error('[Cartel] Échec chargement :', err);
+      _subOpen = false;
+      resume();
       applyProgressLighting({ ms: 800 });
       audio.unduck(400);
     });
@@ -877,6 +1003,7 @@ function openCartelOverlay() {
 function _onCartelClosed() {
   if (!_active) return;
   _subOpen = false;
+  resume();                       // idempotent — voir _onCartelReturn
   document.body.classList.remove('cartel-open');
   showOpeningArrow();
 }
@@ -887,19 +1014,18 @@ function _onCartelReturn() {
   _subOpen = false;
   document.body.classList.remove('cartel-open');
   setTimeout(showOpeningArrow, 2800);
-  if (fadeEl) {
-    fadeEl.style.zIndex     = '10001';
-    fadeEl.style.transition = 'opacity 0s';
-    fadeEl.classList.add('out');
-    void fadeEl.offsetWidth;
-    fadeEl.style.transition = 'opacity 2.5s ease';
-    fadeEl.classList.remove('out');
-  }
+
+  // RÈGLE I — on couvre AVANT de reprendre. Le canvas d'obscurité est déjà
+  // plein (bougies éteintes à l'entrée), le voile n'est qu'une ceinture ; mais
+  // c'est lui qui porte le fondu de retour, alors on l'utilise pour les deux.
+  if (fadeEl) fadeEl.style.zIndex = '10001';
+  Blackout.cover(fadeEl);         // sec, et COMMIS — sans quoi le reveal n'anime rien
+  resume();                       // resynchronisation : invisible, sous le noir
   applyProgressLighting({ ms: LIGHT.returnMs });
   audio.fadeIn(0.72, LIGHT.returnMs);
-  setTimeout(function() {
-    if (fadeEl) { fadeEl.style.zIndex = ''; fadeEl.style.transition = ''; }
-  }, 2600);
+  Blackout.reveal(fadeEl, 2500).then(function() {
+    if (fadeEl) fadeEl.style.zIndex = '';
+  });
 }
 // (attaché dans init())
 
@@ -935,11 +1061,8 @@ function openInvisibilisationOverlay() {
 
   // 1) Clic 136 : extinction progressive des bougies + coupure du son chp2 +
   //    fondu au noir par-dessus le travelling (fadeEl au-dessus de l'overlay).
-  if (fadeEl) {
-    fadeEl.style.zIndex     = '10001';
-    fadeEl.style.transition = 'opacity 1200ms ease';
-    fadeEl.classList.add('out');
-  }
+  if (fadeEl) fadeEl.style.zIndex = '10001';
+  var couvert = Blackout.cover(fadeEl, 1200);
   light.animateAll(0, 1200, 0);
   audio.fadeOut(1200);
 
@@ -947,35 +1070,41 @@ function openInvisibilisationOverlay() {
   //    elle-même sur fond noir, sans barre de chargement), puis retirer le voile
   //    sans transition : le noir de l'overlay prend le relais à l'identique, et
   //    l'installation gère son propre allumage progressif (révélation du loader).
-  setTimeout(function() {
+  couvert.then(function() {
     if (!_active || !document.body.classList.contains('invisibilisation-open')) return;
-    loadInvisibilisationModule().then(function(mod) {
+
+    // RÈGLE I — l'écran est couvert : on peut geler l'opening sans que ça se
+    // voie. Geler dès le clic arrêtait le panorama en plein glissé, à découvert.
+    suspend();
+
+    return loadInvisibilisationModule().then(function(mod) {
       var ok = mod.openInvisibilisation();
       if (ok) markVisited('136');   // « Invisibilisation » vue → débloque le crâne 137
       requestAnimationFrame(function() {
-        if (fadeEl) {
-          fadeEl.classList.remove('out');
-          fadeEl.style.transition = '';
-          fadeEl.style.zIndex     = '';
-        }
+        Blackout.reveal(fadeEl);
+        if (fadeEl) fadeEl.style.zIndex = '';
       });
-    }).catch(function(err) {
-      console.error('[Invisibilisation] Échec chargement :', err);
-      document.body.classList.remove('invisibilisation-open');
-      if (fadeEl) {
-        fadeEl.classList.remove('out');
-        fadeEl.style.transition = '';
-        fadeEl.style.zIndex     = '';
-      }
-      applyProgressLighting({ ms: 800 });
-      audio.fadeIn(0.72, 800);
     });
-  }, 1200);
+  }).catch(function(err) {
+    console.error('[Invisibilisation] Échec chargement :', err);
+    // Retour à l'opening : l'ordre compte, on reprend AVANT de découvrir.
+    // (_subOpen restait naguère à true ici : l'opening serait resté gelé pour
+    //  le reste de la visite après un échec de chargement.)
+    document.body.classList.remove('invisibilisation-open');
+    _subOpen = false;
+    resume();
+    applyProgressLighting({ ms: 800 });
+    audio.fadeIn(0.72, 800);
+    Blackout.reveal(fadeEl, 400).then(function() {
+      if (fadeEl) fadeEl.style.zIndex = '';
+    });
+  });
 }
 
 function _onInvisibilisationClosed() {
   if (!_active) return;
   _subOpen = false;
+  resume();                       // idempotent — _onInvisibilisationReturn suit
   document.body.classList.remove('invisibilisation-open');
   audio.unduck(1200);
   // La flèche opening réapparaît via 'invisibilisation:return' (après rallumage
@@ -989,30 +1118,40 @@ function _onInvisibilisationClosed() {
 }
 // (attaché dans init())
 
+/**
+ * ⚠️ CE RETOUR N'A PAS DE VOILE, ET C'EST DÉLIBÉRÉ.
+ *
+ * Il y en avait un — quinze lignes qui posaient #chp2-fade au noir puis le
+ * faisaient fondre sur 3 s. Il NE S'EST JAMAIS JOUÉ : la transition était
+ * armée AVANT la montée au noir, si bien que la montée s'animait elle-même
+ * puis se trouvait annulée dans la même tâche. Relevé au banc, opacité du
+ * voile pendant tout ce retour : 0,00 — quand la même mesure donnait 36 % sur
+ * « Peine démesurée », dont le code coupe bien la transition d'abord.
+ *
+ * Le bloc est retiré plutôt que réparé : le réparer AJOUTERAIT à l'écran un
+ * fondu que personne n'a jamais vu, donc changerait la mise en scène. Ce n'est
+ * pas un arbitrage de refactorisation, c'est un choix d'auteur — à faire
+ * sciemment, en le regardant, pas en corrigeant un bug.
+ *
+ * Ce qui couvre ici, c'est le canvas d'obscurité : les bougies ont été
+ * éteintes à l'entrée, il est donc plein noir. C'est sous lui que resume()
+ * resynchronise, et c'est le rallumage progressif qui fait le retour.
+ */
 function _onInvisibilisationReturn() {
   if (!_active) return;
   _subOpen = false;
+  resume();                       // sous le canvas noir — idempotent
   document.body.classList.remove('invisibilisation-open');
   setTimeout(showOpeningArrow, 2800);
   applyProgressLighting({ ms: LIGHT.returnMs });
   audio.fadeIn(0.72, LIGHT.returnMs);
-  if (fadeEl) {
-    fadeEl.style.zIndex = '10001';
-    fadeEl.style.transition = 'opacity 3s ease';
-    fadeEl.classList.add('out');
-    void fadeEl.offsetWidth;
-    fadeEl.classList.remove('out');
-    setTimeout(function() {
-      fadeEl.style.zIndex = '';
-      fadeEl.style.transition = '';
-    }, 3100);
-  }
 }
 // (attaché dans init())
 
 function _onPeineClosed() {
   if (!_active) return;
   _subOpen = false;
+  resume();                       // idempotent — _onPeineReturn suit
   document.body.classList.remove('peine-demesuree-open');
   // Flèche opening réaffichée via 'peineDemesuree:return' (après rallumage).
 }
@@ -1023,19 +1162,16 @@ function _onPeineReturn() {
   _subOpen = false;
   document.body.classList.remove('peine-demesuree-open');
   if (_arrowShow) setTimeout(showOpeningArrow, 2800);
-  if (fadeEl) {
-    fadeEl.style.zIndex     = '10001';
-    fadeEl.style.transition = 'opacity 0s';
-    fadeEl.classList.add('out');
-    void fadeEl.offsetWidth;
-    fadeEl.style.transition = 'opacity 2.5s ease';
-    fadeEl.classList.remove('out');
-  }
+
+  // RÈGLE I — couvrir, reprendre, découvrir. Voir _onCartelReturn.
+  if (fadeEl) fadeEl.style.zIndex = '10001';
+  Blackout.cover(fadeEl);
+  resume();
   applyProgressLighting({ ms: LIGHT.returnMs });
   audio.fadeIn(0.72, LIGHT.returnMs);
-  setTimeout(function() {
-    if (fadeEl) { fadeEl.style.zIndex = ''; fadeEl.style.transition = ''; }
-  }, 2600);
+  Blackout.reveal(fadeEl, 2500).then(function() {
+    if (fadeEl) fadeEl.style.zIndex = '';
+  });
 }
 // (attaché dans init())
 
@@ -1094,6 +1230,7 @@ function init() {
 
   /* ── Reset de l'état (ré-entrée propre sans réévaluation du module) ── */
   interactive = false; hoveredSkull = null;
+  _suspended = false;   // sinon startLoops() serait sans effet à la 2ᵉ visite
   lastClientX = 0; lastClientY = 0; lastMt = 0; lastMx2 = 0; lastMy2 = 0;
   velocity = 0; shakeMul = 1;
   vpH = 0; vpW = 0; imgW = 0; maxTx = 0; targetX = 0; currentX = 0; ratio = 0;
@@ -1161,47 +1298,7 @@ function init() {
   /* ── Mesure initiale + boucles d'animation ── */
   measure();
 
-  // Boucle de travelling (interpolation douce). GELÉE quand une sous-partie est
-  // ouverte : le travelling est alors masqué par l'overlay opaque → paner +
-  // appeler applyTx()/updateHover() à chaque frame ne sert à rien (économie
-  // mobile). La RAF reste vivante → reprise instantanée au retour.
-  (function travelLoop() {
-    if (!_subOpen) {
-      var d = targetX - currentX;
-      currentX = Math.abs(d) < 0.05 ? targetX : currentX + d * 0.08;
-      applyTx(currentX);
-    }
-    _travelRaf = requestAnimationFrame(travelLoop);
-  })();
-
-  // Boucle de tremblement organique. GELÉE pendant une sous-partie (masquée) :
-  // le tremblement y est imperceptible mais son transform CSS sur #chp2-shake
-  // force un recompositing du panorama + des 3 crânes à chaque frame.
-  (function shakeLoop() {
-    if (!_subOpen) {
-      var t = performance.now();
-      velocity *= 0.92;
-      var target = 1 + Math.min(SHAKE.boost, velocity / SHAKE.velocityRef * SHAKE.boost);
-      target = Math.min(SHAKE.maxBoost, target);
-      shakeMul += (target - shakeMul) * SHAKE.smoothing;
-
-      var sx = (Math.sin(t * 0.001 * O.shx1.freq * Math.PI * 2 + O.shx1.phase)
-              + Math.sin(t * 0.001 * O.shx2.freq * Math.PI * 2 + O.shx2.phase) * 0.5
-              + Math.sin(t * 0.001 * O.shx3.freq * Math.PI * 2 + O.shx3.phase) * 0.25) / 1.75;
-      var sy = (Math.sin(t * 0.001 * O.shy1.freq * Math.PI * 2 + O.shy1.phase)
-              + Math.sin(t * 0.001 * O.shy2.freq * Math.PI * 2 + O.shy2.phase) * 0.5
-              + Math.sin(t * 0.001 * O.shy3.freq * Math.PI * 2 + O.shy3.phase) * 0.25) / 1.75;
-      var rot = sx * SHAKE.rotation * shakeMul;
-
-      if (shakeEl) {
-        shakeEl.style.transform =
-          "translate(" + (sx * SHAKE.amplitudeX * shakeMul).toFixed(2) + "px,"
-                       + (sy * SHAKE.amplitudeY * shakeMul).toFixed(2) + "px) "
-          + "rotate(" + rot.toFixed(3) + "deg)";
-      }
-    }
-    _shakeRaf = requestAnimationFrame(shakeLoop);
-  })();
+  startLoops();
 
   /* ── LightSystem (une lumière par crâne) ── */
   light = new LightSystem("chp2-shake");
@@ -1319,6 +1416,7 @@ export function stopChapitre2() {
   setSkullHot(false);
   navigating = false;
   interactive = false;
+  _suspended = false;
   SKULLS.forEach(function(s) { s.active = false; });
 
   /* 1. Stopper l'audio centralisé (piste chp2 / fredonnement) */

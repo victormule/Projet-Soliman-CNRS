@@ -50,7 +50,7 @@ index.html / style.css    Coquille + styles du tronc commun
 src/
   app.js                  RACINE DE COMPOSITION : systèmes, UI, scènes, bus
   core/                   Scene (classe de base), SceneManager, EventBus,
-                          TransitionManager
+                          TransitionManager, Blackout (mécanique du voile noir)
   systems/                AudioManager, TorchSystem, BackgroundManager,
                           Chapter1LightSystem, OrientationLock, TouchHover
   ui/                     Flèches (ArrowBase + variantes), MediaPlayer,
@@ -254,6 +254,63 @@ Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
   `MediaPlayer` passait `torcheAvant × PLAYER.torch_dim` à `grow()`, qui l'ignore.
   Réglage retiré plutôt que réparé — décision assumée. Le rétablir demanderait
   un vrai paramètre de cible dans `grow()`, et **changerait ce qu'on voit**.
+
+## Les transitions : trois invariants (audit de septembre 2026)
+
+Le site avait DEUX notions de « lieu » et une seule sous contrat. Les scènes ont
+`enter()`/`exit()` et un noir garanti — cette moitié n'a jamais posé de problème.
+Les lieux SUPERPOSÉS (les 3 sous-parties du chapitre 2, le tableau du 3, les
+bulles du 4, l'overlay documents, le lecteur média) n'avaient aucun contrat :
+chacun avait inventé le sien, à coups de booléens et de `CustomEvent`. Tous les
+défauts mesurés venaient de là. Trois règles remplacent la vigilance.
+
+**1. Un canvas qui sert de MASQUE est repeint dans le même tour que son
+redimensionnement.** Écrire `canvas.width` EFFACE le canvas. Trois canvas du
+site portent le noir — `LightSystem` (chp2-opening), `Chapter1LightSystem` et
+le `TorchSystem` PARTAGÉ — et tous trois s'en remettaient à une boucle de rendu
+qui a le droit de ne pas venir : elle saute quand une sous-partie couvre l'écran
+(chp2) ou quand `_paused` est posé (torche, sous un document ouvert). Mesuré au
+chapitre 2 : une bascule plein écran pendant une sous-partie laissait le
+panorama À NU 1,4 s au retour, puis le noir retombait d'un bloc. Les trois
+`resize()` repeignent désormais, synchrone. **Ne pas retirer la ligne d'un seul
+des trois** — le défaut est silencieux et ne se voit qu'au redimensionnement.
+L'exposé complet est dans `TorchSystem.resize()`.
+
+**2. On ne se suspend ni ne se reprend HORS DU NOIR.** Le gel de l'opening du
+chapitre 2 tombait à l'instant du clic : le panorama, encore en train de glisser
+vers le crâne, s'arrêtait NET, une demi-seconde avant que le voile soit opaque.
+`suspend()` n'est donc appelé qu'une fois l'écran couvert (fin du fondu, ou fin
+de l'extinction des bougies — le canvas plein noir EST le couvert), et
+`resume()` tant qu'il l'est encore : sa resynchronisation est un saut, elle ne
+doit pas se voir.
+
+**3. Une place suspendue N'ÉCOUTE PLUS RIEN : on détache, on ne teste pas un
+drapeau.** C'est la règle qui compte le plus. Les deux boucles du travelling
+étaient gardées par `if (!_subOpen)` — mais `onMove`, lui, ne l'était pas et
+continuait d'écrire `targetX` et `velocity` pendant toute la sous-partie. Au
+retour, la boucle repartait et RATTRAPAIT tout : 517 px avalés à 2 480 px/s,
+mesurés. Trois lecteurs du drapeau s'en souvenaient, deux l'avaient oublié — un
+écouteur détaché, lui, ne peut pas oublier. Gain au passage : les gardes
+laissaient deux chaînes de `requestAnimationFrame` se reprogrammer à 60 i/s
+pour ne rien faire ; elles sont maintenant réellement annulées.
+
+⚠️ **`Blackout` porte la MÉCANIQUE du voile, pas un voile unique.** Les voiles
+du site ne sont pas interchangeables de PLACE, et cette place est voulue :
+`#chp2-fade` vit dans `#chapitre2-root`, donc SOUS les titres remontés à z 600 —
+c'est ce qui les garde lisibles pendant que le chapitre fond au noir. Un voile
+unique au sommet de la pile les recouvrirait. Ce qui devait être unique, c'est
+la mécanique : trois blocs quasi identiques la portaient, et l'un d'eux armait
+la transition AVANT la montée au noir, si bien que **le voile de retour
+d'« Invisibilisation » ne s'est jamais joué** (opacité relevée : 0,00 de bout en
+bout). Il a été RETIRÉ plutôt que réparé — le réparer ajouterait à l'écran un
+fondu que personne n'a jamais vu, ce qui est un choix d'auteur, pas une
+correction. `Blackout.reveal()` rend l'élément à sa feuille de style en
+partant : un `opacity` en ligne resté à 0 rendrait la classe `.out` muette.
+
+**CE QUI RESTE À FAIRE** : le contrat n'est appliqué qu'au chapitre 2. Les
+chapitres 3 et 4, l'overlay des documents et le lecteur média sont des lieux
+superposés eux aussi, et gagneront le même `suspend()`/`resume()`. Le jour où
+un deuxième moteur l'implémente, la paire monte dans `core/Scene.js`.
 
 ## Trois règles issues de l'audit d'août 2026
 
