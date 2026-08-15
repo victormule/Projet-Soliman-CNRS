@@ -544,8 +544,10 @@ body.invisibilisation-touch #invisibilisation-root #gf4 { display: none !importa
    et les pointer-events : la flèche n'est PAS détruite/redessinée (son tracé SVG
    et son handler de clic sont préservés → elle ne « casse » pas).
 ============================================================================= */
-body.invisibilisation-media #arrow-chp2-invisibilisation {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: opacity 400ms ease;
-}
+/* ⚠️ CETTE RÈGLE A ÉTÉ RETIRÉE, ET IL NE FAUT PAS LA REMETTRE.
+   La flèche s'efface désormais par ArrowBase.eclipse(), depuis Chapitre2Scene,
+   sur l'événement 'chp2:media' que la sous-partie émet à la ligne même où elle
+   pose cette classe. UN SEUL déclencheur pour la flèche ET la boussole : c'est
+   ce qui les fait partir au même instant. La règle CSS, elle, ne parlait qu'à
+   la flèche — la boussole restait seule au-dessus du média.
+   La classe survit : elle estompe les titres (style.css § CHAPITRE 2). */

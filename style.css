@@ -2733,16 +2733,24 @@ body.chp4-active #compass-map {
   transform: translateY(-5px);
 }
 
-/* ⚠️ CHAPITRE 4 : ENCRE SOMBRE. La page y est claire (le papier occupe la
-   moitié droite et remonte jusque sous la carte) : un texte blanc à halo noir
-   s'y lit comme une tache. Même arbitrage que pour le bouton plein écran de ce
-   chapitre — voir la section CHAPITRE 4 et l'en-tête d'ArrowChapitre4.js. */
+/* ⚠️ CHAPITRE 4 : UNE ÉTIQUETTE SUR LE PAPIER, PAS UN TEXTE NU.
+   Mesuré sous le bandeau de légende, à trois formats d'écran : le fond y va du
+   quasi-noir (25/255) au quasi-blanc (222/255) SUR LA MÊME LIGNE — la légende
+   tombe pile sur la lisière entre la photographie du crâne et le papier. Aucune
+   couleur de texte ne peut tenir des deux côtés : le blanc à halo noir fait une
+   tache sur le papier, l'encre à halo clair disparaît sur le tissu.
+   On lui donne donc son propre appui — une étiquette couleur papier, posée sous
+   la carte. C'est la matière du chapitre, et elle ne dépend plus du fond.
+   (Le seul endroit du site où la légende porte un fond : partout ailleurs, le
+   ground est franchement sombre et l'ombre portée suffit.) */
 body.chp4-active #compass-map .cm-tip {
-  color: rgba(28, 24, 20, 0.92);
-  text-shadow:
-    0 0 18px rgba(255, 252, 245, 0.95),
-    0 0 6px rgba(255, 252, 245, 0.9),
-    0 1px 3px rgba(255, 252, 245, 0.8);
+  box-sizing: border-box;
+  padding: 0.5em 0.7em;
+  border-radius: 2px;
+  color: rgba(26, 22, 18, 0.95);
+  background: rgba(246, 243, 236, 0.93);
+  text-shadow: none;
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
 }
 
 #compass-map .cm-tip.visible {

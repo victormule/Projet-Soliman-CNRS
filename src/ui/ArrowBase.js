@@ -339,14 +339,23 @@ export class ArrowBase {
    *
    * @param {boolean} masquee  true pendant le média, false au retour
    * @param {number}  [ms]     durée du fondu
+   * @param {Object}  [o]
+   * @param {boolean} [o.signale=true]  émettre les signaux de flèche.
+   *
+   *   ⚠️ LE METTRE À FALSE QUAND LA BOUSSOLE EST PILOTÉE AILLEURS. Au chapitre 2,
+   *   c'est la SOUS-PARTIE qui décide de l'instant où un média passe au premier
+   *   plan, et la scène l'annonce à la boussole ('place:media'). Si la flèche
+   *   émettait en plus ses propres signaux, la boussole recevrait deux ordres
+   *   contradictoires — s'effacer réversiblement (éclipse) et se démonter
+   *   (hide) — dont le second gagnerait par sa seule position dans la file.
    */
-  eclipse(masquee, ms = 800) {
+  eclipse(masquee, ms = 800, { signale = true } = {}) {
     this.el.style.transition = `opacity ${ms}ms ease`;
 
     if (masquee) {
       this.el.style.opacity = '0';
       this.el.style.pointerEvents = 'none';
-      if (this.estFlecheDeNavigation) bus.emit('nav-arrow:hidden', { id: this.domId });
+      if (signale && this.estFlecheDeNavigation) bus.emit('nav-arrow:hidden', { id: this.domId });
       return;
     }
 
@@ -354,7 +363,9 @@ export class ArrowBase {
     const enScene = this.el.classList.contains('visible');
     this.el.style.opacity = enScene ? '1' : '0';
     this.el.style.pointerEvents = enScene ? 'auto' : 'none';
-    if (enScene && this.estFlecheDeNavigation) bus.emit('nav-arrow:shown', { id: this.domId });
+    if (signale && enScene && this.estFlecheDeNavigation) {
+      bus.emit('nav-arrow:shown', { id: this.domId });
+    }
   }
 
   /* ── resize() ───────────────────────────────────────── */

@@ -215,6 +215,8 @@ les alias torche supprimés.
 | `chp2:<part>-ready`, `<part>:return/:closed` | sous-parties chp2 | scène (flèches) |
 | `chp2:request-return` | scène (clic flèche) | sous-partie ouverte |
 | `chp2:show/hide-close-cross`, `chp2:close-cross-clicked` | sous-parties ↔ scène | croix média partagée |
+| `chp2:media` `{ouvert}` | sous-parties chp2 | scène (efface flèche + boussole) |
+| `chp4:listen` `{ouvert}` | chp4-bubbles | scène (efface flèche + boussole) |
 
 ## Progression du chapitre 2
 
@@ -284,7 +286,22 @@ Remise à zéro : `window.__solimanResetJourney()`.
 
 ⚠️ **La géométrie n'est pas un réglage.** Les coordonnées des points et le tracé
 des routes vivent dans `CompassMap.js`, transcrits de `images/carte-source.svg`
-(le dessin d'origine). `config.js` ne porte que ce qu'un éditeur veut changer.
+(viewBox 287) ; la rose des vents vient de `images/boussole-source.svg`
+(viewBox 99,58). `config.js` ne porte que ce qu'un éditeur veut changer.
+**Après tout ré-export, relancer la transcription** : les routes de l'export
+sont écrites dans les deux sens et portent un `translate` en attribut ; ici
+elles sont TOUTES retournées vers le point d'arrivée et le décalage résorbé
+dans les coordonnées, parce qu'un trait se dessine dans le sens de son `d` —
+il doit partir de là d'où l'on vient. Seule coordonnée qui ne vienne pas de
+l'export : `ANCRE`, le point du dessin qui se pose sur le centre de la boussole.
+
+⚠️ **La légende du chapitre 4 porte un fond, et c'est le seul endroit du site.**
+Mesuré sous son bandeau, à trois formats : le fond y va de 25/255 à 222/255
+**sur la même ligne** — elle tombe pile sur la lisière entre la photographie et
+le papier. Aucune couleur de texte ne tient des deux côtés (le blanc à halo noir
+fait une tache sur le papier, l'encre à halo clair disparaît sur le tissu). Elle
+a donc son propre appui : une étiquette couleur papier. Partout ailleurs le
+fond est franchement sombre et l'ombre portée suffit.
 
 ⚠️ **Le `transform` de la boussole est un ATTRIBUT** (export Illustrator) : la
 rotation au clic vit sur un `<g>` qui l'enveloppe, jamais sur le tracé. C'est le
@@ -335,22 +352,36 @@ restait au-dessus du lecteur. D'où `ArrowBase.eclipse(masquée, ms)`, qui effac
 sans démonter ET émet les mêmes signaux que `show()`/`hide()`. Toute autre façon
 d'effacer une flèche recréera le défaut.
 
-**UN MÉDIA AU PREMIER PLAN EFFACE LA FLÈCHE ET LA BOUSSOLE — partout.** Trois
-mécaniques, une seule règle :
-- chapitre 1 et chapitre 4 → `ArrowBase.eclipse()` sur leur flèche ; la boussole
-  suit par le signal. Au chapitre 4, « un média » veut dire **une bulle qu'on
-  écoute** (`chp4:listen`) : elle garde ses trois sorties (croix, Échap, clic
-  au-dehors), on n'enferme donc personne.
-- chapitre 2 → la flèche d'une sous-partie est masquée par une règle **CSS**
-  (`body.invisibilisation-media`, `!important`), qui n'émet rien. La scène
-  relaie donc `chp2:show/hide-close-cross` sur le bus (`place:media`), et
-  `CompassMap.eclipse()` fait le reste.
+**UN MÉDIA AU PREMIER PLAN EFFACE LA FLÈCHE ET LA BOUSSOLE — partout, et AU MÊME
+INSTANT.** Chaque scène a UN déclencheur, posé là où le média passe devant :
+- chapitre 1 → le clic sur un hotspot ; `ArrowBase.eclipse()`, la boussole suit
+  par le signal de flèche.
+- chapitre 4 → `chp4:listen`. « Un média » y veut dire **une bulle qu'on
+  écoute** ; elle garde ses trois sorties (croix, Échap, clic au-dehors), on
+  n'enferme donc personne.
+- chapitre 2 → `chp2:media`, émis par la SOUS-PARTIE. ⚠️ Surtout pas
+  `chp2:show-close-cross` : la croix paraît PLUS TARD que le média (le zoom
+  d'un œil commence, la croix arrive au bout de sa course), et s'y accrocher
+  faisait partir la boussole après la flèche. Mesuré depuis le bon
+  déclencheur : 4 ms d'écart pour « Taire le passé », 2 ms pour « La violence
+  et ses traces ».
+
+⚠️ **AU CHAPITRE 2, LA FLÈCHE S'ÉCLIPSE EN SILENCE** (`eclipse(…, { signale:
+false })`), parce que la boussole est pilotée séparément par `place:media`. Si
+la flèche émettait aussi, la boussole recevrait deux ordres contradictoires —
+l'éclipse réversible et le `hide()` destructif — et c'est le second qui
+gagnerait, par sa seule place dans la file d'événements.
+(Il y avait là une règle CSS `body.invisibilisation-media #arrow-…` qui faisait
+le travail pour la flèche seule ; elle a été retirée, un déclencheur ne pouvant
+pas être à moitié en CSS et à moitié en JS. La classe survit : elle estompe les
+titres.)
 
 ⚠️ **`CompassMap.eclipse(true)` NE LAISSE PAS `show()` la ramener.** C'est le cas
 « média lancé vite » : la flèche d'une sous-partie finit de se dessiner alors
-qu'on a déjà ouvert un média. Pour la flèche, c'est le `!important` du CSS qui
-tient ; pour la boussole, c'est le drapeau `_eclipsee`. Sans lui elle
-reparaîtrait seule au-dessus du lecteur.
+qu'on a déjà ouvert un média. Le drapeau `_eclipsee` la retient ; côté flèche,
+`_mediaOuvert` de `Chapitre2Scene` l'efface aussitôt construite. Et `hide()`
+lève l'éclipse : un vrai départ l'emporte toujours, sinon la boussole resterait
+invisible dans la scène suivante.
 
 ⚠️ **Le point courant se peint par `style.stroke`, jamais par l'attribut.**
 `_paintCurrent` posait `setAttribute('stroke', …)` quand le survol

@@ -52,38 +52,54 @@ import { isVisited } from '../systems/Journey.js';
    `part` = sous-partie à ouvrir en arrivant (chapitre 2 seulement).
 ═══════════════════════════════════════════════════════════════════════════ */
 
-const VB = 295;
+const VB       = 287;              // le dessin est carré à 0,02 près
+const VB_BOX   = '0 0 287 286.98'; // le viewBox exact de l'export
+const CADRE_RX = 8.61;             // rayon des coins, tel qu'exporté
+
+/* Le point du DESSIN qui vient se poser sur le centre de la boussole : le coin
+   libre, en haut à gauche, avant la vitrine. C'est lui qui accroche la carte à
+   la boussole (voir _buildPanel) — la seule coordonnée du fichier qui ne vienne
+   pas de l'export. */
+const ANCRE = { x: 48, y: 45 };
 
 const NODES = [
-  { id: 'vitrine',       x: 102, y:  47,   r: 13, to: 'vitrine'       },
-  { id: 'phrenologie',   x: 102, y: 103,   r: 13, to: 'phrenologie'   },
-  { id: 'carnet',        x:  50, y: 158,   r: 13, to: null            },
-  { id: 'collaboration', x: 153, y: 158,   r: 13, to: 'collaboration' },
-  { id: 'chapitre1',     x: 204, y:  63,   r: 11, to: 'chapitre1'     },
-  { id: 'chapitre2',     x: 204, y: 109,   r: 11, to: 'chapitre2'     },
-  { id: 'chapitre3',     x: 204, y: 158,   r: 11, to: 'chapitre3'     },
-  { id: 'chapitre4',     x: 204, y: 207,   r: 11, to: 'chapitre4'     },
-  { id: 'cercle5',       x: 204, y: 253,   r: 11, to: null            },
-  { id: 'chp2-136',      x: 242, y:  82,   r:  9, to: 'chapitre2', part: 'invisibilisation'  },
-  { id: 'chp2-137',      x: 242, y: 109,   r:  9, to: 'chapitre2', part: 'peine-demesuree' },
-  { id: 'chp2-138',      x: 242, y: 136,   r:  9, to: 'chapitre2', part: 'cartel'          },
+  { id: 'vitrine',       x:  99.34, y:  45,     r: 13,   to: 'vitrine'       },
+  { id: 'phrenologie',   x:  99.34, y: 101,     r: 13,   to: 'phrenologie'   },
+  { id: 'carnet',        x:  47.34, y: 156,     r: 13,   to: null            },
+  { id: 'collaboration', x: 150.34, y: 156,     r: 13,   to: 'collaboration' },
+  { id: 'chapitre1',     x: 201.36, y:  61.46,  r: 10.98, to: 'chapitre1'    },
+  { id: 'chapitre2',     x: 201.38, y: 107.44,  r: 10.98, to: 'chapitre2'    },
+  { id: 'chapitre3',     x: 201.38, y: 156.44,  r: 10.98, to: 'chapitre3'    },
+  { id: 'chapitre4',     x: 201.38, y: 205.44,  r: 10.98, to: 'chapitre4'    },
+  { id: 'cercle5',       x: 201.38, y: 251.44,  r: 10.98, to: null           },
+  { id: 'chp2-136',      x: 239.29, y:  80.13,  r:  9.13, to: 'chapitre2', part: 'invisibilisation' },
+  { id: 'chp2-137',      x: 239.14, y: 107.28,  r:  9.13, to: 'chapitre2', part: 'peine-demesuree'  },
+  { id: 'chp2-138',      x: 239.14, y: 134.28,  r:  9.13, to: 'chapitre2', part: 'cartel'           },
 ];
 
-/* Une route se trace quand son point d'ARRIVÉE (`node`) est visité. Le tronc
-   vertical qui descend de la phrénologie appartient à la route de l'espace
-   collaboratif : c'est la seule des deux branches du T qui soit atteignable. */
+/* Une route se trace quand son point d'ARRIVÉE (`node`) est visité.
+   ─────────────────────────────────────────────────────────────────────────────
+   ⚠️ TOUTES SONT ÉCRITES DU TRONC VERS LE POINT, et c'est ce qui compte : le
+   trait se dessine dans le sens de son `d`. L'export les donne dans les deux
+   sens et applique un translate(-28,-17.02) sur les courbes ; celles-là ont été
+   retournées et le décalage résorbé dans les coordonnées, pour que le tracé
+   parte toujours de là d'où l'on vient.
+
+   ⚠️ Le tronc vertical qui descend de la phrénologie appartient à la route de
+   l'espace collaboratif : c'est la seule des deux branches du T qui soit
+   atteignable (le Carnet de recherche n'existe pas encore). */
 const ROUTES = [
-  { node: 'phrenologie',   d: 'M102,60 V90'                                              },
-  { node: 'collaboration', d: 'M102,116 V158 H140'                                       },
-  { node: 'carnet',        d: 'M102,158 H63'                                             },
-  { node: 'chapitre1',     d: 'M153,145 V71.62 A8.62,8.62 0 0 1 161.62,63 H193'          },
-  { node: 'chapitre2',     d: 'M153,145 V120.82 A11.82,11.82 0 0 1 164.82,109 H193'      },
-  { node: 'chapitre3',     d: 'M166,158 H193'                                            },
-  { node: 'chapitre4',     d: 'M153,171 V195.18 A11.82,11.82 0 0 0 164.86,207 H193'      },
-  { node: 'cercle5',       d: 'M153,171 V244.38 A8.62,8.62 0 0 0 161.66,253 H193'        },
-  { node: 'chp2-136',      d: 'M204,98.47 V90.3 A8.31,8.31 0 0 1 212.3,82 H232.8'        },
-  { node: 'chp2-137',      d: 'M215,109 H233'                                            },
-  { node: 'chp2-138',      d: 'M204,120.42 V128.7 A8.3,8.3 0 0 0 212.34,137 H232.8'      },
+  { node: 'phrenologie',   d: 'M99.34,58 V88'                                                       },
+  { node: 'collaboration', d: 'M99.34,114 V156 H137.34'                                             },
+  { node: 'carnet',        d: 'M99.34,156 H60.34'                                                   },
+  { node: 'chapitre1',     d: 'M150.34,143.39 V69.6 A8.62,8.62 0 0 1 158.96,60.98 H190.4'           },
+  { node: 'chapitre2',     d: 'M150.34,142.98 V118.8 A11.82,11.82 0 0 1 162.16,106.98 H190.4'       },
+  { node: 'chapitre3',     d: 'M163.34,156 H190.34'                                                 },
+  { node: 'chapitre4',     d: 'M150.34,168.98 V193.18 A11.82,11.82 0 0 0 162.16,204.98 H190.4'      },
+  { node: 'cercle5',       d: 'M150.34,168.98 V242.38 A8.62,8.62 0 0 0 158.96,250.98 H190.34'       },
+  { node: 'chp2-136',      d: 'M201.34,96.44 V88.28 A8.31,8.31 0 0 1 209.64,79.98 H230.16'          },
+  { node: 'chp2-137',      d: 'M212.34,107 H230.34'                                                 },
+  { node: 'chp2-138',      d: 'M201.34,118.42 V126.7 A8.31,8.31 0 0 0 209.64,135 H230'              },
 ];
 
 /* Ordre de dessin : on suit le parcours, du premier écran vers les feuilles. */
@@ -233,8 +249,8 @@ export class CompassMap {
     // elle change de LIEU — la carte se referme (on entre dans une sous-partie,
     // un média s'ouvre…). Sans cela, un panneau déplié pouvait survivre à un
     // changement d'arrière-plan et flotter au-dessus d'une autre scène.
-    if (this.visible) { this.reset(); return; }
     if (this._eclipsee) return;              // un média est au premier plan
+    if (this.visible) { this.reset(); return; }
 
     this._clearTimers();       // aucune minuterie d'un cycle précédent ne survit
     this.visible = true;
@@ -316,6 +332,9 @@ export class CompassMap {
    * légèrement — c'est un seul mouvement, pas une file d'attente.
    */
   hide() {
+    // Un vrai départ l'emporte sur une éclipse : la flèche s'en va pour de bon,
+    // il ne doit rester aucun état qui empêche la prochaine apparition.
+    this._eclipsee = false;
     if (!this.visible) return;
     this.visible = false;
     if (!this.el) return;
@@ -598,16 +617,16 @@ export class CompassMap {
 
     const panel = document.createElement('div');
     panel.className = 'cm-panel';
-    // On place la carte de sorte que le point (50,47) de son dessin — le coin
+    // On place la carte de sorte que le point ANCRE de son dessin — le coin
     // libre, en haut à gauche — tombe sur le CENTRE de la boussole. La
     // boussole devient ainsi l'ornement de la carte sans avoir bougé d'un pixel.
-    panel.style.left  = Math.round(S / 2 - 50 * k) + 'px';
-    panel.style.top   = Math.round(S / 2 - 47 * k) + 'px';
+    panel.style.left  = Math.round(S / 2 - ANCRE.x * k) + 'px';
+    panel.style.top   = Math.round(S / 2 - ANCRE.y * k) + 'px';
     panel.style.width  = cote + 'px';
     panel.style.height = cote + 'px';
 
     const svg = document.createElementNS(NS, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${VB} ${VB}`);
+    svg.setAttribute('viewBox', VB_BOX);
     svg.setAttribute('width', cote);
     svg.setAttribute('height', cote);
     svg.setAttribute('overflow', 'visible');
@@ -621,7 +640,7 @@ export class CompassMap {
     if (opacite == null) console.warn('[CompassMap] MAP.fond_opacite absent : fond transparent.');
     const cadre = document.createElementNS(NS, 'rect');
     Object.entries({
-      x: 1, y: 1, width: VB - 2, height: VB - 2, rx: 21,
+      x: 1, y: 1, width: VB - 2, height: VB - 2.02, rx: CADRE_RX,
       fill: `rgba(8,7,6,${opacite ?? 0})`, stroke: TRAIT_MAT, 'stroke-width': 1.6,
       pathLength: 1, 'stroke-dasharray': 1, 'stroke-dashoffset': instantane ? 0 : 1,
     }).forEach(([k2, v]) => cadre.setAttribute(k2, v));

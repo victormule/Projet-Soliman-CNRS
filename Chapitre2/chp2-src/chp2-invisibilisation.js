@@ -1069,9 +1069,12 @@ function doZoom(eye) {
 
   // Zoom : on coupe l'ambiance flûte (fade-out + pause), un peu avant le média.
   fluteOut(true);
-  // ... et on masque la flèche de sortie pendant la lecture du média
-  // (sans la détruire : simple classe CSS, son état/handler sont préservés).
+  // ... et on annonce qu'un média passe au premier plan. Chapitre2Scene efface
+  // alors la flèche de sortie ET la boussole — À CET INSTANT, celui du zoom,
+  // et non plus à l'ouverture de la croix de fermeture, qui vient plus tard.
+  // La classe reste : elle estompe aussi les titres (style.css).
   document.body.classList.add('invisibilisation-media');
+  window.dispatchEvent(new CustomEvent('chp2:media', { detail: { ouvert: true } }));
 
   // Légende : disparaît pendant le zoom (ready retiré pour couper pointer-events)
   captionWrapEl.classList.remove('visible');
@@ -1119,8 +1122,9 @@ function doUnzoom(eye) {
   // Retour vers l'échelle des yeux : l'ambiance flûte reprend (fade-in),
   // pendant le dézoom, un peu après la fermeture du média.
   fluteIn();
-  // ... et la flèche de sortie réapparaît (retrait de la classe média).
+  // ... et la flèche de sortie réapparaît, la boussole avec elle.
   document.body.classList.remove('invisibilisation-media');
+  window.dispatchEvent(new CustomEvent('chp2:media', { detail: { ouvert: false } }));
 
   // Arrêter les sous-titres immédiatement
   stopSRT();
@@ -1717,6 +1721,7 @@ return {
     }
     // Filet : retirer la classe média (sinon la flèche resterait masquée).
     document.body.classList.remove('invisibilisation-media');
+    window.dispatchEvent(new CustomEvent('chp2:media', { detail: { ouvert: false } }));
     // Filet : couper le pulse doux du curseur s'il était actif.
     setEyeSoftCursor(false);
     // Filet : retirer la classe légende (sinon les titres resteraient estompés).

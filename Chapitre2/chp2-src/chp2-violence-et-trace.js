@@ -536,11 +536,16 @@ class Stage {
             if (this.closeBtn) this.closeBtn.style.display = 'none';
             // Croix de fermeture (style chapitre 1) gérée par Chapitre2Scene.
             window.dispatchEvent(new CustomEvent('chp2:show-close-cross'));
+            // Une diapo ouverte EST un média au premier plan : la flèche de
+            // retour de la sous-partie s'efface, et la boussole avec elle —
+            // comme partout ailleurs sur le site.
+            window.dispatchEvent(new CustomEvent('chp2:media', { detail: { ouvert: true } }));
         };
         this._onSlideClose = () => {
             // Ne pas réafficher si le cartel est en cours de fermeture (outro)
             if (this.closeBtn && !this._closing) this.closeBtn.style.display = '';
             window.dispatchEvent(new CustomEvent('chp2:hide-close-cross'));
+            window.dispatchEvent(new CustomEvent('chp2:media', { detail: { ouvert: false } }));
         };
         window.addEventListener('slideviewer:open', this._onSlideOpen);
         window.addEventListener('slideviewer:close', this._onSlideClose);
