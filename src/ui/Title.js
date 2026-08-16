@@ -189,6 +189,10 @@ export class Title {
    * s'écrit normalement dessous et paraît à la fermeture.
    *
    * @param {boolean} masquee
+   * @returns {number} la DURÉE du geste, en ms. La carte s'en sert pour ne
+   *   construire son dessin qu'une fois la place libre — voir CompassMap.
+   *   C'est l'idiome déjà employé par DocumentOverlay.close() et
+   *   CompassMap._fold() : celui qui joue un geste dit combien il lui faut.
    */
   eclipse(masquee) {
     this._eclipsee = !!masquee;
@@ -216,7 +220,9 @@ export class Title {
           s.style.transform = 'translateY(-8px)';
         }, i * T.titre_eclipse_pas);
       });
-      return;
+      // Le dernier caractère part au bout de (n-1) pas, et son geste dure
+      // titre_eclipse_ms : voilà quand la place est vraiment libre.
+      return this._duree(T.titre_eclipse_ms, T.titre_eclipse_pas);
     }
 
     /* LE TITRE REVIENT COMME IL S'ÉCRIT — du premier caractère au dernier :
@@ -251,11 +257,64 @@ export class Title {
        jeton garantit qu'une éclipse plus récente ne se fasse pas défaire par le
        nettoyage d'une plus ancienne. Les caractères du titre, eux, GARDENT leur
        opacité en ligne : c'est ainsi qu'ils sont écrits (voir _ecrire). */
-    const total = this._chars().length * T.titre_retour_pas + T.titre_retour_ms + 40;
+    const total = this._duree(T.titre_retour_ms, T.titre_retour_pas);
     setTimeout(() => {
       if (jeton !== this._jetonEclipse) return;
       this._sousTitres((el) => { el.style.transition = ''; });
-    }, total);
+    }, total + 40);
+
+    return total;
+  }
+
+  /** Durée d'un geste échelonné : le dernier caractère part au bout de (n-1) pas. */
+  _duree(ms, pas) {
+    return ms + Math.max(0, this._chars().length - 1) * pas;
+  }
+
+  /**
+   * REMISE À PLAT DE L'ÉCLIPSE — instantanée, sans geste.
+   *
+   * Appelée à la frontière, dans le noir. C'est la GARANTIE qui rend le
+   * séquencement de la carte sans danger : celui-ci fait revenir les titres par
+   * une minuterie, et une minuterie peut être annulée (changement de scène
+   * pendant un repli, boussole démontée…). Sans cette remise à plat, un titre
+   * pourrait rester éclipsé pour toute la scène suivante — panne silencieuse et
+   * durable. Ici, on ne joue rien : on rend l'état neuf.
+   */
+  resetEclipse() {
+    this._eclipsee = false;
+    this._jetonEclipse++;                     // périme tout geste en vol
+    [this.el, this.subEl, this.partEl].forEach(el => {
+      if (el) el.style.transition = '';
+    });
+    this._sousTitres((el) => { el.style.opacity = ''; el.style.transform = ''; });
+  }
+
+  /* ═══════════════════════════════ La place laissée par la boussole ══ */
+
+  /**
+   * LA COLONNE SE REFERME QUAND LA BOUSSOLE N'EST PAS LÀ.
+   *
+   * Les titres s'écrivent à droite de la boussole ; tant qu'elle n'est pas
+   * dessinée — au tout début d'une scène, pendant un média, quand la carte est
+   * désactivée — cette place reste vide et la colonne paraît décrochée du bord.
+   * Les titres viennent donc l'occuper, et GLISSENT vers la droite quand la
+   * boussole se dessine.
+   *
+   * Le glissement est porté par le CSS (transition sur `left`, cadence
+   * MAP.titres_glisse) : on ne fait ici que nommer la position visée. Deux
+   * variables, deux places, aucune interpolation en JS.
+   *
+   * ⚠️ On n'anime PAS `transform` : les niveaux 2 et 3 s'en servent déjà pour
+   * leurs propres gestes (l'entrée qui monte, la sortie écrite du chapitre 1
+   * qui remonte de 6 px), et un style en ligne écraserait l'autre.
+   *
+   * @param {boolean} avecBoussole
+   */
+  decaler(avecBoussole) {
+    document.documentElement.style.setProperty(
+      '--col-titres-courant',
+      avecBoussole ? 'var(--col-titres)' : 'var(--col-titres-seul)');
   }
 
   /** Les caractères du titre de niveau 1, dans l'ordre où il s'écrit. */

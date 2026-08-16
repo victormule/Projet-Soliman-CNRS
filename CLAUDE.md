@@ -220,9 +220,14 @@ les alias torche supprimés.
 
 À cela s'ajoutent deux signaux du bus interne (`src/core/EventBus.js`, et non
 `window`) : `place:media` `{ouvert}` — un média passe devant, la boussole
-s'éclipse avec la flèche — et `carte:ouverte` `{ouvert}` — la carte se déplie,
-les titres lui laissent la place. Tous deux sont raccordés dans `app.js` : le
-composant qui émet ignore celui qui écoute.
+s'éclipse avec la flèche — et `carte:presence` `{presente}` — la boussole se
+dessine ou s'efface, les titres glissent en conséquence. Tous deux sont
+raccordés dans `app.js` : le composant qui émet ignore celui qui écoute.
+
+⚠️ **Un signal ne convient PAS quand il faut une réponse.** L'effacement des
+titres à l'ouverture de la carte est passé par un signal (`carte:ouverte`), puis
+par une PORTE (`compass.setEclipseTitres`) : la carte doit savoir combien de
+temps le geste demande pour ne tracer qu'ensuite. Un `bus.emit` ne rend rien.
 
 ## Progression du chapitre 2
 
@@ -292,14 +297,50 @@ figure **que ce qu'on a déjà parcouru** : un point n'apparaît, et la route qu
 mène ne se trace, qu'une fois l'endroit atteint. Le point courant s'illumine ;
 cliquer un point déjà visité y conduit.
 
-**LA CARTE PREND LA PLACE DES TITRES.** Dépliée, elle occupe exactement le coin
-où ils s'écrivent : ils s'ÉCLIPSENT (`Title.eclipse`) et reviennent au repli. La
-carte ne les connaît pas : elle émet `carte:ouverte`, `app.js` fait le
-rapprochement — même patron que `place:media` pour la flèche. Une éclipse plutôt
-qu'un effacement parce qu'on peut entrer dans une scène carte ouverte : le
-sous-titre s'écrit alors normalement dessous et paraît à la fermeture (`set()`
-n'écrit tout simplement pas ses caractères tant que l'éclipse dure — ils naissent
-à `opacity: 0`, c'est `eclipse(false)` qui les posera).
+**LA CARTE PREND LA PLACE DES TITRES — CHACUN SON TOUR.** Dépliée, elle occupe
+exactement le coin où ils s'écrivent. Les deux dessins ne doivent JAMAIS se
+chevaucher, dans un sens comme dans l'autre :
+
+```
+ouverture :  titres effacés  ──▶  puis le cadre se trace
+repli     :  cadre dé-tracé  ──▶  puis les titres reviennent
+```
+
+⚠️ **CE N'EST PAS UN SIGNAL DU BUS, ET C'EST VOULU.** Un signal se lance et
+s'oublie ; ici la carte a besoin d'une RÉPONSE — combien de temps le geste
+demande — pour savoir quand tracer. D'où une porte, `compass.setEclipseTitres()`,
+branchée dans `app.js` sur `Title.eclipse`, **qui rend la durée de son geste**.
+C'est l'idiome déjà employé par `DocumentOverlay.close()` et `CompassMap._fold()`
+— qui joue un geste dit ce qu'il lui faut. Mesuré : titre effacé à 402 ms, premier
+trait du cadre à 736 ms ; au repli, dernier trait à 398 ms, titre de retour à
+810 ms. Zéro image de chevauchement dans les deux sens.
+
+⚠️ Le `_buildPanel` différé teste `this.open` : on peut recliquer pendant
+l'attente, et construire un panneau dans une carte déjà refermée le laisserait
+orphelin à l'écran, hors de portée du repli.
+
+⚠️ **`Title.resetEclipse()` est appelé à la FRONTIÈRE, et c'est la garantie.**
+Le retour des titres passe par une minuterie, et une minuterie peut être annulée
+(changement de scène pendant un repli, boussole démontée) : sans cette remise à
+plat, un titre resterait éclipsé pour toute la scène suivante — panne
+silencieuse et durable. Dans le noir, on ne joue rien, on rend l'état neuf.
+
+Une éclipse plutôt qu'un effacement parce qu'on peut entrer dans une scène carte
+ouverte : le sous-titre s'écrit alors normalement dessous et paraît à la
+fermeture (`set()` n'écrit tout simplement pas ses caractères tant que l'éclipse
+dure — ils naissent à `opacity: 0`, c'est `eclipse(false)` qui les posera).
+
+**LA COLONNE SE REFERME QUAND LA BOUSSOLE N'EST PAS LÀ.** Les titres occupent sa
+place tant qu'elle n'est pas dessinée — début de scène (elle ne paraît qu'avec
+la flèche), média au premier plan, carte désactivée — et **glissent** vers la
+droite quand elle se dessine. Deux places, `--col-titres` et `--col-titres-seul`,
+une transition CSS sur `left` (`MAP.titres_glisse`) : le JS ne fait que nommer la
+place visée (`Title.decaler`), le CSS interpole. Ici un simple signal de bus
+suffit (`carte:presence`) : personne n'attend de réponse.
+
+⚠️ **On n'anime pas `transform` pour ce glissement.** Les niveaux 2 et 3 s'en
+servent déjà pour leurs propres gestes (l'entrée qui monte, la sortie écrite du
+chapitre 1 qui remonte de 6 px) : un style en ligne écraserait l'autre.
 
 ⚠️ **CE N'EST PAS UN FONDU, C'EST UN GESTE ÉCRIT.** Le titre du site est fait de
 caractères qui s'écrivent un à un ; le faire disparaître d'un bloc d'opacité
@@ -316,8 +357,9 @@ donc stables au redimensionnement :
 
 | Clé | Ce qu'elle déplace |
 |---|---|
-| `MAP.gauche_pct` / `MAP.haut_pct` | le coin haut-gauche de la BOUSSOLE (la carte s'ancre sur elle) |
-| `MAP.titres_gauche_pct` | le bord gauche des TITRES, publié en `--col-titres` par `poserColonne` |
+| `MAP.gauche_pct` / `MAP.haut_pct` | le coin haut-gauche de la BOUSSOLE (la carte s'ancre sur elle) — et, quand elle n'est pas dessinée, la place que prennent les titres (`--col-titres-seul`) |
+| `MAP.titres_gauche_pct` | le bord gauche des TITRES à côté d'elle, publié en `--col-titres` par `poserColonne` |
+| `MAP.titres_glisse` | la cadence du glissement de l'un à l'autre |
 
 ⚠️ **Les titres se règlent à part, et c'est voulu** : ajuster la boussole ne doit
 pas les entraîner. À garder au-delà de la boussole, sinon ils se chevauchent —

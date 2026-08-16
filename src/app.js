@@ -170,34 +170,60 @@ if (compass) {
   bus.on('place:media', ({ ouvert }) => compass.eclipse(!!ouvert));
 
   /* LA CARTE PREND LA PLACE DES TITRES. Dépliée, elle occupe exactement le
-     coin où ils s'écrivent : les laisser dessous ferait deux textes l'un sur
-     l'autre. Ils s'effacent donc pendant qu'elle est ouverte et reviennent
-     quand elle se referme — un aller-retour, pas une destruction : le contenu
-     reste en place, seule l'opacité bouge (Title.eclipse).
+     coin où ils s'écrivent : les laisser dessous ferait deux dessins l'un sur
+     l'autre. Ils s'effacent donc AVANT que le cadre ne se trace, et ne
+     reviennent qu'une fois le dé-tracé fini.
 
-     Le même patron que 'place:media' juste au-dessus : la carte ne connaît pas
-     les titres, elle annonce son état ; c'est ici, à la racine de composition,
-     que les deux se rencontrent. */
-  bus.on('carte:ouverte', ({ ouvert }) => title.eclipse(!!ouvert));
+     ⚠️ CE N'EST PAS UN SIGNAL DU BUS, ET C'EST VOULU. Un signal se lance et
+     s'oublie ; ici la carte a besoin d'une RÉPONSE — combien de temps le geste
+     demande — pour savoir quand tracer. D'où une porte, comme setOnJump : la
+     carte nomme ce qu'elle veut, la racine de composition sait à qui le
+     demander. Title.eclipse rend la durée de son geste. */
+  compass.setEclipseTitres((masquer) => title.eclipse(masquer));
+
+  /* LA COLONNE SE REFERME QUAND LA BOUSSOLE N'EST PAS LÀ. Les titres occupent
+     sa place tant qu'elle n'est pas dessinée, et GLISSENT vers la droite quand
+     elle paraît. Ici un simple signal suffit : personne n'attend de réponse. */
+  bus.on('carte:presence', ({ presente }) => title.decaler(!!presente));
 }
 
-/* ── 5ter. LE BORD GAUCHE DES TITRES ─────────────────────────────────────────
-   Les trois niveaux de titre s'écrivent à droite de la boussole. Leur bord se
-   règle À PART (MAP.titres_gauche_pct), et non par un écart calculé depuis la
-   boussole : ajuster la place de celle-ci ne doit pas emmener les titres avec
-   elle — c'est précisément ce qu'on veut pouvoir régler séparément.
+/* ── 5ter. LES DEUX PLACES DES TITRES ────────────────────────────────────────
+   Les trois niveaux de titre ont DEUX bords gauches, et glissent de l'un à
+   l'autre :
 
-   Publié en variable CSS parce que les titres sont placés par la feuille de
+     --col-titres       à droite de la boussole (MAP.titres_gauche_pct)
+     --col-titres-seul  à SA place, quand elle n'est pas dessinée
+                        (MAP.gauche_pct — le bord même de la colonne)
+
+   Sans cela, la colonne paraissait décrochée du bord chaque fois que la
+   boussole n'était pas là : au début d'une scène (elle ne paraît qu'avec la
+   flèche), pendant un média, ou sur un appareil où la carte est désactivée.
+
+   Le bord des titres se règle À PART de celui de la boussole, et non par un
+   écart calculé depuis elle : ajuster l'une ne doit pas emmener les autres.
+
+   Publié en variables CSS parce que les titres sont placés par la feuille de
    style : c'est le seul moyen que le réglage vive dans config.js sans être
-   recopié dans style.css. */
+   recopié dans style.css. La cadence du glissement y va aussi — c'est le CSS
+   qui l'interpole, le JS ne fait que nommer la place visée (Title.decaler). */
 function poserColonne() {
   const M = C.MAP;
-  if (M?.titres_gauche_pct == null) {
-    console.warn('[app] MAP.titres_gauche_pct manquant : les titres se posent ' +
-                 'contre le bord de l’écran.');
+  if (M?.titres_gauche_pct == null || M?.gauche_pct == null || M?.titres_glisse == null) {
+    console.warn('[app] MAP.titres_gauche_pct / gauche_pct / titres_glisse ' +
+                 'manquants : les titres se posent contre le bord de l’écran.');
   }
-  document.documentElement.style.setProperty(
-    '--col-titres', (M?.titres_gauche_pct ?? 0) + '%');
+  const r = document.documentElement.style;
+  r.setProperty('--col-titres',      (M?.titres_gauche_pct ?? 0) + '%');
+  r.setProperty('--col-titres-seul', (M?.gauche_pct        ?? 0) + '%');
+  r.setProperty('--col-glisse',      (M?.titres_glisse     ?? 0) + 'ms');
+
+  /* Au départ, la boussole n'est pas encore dessinée — et si la carte est
+     désactivée (MAP.active, ou appareil tactile) elle ne le sera jamais : les
+     titres tiennent alors la place SANS jamais glisser, puisque plus personne
+     n'émettra 'carte:presence'. */
+  if (!r.getPropertyValue('--col-titres-courant') || !carteActive) {
+    r.setProperty('--col-titres-courant', 'var(--col-titres-seul)');
+  }
 }
 poserColonne();
 
@@ -280,6 +306,13 @@ manager.onBoundary = ({ to }) => {
   const lieu = LIEUX[to];
   if (!lieu) console.warn(`[app] LIEUX : scène « ${to} » non déclarée — silence et titre du site.`);
   audio.enforceSilence(lieu?.sons ?? []);
+  /* ⚠️ L'ÉCLIPSE SE REMET À PLAT ICI, ET C'EST LA GARANTIE. La carte fait
+     revenir les titres par une minuterie (elle attend la fin de son dé-tracé) ;
+     une minuterie peut être annulée — changement de scène pendant un repli,
+     boussole démontée. Sans cette remise à plat, un titre resterait éclipsé
+     pour toute la scène suivante : une panne silencieuse et durable. Dans le
+     noir, on ne joue rien, on rend l'état neuf. */
+  title.resetEclipse();
   title.set(lieu?.titre ?? 'site');
   // Les niveaux 2 et 3 appartiennent à la scène qui les pose : elle les
   // redéclare en entrant, ou ils ne sont pas là.

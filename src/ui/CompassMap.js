@@ -182,6 +182,8 @@ export class CompassMap {
     this.drawing    = false;
     this.current    = null;
     this._onJump    = null;
+    /** Voir setEclipseTitres(). */
+    this._eclipserTitres = null;
     this._timers    = [];
     this._onKey     = null;
     this._nodeEls   = new Map();
@@ -198,6 +200,18 @@ export class CompassMap {
 
   /** @param {Function} fn  (to, part) => void */
   setOnJump(fn) { this._onJump = fn; }
+
+  /**
+   * LA PORTE DES TITRES. La carte se déplie exactement là où ils s'écrivent :
+   * elle doit donc pouvoir leur demander de partir, ET SAVOIR COMBIEN DE TEMPS
+   * cela prend, pour ne tracer son cadre qu'ensuite. Au repli, l'inverse : elle
+   * les rappelle une fois son dé-tracé fini.
+   *
+   * @param {function(boolean): number} fn  reçoit `true` pour effacer, `false`
+   *   pour rendre la place ; retourne la durée du geste en ms.
+   *   (app.js branche Title.eclipse — la carte ne connaît pas les titres.)
+   */
+  setEclipseTitres(fn) { this._eclipserTitres = fn; }
 
   /**
    * La carte se referme, POSÉMENT. Appelée par app.js à chaque demande de
@@ -230,6 +244,9 @@ export class CompassMap {
 
     if (masquee) {
       if (this.open) this._fold();
+      // Elle s'efface : sa place se libère, et les titres qui restent à
+      // l'écran (chapitre 1, par exemple) viennent l'occuper.
+      bus.emit('carte:presence', { presente: false });
       this.el.style.transition = `opacity ${ms}ms ease`;
       this.el.style.opacity = '0';
       this.el.style.pointerEvents = 'none';
@@ -239,6 +256,7 @@ export class CompassMap {
     }
 
     if (!this.visible) return;               // la flèche est partie entre-temps
+    bus.emit('carte:presence', { presente: true });
     this.el.style.transition = `opacity ${ms}ms ease`;
     this.el.style.opacity = '1';
     this.el.style.pointerEvents = '';
@@ -260,6 +278,11 @@ export class CompassMap {
 
     this.el.innerHTML = '<div class="cm-compass"></div><div class="cm-tip" aria-hidden="true"></div>';
     this.el.querySelector('.cm-compass').appendChild(this._dessinerBoussole());
+
+    /* ELLE SE DESSINE : LES TITRES LUI FONT DE LA PLACE. Le glissement part au
+       même instant que le tracé, et non avant — la place se libère à mesure
+       que la boussole l'occupe. */
+    bus.emit('carte:presence', { presente: true });
 
     this.drawing = true;
     this._addTimer(() => { this.drawing = false; }, this.C.draw_duration);
@@ -345,6 +368,10 @@ export class CompassMap {
 
     this._addTimer(() => {
       if (this.visible || !this.el) return;
+      // La place se libère à l'instant où elle commence à s'effacer : les
+      // titres glissent vers la gauche pendant son fondu, ils ne s'y
+      // succèdent pas.
+      bus.emit('carte:presence', { presente: false });
       this.el.style.transition = `opacity ${ms}ms ease`;
       this.el.style.opacity = '0';
       this.el.classList.remove('visible');
@@ -509,11 +536,13 @@ export class CompassMap {
     if (this.open) return;
     this.open = true;
 
-    /* LA CARTE PREND LA PLACE DES TITRES. Elle se déplie exactement dans le
-       coin où ils s'écrivent : ils s'effacent, et reviennent au repli.
-       La carte ne les connaît pas — elle annonce son état, app.js fait le
-       rapprochement. Même patron que 'place:media' pour la flèche. */
-    bus.emit('carte:ouverte', { ouvert: true });
+    /* LA CARTE PREND LA PLACE DES TITRES — ET ATTEND QU'ELLE SOIT LIBRE.
+       Elle se déplie exactement dans le coin où ils s'écrivent : les deux
+       dessins se chevauchaient le temps que les titres s'effacent. On demande
+       donc la place, on écoute COMBIEN DE TEMPS le geste demande, et le cadre
+       ne se trace qu'ensuite. C'est l'idiome de DocumentOverlay.close() : qui
+       joue un geste dit ce qu'il lui faut. */
+    const attente = instantane ? 0 : (this._eclipserTitres?.(true) ?? 0);
 
     const svg  = this.el.querySelector('.cm-compass svg');
     const tour = this.el.querySelector('.cm-turn');
@@ -538,7 +567,20 @@ export class CompassMap {
     }
     this._poser(this._survole);
 
-    this._buildPanel(k, S, instantane);
+    /* La boussole, elle, tourne et rétrécit TOUT DE SUITE : c'est le geste qui
+       répond au clic. Seul le CADRE attend que les titres aient fini de partir.
+       ⚠️ Le garde `this.open` : on peut recliquer avant la fin de l'attente, et
+       construire un panneau dans une carte déjà refermée le laisserait orphelin
+       à l'écran, hors de portée du repli. */
+    if (attente > 0) {
+      this._addTimer(() => {
+        if (!this.open) return;
+        this._buildPanel(k, S, instantane);
+      }, attente);
+    } else {
+      this._buildPanel(k, S, instantane);
+    }
+
     makeActivatable(this.el, { label: 'Fermer la carte du parcours' });
 
     this._onKey = (e) => {
@@ -566,11 +608,6 @@ export class CompassMap {
     if (!this.open) return 0;
     this.open = false;
 
-    // La place est rendue : le titre et le sous-titre reparaissent, à la
-    // cadence du repli (ils ne sont plus recouverts dès que le dé-tracé
-    // commence — inutile de les faire attendre la fin du geste).
-    bus.emit('carte:ouverte', { ouvert: false });
-
     if (this._onKey) { window.removeEventListener('keydown', this._onKey, true); this._onKey = null; }
     this._hideTip();
 
@@ -597,8 +634,21 @@ export class CompassMap {
     this._nodeEls.clear();
     if (this.el) makeActivatable(this.el, { label: 'Ouvrir la carte du parcours' });
 
-    if (!panel) return instantane ? 0 : this.C.fold_duration;
-    if (instantane) { panel.remove(); return 0; }
+    /* LES TITRES NE REVIENNENT QU'UNE FOIS LA PLACE RENDUE — pas dès le début
+       du repli. Le dé-tracé prend son temps (les points à rebours, puis les
+       routes, puis le cadre) ; les faire reparaître pendant, c'était deux
+       dessins l'un sur l'autre, exactement ce qu'on évite à l'ouverture.
+       Les deux sorties courtes (pas de panneau, repli instantané) rendent la
+       place immédiatement. */
+    if (!panel) {
+      this._eclipserTitres?.(false);
+      return instantane ? 0 : this.C.fold_duration;
+    }
+    if (instantane) {
+      panel.remove();
+      this._eclipserTitres?.(false);
+      return 0;
+    }
 
     const dur = this.C.fold_out;
     const pas = this.C.fold_stagger;
@@ -629,6 +679,8 @@ export class CompassMap {
     const total = rang * pas + dur;
     // Le panneau ne s'efface pas : il est déjà dé-tracé quand on le retire.
     this._addTimer(() => panel.remove(), total + 60);
+    // …et c'est seulement là que les titres reprennent leur place.
+    this._addTimer(() => this._eclipserTitres?.(false), total);
     return total;
   }
 

@@ -655,6 +655,10 @@ window.CONFIG = {
     gauche_pct:      3,
     haut_pct:        4,
     titres_gauche_pct: 8.2,
+    titres_glisse:   900,  // cadence du GLISSEMENT des titres, en ms. Ils se
+                            // portent au bord de la colonne tant que la
+                            // boussole n'y est pas, et glissent vers la
+                            // droite quand elle se dessine.
     panel_scale:     3.4,   // côté de la carte dépliée, en multiples de la
                             // taille d'une flèche
     compass_open:    0.55,  // taille de la boussole une fois la carte ouverte
