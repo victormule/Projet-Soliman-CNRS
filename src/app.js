@@ -181,30 +181,23 @@ if (compass) {
   bus.on('carte:ouverte', ({ ouvert }) => title.eclipse(!!ouvert));
 }
 
-/* ── 5ter. LA COLONNE HAUT-GAUCHE ────────────────────────────────────────────
-   Boussole, titre, sous-titre, titre de sous-partie : quatre éléments alignés,
-   UNE seule origine. CONFIG.MAP.left_pct donne le bord gauche de la colonne ;
-   la boussole s'y pose et les titres se décalent de sa largeur, plus un espace.
+/* ── 5ter. LE BORD GAUCHE DES TITRES ─────────────────────────────────────────
+   Les trois niveaux de titre s'écrivent à droite de la boussole. Leur bord se
+   règle À PART (MAP.titres_gauche_pct), et non par un écart calculé depuis la
+   boussole : ajuster la place de celle-ci ne doit pas emmener les titres avec
+   elle — c'est précisément ce qu'on veut pouvoir régler séparément.
 
-   Écrit en variables CSS parce que les titres sont placés par la feuille de
-   style tandis que la boussole se mesure en JS (sa taille suit celle d'une
-   flèche). Les publier ici, au même endroit, évite que les deux moitiés de
-   l'accord divergent.
-
-   ⚠️ Quand la carte n'est pas construite (MAP.active à false, ou appareil
-   tactile), le décalage vaut ZÉRO et les titres reprennent le bord de la
-   colonne. Ce n'est pas un repli qui doublerait un réglage : c'est l'absence
-   de boussole, et elle doit se voir. */
+   Publié en variable CSS parce que les titres sont placés par la feuille de
+   style : c'est le seul moyen que le réglage vive dans config.js sans être
+   recopié dans style.css. */
 function poserColonne() {
   const M = C.MAP;
-  if (M?.left_pct == null || M?.titres_gap == null) {
-    console.warn('[app] MAP.left_pct / MAP.titres_gap manquants : la colonne ' +
-                 'haut-gauche se pose contre le bord de l’écran.');
+  if (M?.titres_gauche_pct == null) {
+    console.warn('[app] MAP.titres_gauche_pct manquant : les titres se posent ' +
+                 'contre le bord de l’écran.');
   }
-  const S = carteActive ? refSizeFn() : 0;
-  const r = document.documentElement.style;
-  r.setProperty('--col-gauche',   (M?.left_pct ?? 0) + '%');
-  r.setProperty('--col-decalage', Math.round(S * (1 + (M?.titres_gap ?? 0))) + 'px');
+  document.documentElement.style.setProperty(
+    '--col-titres', (M?.titres_gauche_pct ?? 0) + '%');
 }
 poserColonne();
 

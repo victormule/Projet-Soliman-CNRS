@@ -636,20 +636,25 @@ window.CONFIG = {
     ordinateur_seulement: true,
 
     // ── MISE EN PLACE ─────────────────────────────────────────────────
-    // LA BOUSSOLE OUVRE LA COLONNE HAUT-GAUCHE : elle se pose à gauche du
-    // titre et du sous-titre, qui se décalent d'autant vers la droite. Elle a
-    // la TAILLE d'une flèche (CONFIG.ARROW). Sa place est réservée qu'un titre
-    // soit affiché ou non : elle ne bouge jamais d'une scène à l'autre.
-    left_pct:        3.5,   // % de la largeur — le bord gauche de la COLONNE
-                            // (boussole, puis titres décalés). C'est la seule
-                            // origine : style.css lit --col-gauche, écrit par
-                            // app.js à partir d'ici.
-    titres_centre_em: 2.1,  // centre vertical du bloc titre + sous-titre, en em
-                            // de la police de sous-titre, sous le haut du titre
-                            // (3,2 % ; le sous-titre s'empile à 2,6 em, ligne
-                            // de 1,6 em). La boussole s'y centre.
-    titres_gap:      0.42,  // espace entre la boussole et les titres, en
-                            // fraction de la taille de la boussole
+    // TROIS RÉGLAGES, TROIS EFFETS, tous en POUR CENT DU VIEWPORT — ils
+    // survivent donc à un redimensionnement et se lisent directement.
+    //
+    //   gauche_pct / haut_pct   le coin haut-gauche de la BOUSSOLE. La carte
+    //                           s'ancre sur elle : déplacer l'une déplace les
+    //                           deux. Baisser gauche_pct = vers la gauche ;
+    //                           monter haut_pct = vers le bas.
+    //   titres_gauche_pct       le bord gauche des TITRES (les trois niveaux),
+    //                           réglable À PART pour qu'un ajustement de la
+    //                           boussole ne les entraîne pas. À garder au-delà
+    //                           de la boussole, sinon ils se chevauchent.
+    //
+    // Repères : la boussole a la TAILLE d'une flèche (CONFIG.ARROW) ; le titre
+    // commence à 3,2 % de la hauteur et le sous-titre 2,6 em plus bas.
+    // La place de la boussole est RÉSERVÉE qu'un titre soit affiché ou non :
+    // elle ne bouge jamais d'une scène à l'autre.
+    gauche_pct:      3,
+    haut_pct:        4,
+    titres_gauche_pct: 9.6,
     panel_scale:     3.4,   // côté de la carte dépliée, en multiples de la
                             // taille d'une flèche
     compass_open:    0.55,  // taille de la boussole une fois la carte ouverte
@@ -794,6 +799,20 @@ window.CONFIG = {
   TIMING: {
     title_char_delay: 65,
     title_start:     800,
+
+    // ── LE TITRE S'EFFACE DEVANT LA CARTE, ET REVIENT ─────────────────
+    // Quand la carte du parcours se déplie, elle prend la place des titres.
+    // Ceux-ci ne se contentent pas d'un fondu : le titre du site est fait de
+    // caractères qui s'écrivent un à un, ils s'en vont donc de même.
+    //   _ms  : durée du geste de CHAQUE caractère
+    //   _pas : décalage entre deux caractères (0 = tous ensemble)
+    // Départ : du DERNIER caractère vers le premier — le titre reflue devant
+    // la carte, qui se déplie depuis la gauche. Retour : du premier au
+    // dernier, comme il s'écrit.
+    titre_eclipse_ms:  260,
+    titre_eclipse_pas:  16,
+    titre_retour_ms:   520,
+    titre_retour_pas:   34,
   },
 
 };

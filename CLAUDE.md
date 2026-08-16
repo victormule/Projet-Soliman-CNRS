@@ -293,26 +293,49 @@ mène ne se trace, qu'une fois l'endroit atteint. Le point courant s'illumine ;
 cliquer un point déjà visité y conduit.
 
 **LA CARTE PREND LA PLACE DES TITRES.** Dépliée, elle occupe exactement le coin
-où ils s'écrivent : ils s'ÉCLIPSENT (`Title.eclipse`, opacité seule — pas un
-effacement) et reviennent au repli. La carte ne les connaît pas : elle émet
-`carte:ouverte`, `app.js` fait le rapprochement — même patron que `place:media`
-pour la flèche. Une éclipse plutôt qu'un effacement parce qu'on peut entrer dans
-une scène carte ouverte : le sous-titre s'écrit alors normalement dessous et
-paraît à la fermeture.
+où ils s'écrivent : ils s'ÉCLIPSENT (`Title.eclipse`) et reviennent au repli. La
+carte ne les connaît pas : elle émet `carte:ouverte`, `app.js` fait le
+rapprochement — même patron que `place:media` pour la flèche. Une éclipse plutôt
+qu'un effacement parce qu'on peut entrer dans une scène carte ouverte : le
+sous-titre s'écrit alors normalement dessous et paraît à la fermeture (`set()`
+n'écrit tout simplement pas ses caractères tant que l'éclipse dure — ils naissent
+à `opacity: 0`, c'est `eclipse(false)` qui les posera).
 
-⚠️ **La colonne a UNE origine.** `CONFIG.MAP.left_pct` donne son bord gauche,
-`MAP.titres_gap` l'espace après la boussole ; `app.js` (`poserColonne`) les
-publie en variables CSS `--col-gauche` / `--col-decalage`, que `style.css`
-applique aux trois titres. C'est nécessaire parce que les titres sont placés par
-la feuille tandis que la boussole se MESURE en JS (sa taille suit celle d'une
-flèche) — les deux moitiés de l'accord doivent venir du même endroit. Sans
-boussole (`MAP.active` à false, ou appareil tactile), le décalage vaut zéro et
-les titres reprennent le bord de la colonne.
+⚠️ **CE N'EST PAS UN FONDU, C'EST UN GESTE ÉCRIT.** Le titre du site est fait de
+caractères qui s'écrivent un à un ; le faire disparaître d'un bloc d'opacité
+serait le seul endroit du site où sa typographie ne compterait plus. Les
+caractères refluent du DERNIER vers le premier — devant la carte, qui se déplie
+depuis la gauche — et reviennent du premier au dernier, comme ils s'écrivent.
+Cadences : `TIMING.titre_eclipse_ms` / `_pas` et `titre_retour_ms` / `_pas`
+(`_pas` à 0 = tous ensemble). Les niveaux 2 et 3, blocs d'un seul tenant,
+partent d'un souffle : c'est ce décalage entre les deux gestes qui fait une
+sortie plutôt qu'un fondu.
 
-⚠️ **La position verticale se DÉDUIT.** `MAP.titres_centre_em` donne le centre
-du bloc titre + sous-titre en em de la police de sous-titre, exactement l'unité
-dans laquelle `style.css` les empile (3,2 % puis + 2,6 em). La boussole s'y
-centre. Aucun nombre magique à tenir à jour de deux côtés.
+**TROIS RÉGLAGES DE PLACE, TROIS EFFETS, INDÉPENDANTS** — tous en % du viewport,
+donc stables au redimensionnement :
+
+| Clé | Ce qu'elle déplace |
+|---|---|
+| `MAP.gauche_pct` / `MAP.haut_pct` | le coin haut-gauche de la BOUSSOLE (la carte s'ancre sur elle) |
+| `MAP.titres_gauche_pct` | le bord gauche des TITRES, publié en `--col-titres` par `poserColonne` |
+
+⚠️ **Les titres se règlent à part, et c'est voulu** : ajuster la boussole ne doit
+pas les entraîner. À garder au-delà de la boussole, sinon ils se chevauchent —
+rien ne l'empêche automatiquement.
+
+⚠️ **La hauteur de la boussole ne se DÉDUIT plus des titres.** Elle se calculait
+depuis la façon dont ils s'empilent (3,2 % puis 2,6 em) pour se centrer sur leur
+bloc. Juste sur le papier, faux à l'œil : sur les scènes SANS sous-titre — la
+vitrine, la phrénologie — le bloc reste réservé sur deux lignes et la boussole
+se posait visiblement plus bas que le titre unique. Un réglage direct se voit et
+se corrige ; une déduction, non.
+
+⚠️ **`CompassMap.resize()` REPLACE toujours, ne redessine que si la taille a
+changé.** Les deux ne dépendent pas de la même chose : la place est un % du
+viewport, la taille est BORNÉE (`ARROW.size_min/size_max`). Sur un écran large
+où la taille est déjà saturée, élargir la fenêtre ne changeait rien du tout — la
+garde anti-re-render sortait avant le replacement, et la boussole restait sur
+place pendant que les titres, eux, suivaient leur % en CSS.
 
 **Un seul interrupteur** : `CONFIG.MAP.active`. À `false`, l'objet n'est jamais
 construit — pas de DOM, pas d'écouteur, pas de coût. `MAP.ordinateur_seulement`

@@ -68,6 +68,13 @@ export class Title {
 
     this._applyFont(this.el, this.config.FONTS?.title);
     this.el.innerHTML = this._html(genre);
+
+    /* ÉCRIRE SOUS UNE CARTE OUVERTE. On peut entrer dans une scène pendant que
+       la carte est dépliée : le nouveau titre s'écrirait alors par-dessus elle.
+       Les caractères naissent effacés (style.css : .char et .sep à opacity 0) —
+       il suffit donc de ne pas lancer l'écriture. C'est eclipse(false) qui les
+       posera, un à un, quand la carte se refermera. */
+    if (this._eclipsee) return;
     this._ecrire(depart);
   }
 
@@ -164,42 +171,101 @@ export class Title {
 
   /**
    * LA CARTE PREND LA PLACE DES TITRES. Dépliée, elle occupe exactement le coin
-   * où ils s'écrivent : ils s'effacent le temps qu'elle est ouverte, et
+   * où ils s'écrivent : ils s'en vont le temps qu'elle est ouverte, et
    * reviennent quand elle se referme.
    *
+   * ⚠️ CE N'EST PAS UN FONDU, C'EST UN GESTE ÉCRIT. Le titre du site est fait
+   * de caractères qui s'écrivent un à un ; le faire disparaître d'un bloc
+   * d'opacité serait le seul endroit du site où sa typographie ne compterait
+   * plus. Les caractères refluent donc du DERNIER vers le premier, devant la
+   * carte qui se déplie depuis la gauche, et reviennent du premier au dernier,
+   * comme ils s'écrivent. Cadences : TIMING.titre_eclipse_* et titre_retour_*.
+   *
    * ⚠️ C'EST UNE ÉCLIPSE, PAS UN EFFACEMENT — le même mot et la même idée que
-   * ArrowBase.eclipse() : on ne touche qu'à l'opacité, le contenu reste en
-   * place. Vider les titres ici obligerait la carte à savoir les réécrire, donc
-   * à connaître la scène courante ; et un titre de niveau 2 posé PENDANT que la
-   * carte est ouverte (on peut entrer dans une scène ainsi) serait perdu. Avec
-   * une éclipse, il s'écrit normalement dessous et paraît à la fermeture.
+   * ArrowBase.eclipse() : le contenu reste en place. Vider les titres ici
+   * obligerait la carte à savoir les réécrire, donc à connaître la scène
+   * courante ; et un titre de niveau 2 posé PENDANT que la carte est ouverte
+   * (on peut entrer dans une scène ainsi) serait perdu. Avec une éclipse, il
+   * s'écrit normalement dessous et paraît à la fermeture.
    *
    * @param {boolean} masquee
-   * @param {number}  [ms]  durée du fondu
    */
-  eclipse(masquee, ms = 320) {
+  eclipse(masquee) {
     this._eclipsee = !!masquee;
     const jeton = ++this._jetonEclipse;
+    const T = this.config.TIMING;
 
-    [this.el, this.subEl, this.partEl].forEach(el => {
-      if (!el) return;
-      el.style.transition = `opacity ${ms}ms ease`;
-      el.style.opacity    = masquee ? '0' : '';
+    if (masquee) {
+      /* LA CARTE CHASSE LE TITRE. Les caractères s'en vont un à un, du DERNIER
+         vers le premier, chacun soulevé de quelques pixels : la carte se déplie
+         depuis la gauche, le titre reflue devant elle. Les niveaux 2 et 3,
+         blocs d'un seul tenant, partent ensemble et sans attendre — c'est ce
+         décalage entre les deux gestes qui fait une sortie plutôt qu'un fondu. */
+      this._sousTitres((el) => {
+        el.style.transition = `opacity ${T.titre_eclipse_ms}ms ease, ` +
+                              `transform ${T.titre_eclipse_ms}ms cubic-bezier(0.55,0,0.45,1)`;
+        el.style.opacity    = '0';
+        el.style.transform  = 'translateY(-6px)';
+      });
+      this._chars().reverse().forEach((s, i) => {
+        s.style.transition = `opacity ${T.titre_eclipse_ms}ms ease, ` +
+                             `transform ${T.titre_eclipse_ms}ms cubic-bezier(0.55,0,0.45,1)`;
+        setTimeout(() => {
+          if (jeton !== this._jetonEclipse) return;
+          s.style.opacity   = '0';
+          s.style.transform = 'translateY(-8px)';
+        }, i * T.titre_eclipse_pas);
+      });
+      return;
+    }
+
+    /* LE TITRE REVIENT COMME IL S'ÉCRIT — du premier caractère au dernier :
+       c'est la même main qui repose ce qu'elle avait retiré. Les sous-titres
+       suivent, une fois le titre lancé. */
+    this._chars().forEach((s, i) => {
+      const sep = s.classList.contains('sep');
+      s.style.transition = `opacity ${T.titre_retour_ms}ms ease, ` +
+                           `transform ${T.titre_retour_ms}ms cubic-bezier(0.16,1,0.3,1)`;
+      setTimeout(() => {
+        if (jeton !== this._jetonEclipse) return;
+        // Les tirets ne montent pas à 1 : ils vivent en retrait (cf. _ecrire).
+        s.style.opacity   = sep ? '0.6' : '1';
+        s.style.transform = 'translateY(0)';
+      }, i * T.titre_retour_pas);
     });
 
-    /* ⚠️ LA TRANSITION EN LIGNE NE DOIT PAS SURVIVRE AU GESTE. Elle vaut 320 ms
-       ici, quand le sous-titre a la sienne (1,1 s, après 0,3 s d'attente) : la
-       laisser posée changerait, pour tout le reste de la scène, la façon dont
-       il s'en va. On la rend à la feuille de style une fois le fondu fini — et
-       le jeton garantit qu'une éclipse plus récente ne se fait pas défaire par
-       le nettoyage d'une plus ancienne. */
-    if (masquee) return;
     setTimeout(() => {
       if (jeton !== this._jetonEclipse) return;
-      [this.el, this.subEl, this.partEl].forEach(el => {
-        if (el) el.style.transition = '';
+      this._sousTitres((el) => {
+        el.style.transition = `opacity ${T.titre_retour_ms}ms ease, ` +
+                              `transform ${T.titre_retour_ms}ms cubic-bezier(0.16,1,0.3,1)`;
+        el.style.opacity    = '';
+        el.style.transform  = '';
       });
-    }, ms + 20);
+    }, T.titre_retour_pas * 3);
+
+    /* ⚠️ LES STYLES EN LIGNE DES SOUS-TITRES NE DOIVENT PAS SURVIVRE AU GESTE.
+       Le sous-titre a sa propre transition (1,1 s, après 0,3 s d'attente) : la
+       laisser remplacée changerait, pour tout le reste de la scène, la façon
+       dont il s'en va. On la rend à la feuille une fois le geste fini — et le
+       jeton garantit qu'une éclipse plus récente ne se fasse pas défaire par le
+       nettoyage d'une plus ancienne. Les caractères du titre, eux, GARDENT leur
+       opacité en ligne : c'est ainsi qu'ils sont écrits (voir _ecrire). */
+    const total = this._chars().length * T.titre_retour_pas + T.titre_retour_ms + 40;
+    setTimeout(() => {
+      if (jeton !== this._jetonEclipse) return;
+      this._sousTitres((el) => { el.style.transition = ''; });
+    }, total);
+  }
+
+  /** Les caractères du titre de niveau 1, dans l'ordre où il s'écrit. */
+  _chars() {
+    return [...(this.el?.querySelectorAll('.char, .sep') ?? [])];
+  }
+
+  /** Applique un geste aux niveaux 2 et 3, d'un seul tenant. */
+  _sousTitres(fn) {
+    [this.subEl, this.partEl].forEach((el) => { if (el) fn(el); });
   }
 
   /* ═════════════════════════════════════════════════════════ Communs ══ */

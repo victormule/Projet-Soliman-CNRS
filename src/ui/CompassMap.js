@@ -366,6 +366,15 @@ export class CompassMap {
   resize() {
     if (!this.visible || !this.el) return;
     const S = this._size();
+
+    /* ⚠️ LA PLACE SE REFAIT TOUJOURS, LE DESSIN NON. Les deux ne dépendent pas
+       de la même chose : la place est un POUR CENT du viewport, la taille est
+       BORNÉE (ARROW.size_min / size_max). Sur un écran large, où la taille est
+       déjà saturée, élargir la fenêtre ne changeait donc rien du tout — la
+       garde ci-dessous sortait avant le replacement, et la boussole restait
+       sur place pendant que les titres, eux, suivaient leur % en CSS. */
+    this._layout();
+
     if (S === this._lastSize) return;      // même garde qu'ArrowBase
     const etaitOuverte = this.open;
     this._lastSize = S;
@@ -403,20 +412,20 @@ export class CompassMap {
   }
 
   /**
-   * LA BOUSSOLE OUVRE LA COLONNE HAUT-GAUCHE. Elle se pose À GAUCHE du titre
-   * et du sous-titre, qui se décalent d'autant vers la droite (le décalage est
-   * publié par app.js en variable CSS — voir `poserColonne`, un seul endroit
-   * pour les deux moitiés de l'accord).
+   * LA BOUSSOLE OUVRE LA COLONNE HAUT-GAUCHE, à gauche du titre et du
+   * sous-titre. Sa place se lit directement dans la config, en pour cent du
+   * viewport : `MAP.gauche_pct` et `MAP.haut_pct` donnent son coin haut-gauche.
    *
-   * Verticalement, elle se CENTRE sur le bloc titre + sous-titre, plutôt que
-   * de s'aligner sur l'un des deux : c'est ce qui la fait lire comme le
-   * fleuron de l'ensemble, et non comme une quatrième ligne mal calée. La
-   * position se DÉDUIT de la façon dont les titres s'empilent (style.css :
-   * 3,2 % puis + 2,6 em, en em de la police de sous-titre) — aucun nombre
-   * magique à tenir à jour de deux côtés.
+   * ⚠️ DEUX RÉGLAGES ET RIEN DE DÉDUIT, C'EST VOULU. La hauteur se calculait
+   * naguère depuis la façon dont les titres s'empilent (3,2 % puis 2,6 em) pour
+   * centrer la boussole sur leur bloc. C'était juste sur le papier et faux à
+   * l'œil : sur les scènes SANS sous-titre — la vitrine, la phrénologie — le
+   * bloc reste réservé sur deux lignes et la boussole se posait visiblement
+   * plus bas que le titre unique. Un réglage direct se voit et se corrige ;
+   * une déduction, non.
    *
-   * La place ne dépend d'AUCUN titre réellement affiché : elle est réservée
-   * dans tous les cas, la boussole ne bouge donc jamais d'une scène à l'autre.
+   * La place ne dépend d'AUCUN titre réellement affiché : la boussole ne bouge
+   * donc jamais d'une scène à l'autre. La carte, elle, s'ancre sur la boussole.
    */
   _layout() {
     const vW = Math.max(this.config.MIN_SIZE.width,  window.innerWidth);
@@ -424,17 +433,9 @@ export class CompassMap {
     const S  = this._size();
     this._lastSize = S;
 
-    // Police du sous-titre : c'est l'unité dans laquelle les titres s'empilent.
-    const f  = this.config.FONTS?.subtitle;
-    const sf = f ? Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100))) : 11;
-
-    // Centre vertical du bloc titre + sous-titre, puis la boussole s'y centre.
-    const centre = vH * 0.032 + sf * this.C.titres_centre_em;
-    const top    = Math.round(centre - S / 2);
-    const left   = Math.round(vW * this.C.left_pct / 100);
-
     Object.assign(this.el.style, {
-      left: left + 'px', top: top + 'px',
+      left:  Math.round(vW * this.C.gauche_pct / 100) + 'px',
+      top:   Math.round(vH * this.C.haut_pct   / 100) + 'px',
       width: S + 'px', height: S + 'px',
     });
   }
