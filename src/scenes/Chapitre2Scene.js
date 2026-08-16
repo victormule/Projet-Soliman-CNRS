@@ -312,9 +312,24 @@ export class Chapitre2Scene extends Scene {
    * leaveTo('collaboration') ; la carte, elle, peut viser plus loin.
    */
   leaveTo(to, params = {}) {
+    if (!this.beginLeave()) return;   // un départ, un seul : les flèches partent avec
     this._pendingTo     = to;
     this._pendingParams = params;
     this._leaveToCollaboration();
+  }
+
+  /**
+   * LES CINQ ÉLÉMENTS QUI DOIVENT PARTIR. Le chapitre 2 est le seul à en avoir
+   * plusieurs à l'écran au fil de la visite : la flèche de l'ouverture, une
+   * flèche par installation, et la croix de fermeture d'un média.
+   *
+   * ⚠️ La liste doit être COMPLÈTE. C'est ici que se joue le défaut signalé :
+   * partir depuis une installation prend ~35 s (retour écrit + bougie +
+   * citation), et la flèche de la sous-partie restait visible et cliquable tout
+   * ce temps. Une flèche oubliée dans cette liste, c'est le défaut qui revient.
+   */
+  arrows() {
+    return [this._openingArrow, ...Object.values(this._partArrows), this._closeCross];
   }
 
   /** Destination réelle du départ en cours (défaut : l'espace collaboratif). */
@@ -326,12 +341,13 @@ export class Chapitre2Scene extends Scene {
   }
 
   _showOpeningArrow() {
-    if (!this.isActive) return;
+    if (!this.isActive || this.leaving) return;
     // Garantie explicite : aucune flèche de sous-partie ne doit subsister au
     // moment où la flèche opening se dessine (évite tout chevauchement visuel).
     Object.values(this._partArrows).forEach(a => a.hide());
     this._openPart = null;
-    this._openingArrow.show(() => this._leaveToCollaboration());
+    // Le clic passe par leaveTo() : UN SEUL CHEMIN, verrou et effacement compris.
+    this._openingArrow.show(() => this.leaveTo('collaboration'));
   }
 
   _leaveToCollaboration() {
@@ -436,7 +452,7 @@ export class Chapitre2Scene extends Scene {
   ─────────────────────────────────────────────────────────────────────────── */
 
   _showPartArrow(part) {
-    if (!this.isActive) return;
+    if (!this.isActive || this.leaving) return;
     const arrow = this._partArrows[part];
     if (!arrow) return;
     this._openPart = part;

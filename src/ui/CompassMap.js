@@ -36,6 +36,7 @@
  *   images/carte-source.svg.
  */
 
+import { bus } from '../core/EventBus.js';
 import { applyGoldenHover } from '../utils/helpers.js';
 import { makeActivatable, markDecorative } from '../utils/a11y.js';
 import { isVisited } from '../systems/Journey.js';
@@ -402,12 +403,20 @@ export class CompassMap {
   }
 
   /**
-   * Position : colonne des TITRES (et non celle de la flèche), parce que la
-   * boussole s'empile visuellement sous eux — un décalage de quelques pixels
-   * entre trois éléments alignés verticalement se lit comme une erreur.
-   * Hauteur : sous les trois niveaux de titre, dont la place est RÉSERVÉE
-   * qu'ils soient affichés ou non. La boussole ne bouge donc jamais d'une
-   * scène à l'autre, comme demandé.
+   * LA BOUSSOLE OUVRE LA COLONNE HAUT-GAUCHE. Elle se pose À GAUCHE du titre
+   * et du sous-titre, qui se décalent d'autant vers la droite (le décalage est
+   * publié par app.js en variable CSS — voir `poserColonne`, un seul endroit
+   * pour les deux moitiés de l'accord).
+   *
+   * Verticalement, elle se CENTRE sur le bloc titre + sous-titre, plutôt que
+   * de s'aligner sur l'un des deux : c'est ce qui la fait lire comme le
+   * fleuron de l'ensemble, et non comme une quatrième ligne mal calée. La
+   * position se DÉDUIT de la façon dont les titres s'empilent (style.css :
+   * 3,2 % puis + 2,6 em, en em de la police de sous-titre) — aucun nombre
+   * magique à tenir à jour de deux côtés.
+   *
+   * La place ne dépend d'AUCUN titre réellement affiché : elle est réservée
+   * dans tous les cas, la boussole ne bouge donc jamais d'une scène à l'autre.
    */
   _layout() {
     const vW = Math.max(this.config.MIN_SIZE.width,  window.innerWidth);
@@ -415,13 +424,14 @@ export class CompassMap {
     const S  = this._size();
     this._lastSize = S;
 
-    // Police du sous-titre : c'est l'unité dans laquelle les titres s'empilent
-    // (style.css : top: calc(3.2% + 2.6em) et + 5.0em, en em de CETTE police).
+    // Police du sous-titre : c'est l'unité dans laquelle les titres s'empilent.
     const f  = this.config.FONTS?.subtitle;
     const sf = f ? Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100))) : 11;
 
-    const top  = Math.round(vH * 0.032 + sf * this.C.sous_titres_em);
-    const left = Math.round(vW * this.C.left_pct / 100);
+    // Centre vertical du bloc titre + sous-titre, puis la boussole s'y centre.
+    const centre = vH * 0.032 + sf * this.C.titres_centre_em;
+    const top    = Math.round(centre - S / 2);
+    const left   = Math.round(vW * this.C.left_pct / 100);
 
     Object.assign(this.el.style, {
       left: left + 'px', top: top + 'px',
@@ -498,6 +508,12 @@ export class CompassMap {
     if (this.open) return;
     this.open = true;
 
+    /* LA CARTE PREND LA PLACE DES TITRES. Elle se déplie exactement dans le
+       coin où ils s'écrivent : ils s'effacent, et reviennent au repli.
+       La carte ne les connaît pas — elle annonce son état, app.js fait le
+       rapprochement. Même patron que 'place:media' pour la flèche. */
+    bus.emit('carte:ouverte', { ouvert: true });
+
     const svg  = this.el.querySelector('.cm-compass svg');
     const tour = this.el.querySelector('.cm-turn');
     const S    = this._size();
@@ -548,6 +564,11 @@ export class CompassMap {
   _fold(instantane = false) {
     if (!this.open) return 0;
     this.open = false;
+
+    // La place est rendue : le titre et le sous-titre reparaissent, à la
+    // cadence du repli (ils ne sont plus recouverts dès que le dé-tracé
+    // commence — inutile de les faire attendre la fin du geste).
+    bus.emit('carte:ouverte', { ouvert: false });
 
     if (this._onKey) { window.removeEventListener('keydown', this._onKey, true); this._onKey = null; }
     this._hideTip();

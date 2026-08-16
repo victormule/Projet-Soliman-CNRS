@@ -10,12 +10,26 @@ export class Scene {
     this._timers     = [];
     this._listeners  = [];
     this._abortCtrl  = null;
+
+    /**
+     * UN DÉPART EST-IL ENGAGÉ ? Posé par beginLeave(), rendu à false par
+     * enter(). Voir beginLeave() pour ce que cela garantit.
+     */
+    this._leaving = false;
+
+    /**
+     * Le verrou d'interaction. Les scènes le lèvent quand leur mise en place
+     * est finie et le referment en partant ; il vivait recopié dans chacune,
+     * il vit maintenant ici, avec beginLeave() qui le referme.
+     */
+    this._navigationActive = false;
   }
 
   /* ── Cycle de vie ─────────────────────────────────── */
 
   async enter(params = {}) {
     this.isActive   = true;
+    this._leaving   = false;
     this._abortCtrl = new AbortController();
   }
 
@@ -67,8 +81,45 @@ export class Scene {
      @param {Object} [params]  transmis à enter() de la destination
                                (ex. { part: 'invisibilisation' }) */
   leaveTo(to, params = {}) {
+    if (!this.beginLeave()) return;
     bus.emit('navigate', { to, ...params });
   }
+
+  /* ── Le départ s'engage : l'interface s'efface ─────────────────────────
+     UN DÉPART, UN SEUL — ET LA FLÈCHE PART AVEC.
+
+     Une sortie ÉCRITE dure : la bougie du chapitre 2 s'éteint et sa citation
+     se tape (une vingtaine de secondes), la fumée de l'« À Propos » passe, le
+     chapitre 4 fond au noir. Pendant tout ce temps la scène est encore là — et
+     ses flèches l'étaient aussi, visibles ET cliquables. Un second clic
+     rejouait alors la sortie par-dessus la première ; par la carte, on pouvait
+     demander une destination pendant qu'on partait déjà vers une autre.
+
+     beginLeave() ferme les deux portes d'un coup : le verrou de navigation, et
+     les flèches, qui s'effacent par hide() — donc en emmenant la boussole avec
+     elles (ArrowBase émet 'nav-arrow:hidden'). Le second appel rend false : la
+     scène sait ainsi qu'un départ court déjà et n'en rejoue pas la mise en
+     scène.
+
+     @returns {boolean} false si un départ est DÉJÀ engagé. */
+  beginLeave() {
+    if (this._leaving) return false;
+    this._leaving          = true;
+    this._navigationActive = false;
+    this.arrows().forEach(a => a?.hide?.());
+    return true;
+  }
+
+  /** Un départ est-il déjà engagé ? À tester avant de (re)montrer une flèche. */
+  get leaving() { return this._leaving; }
+
+  /**
+   * TOUTES les flèches de la scène — celles qu'un départ doit effacer.
+   * Redéfini par chaque scène qui en possède ; la liste doit être complète,
+   * sans quoi la flèche oubliée reste cliquable pendant toute la sortie.
+   * @returns {Array<{hide?: function}>}
+   */
+  arrows() { return []; }
 
   /* ── Déplacement SANS quitter la scène ────────────────
      Certaines scènes contiennent plusieurs LIEUX : les trois sous-parties du

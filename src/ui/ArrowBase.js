@@ -107,6 +107,7 @@ export class ArrowBase {
 
     this.el.style.transition = 'opacity 1.0s ease';
     this.el.style.opacity    = '1';
+    this.el.style.pointerEvents = 'auto';   // hide() l'avait retiré
     this.el.classList.add('visible');
 
     const svg = this.el.querySelector('svg');
@@ -293,6 +294,14 @@ export class ArrowBase {
     this.el.style.transition = `opacity ${ms}ms ease`;
     this.el.style.opacity    = '0';
     this.el.classList.remove('visible');
+
+    /* ⚠️ INACCESSIBLE TOUT DE SUITE, PAS À LA FIN DU FONDU. Le clic ne partait
+       qu'avec `onclick = null`, posé APRÈS ARROW.hide_duration : pendant tout
+       le fondu, la flèche était déjà invisible et pourtant encore cliquable.
+       On y arrive facilement — un départ par la carte efface la flèche, et la
+       souris se trouve rarement loin. `eclipse()` posait déjà cette ligne ;
+       hide(), qui est le geste DÉFINITIF, ne l'avait pas. */
+    this.el.style.pointerEvents = 'none';
 
     /* ⚠️ RENDRE LE FOCUS AVANT DE MASQUER — et ce n'est pas cosmétique.
        Ces éléments portent tabindex="0" : un CLIC SOURIS leur donne le focus.

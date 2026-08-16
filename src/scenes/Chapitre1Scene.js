@@ -111,6 +111,11 @@ export class Chapitre1Scene extends Scene {
    * Toute interruption (sortie de scène, navigation forcée, etc.) est absorbée
    * par le bloc try/catch pour éviter de casser la promesse d'entrée.
    */
+
+  /** La flèche de cette scène — un départ l'efface et la rend inaccessible.
+      Voir Scene.beginLeave(). */
+  arrows() { return [this._arrow]; }
+
   async enter(params = {}) {
     await super.enter(params);
 
@@ -273,12 +278,15 @@ export class Chapitre1Scene extends Scene {
     // Le sous-titre reste visible pendant la phase interactive
     this._showSubtitle();
 
-    // Affichage différé de la flèche de sortie
+    // Affichage différé de la flèche de sortie. Le clic passe par leaveTo() —
+    // UN SEUL CHEMIN pour quitter, celui qu'emprunte aussi la carte du
+    // parcours : c'est lui qui ferme le verrou et efface la flèche avant que
+    // la citation de sortie ne commence à se taper.
     this.addTimer(() => {
-      if (!this.isActive || this._isTransitioningOut) return;
+      if (!this.isActive || this._isTransitioningOut || this.leaving) return;
       this._arrow.show(() => {
         if (!this.isActive || this._isTransitioningOut || !this._interactiveReady) return;
-        this.transitionOutWithQuote();
+        this.leaveTo('collaboration');
       });
     }, 420);
 
@@ -303,6 +311,7 @@ export class Chapitre1Scene extends Scene {
    * particulier leaveTo('collaboration') ; la carte peut viser plus loin.
    */
   leaveTo(to, params = {}) {
+    if (!this.beginLeave()) return;   // un départ, un seul : la flèche part avec
     this._pendingTo     = to;
     this._pendingParams = params;
     this.transitionOutWithQuote();

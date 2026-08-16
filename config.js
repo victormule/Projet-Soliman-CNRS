@@ -636,14 +636,20 @@ window.CONFIG = {
     ordinateur_seulement: true,
 
     // ── MISE EN PLACE ─────────────────────────────────────────────────
-    // La boussole a la TAILLE d'une flèche (CONFIG.ARROW) et s'aligne sur
-    // la colonne des titres. Sa hauteur se calcule pour passer SOUS les
-    // trois niveaux de titre, qu'ils soient affichés ou non — la place est
-    // réservée dans tous les cas, pour que la boussole ne bouge jamais.
-    left_pct:        3.5,   // % de la largeur — même colonne que #site-title
-    sous_titres_em:  7.4,   // marge sous #site-title, en em de la police
-                            // de sous-titre (les titres s'empilent à 2,6 et
-                            // 5,0 em ; on passe sous le troisième)
+    // LA BOUSSOLE OUVRE LA COLONNE HAUT-GAUCHE : elle se pose à gauche du
+    // titre et du sous-titre, qui se décalent d'autant vers la droite. Elle a
+    // la TAILLE d'une flèche (CONFIG.ARROW). Sa place est réservée qu'un titre
+    // soit affiché ou non : elle ne bouge jamais d'une scène à l'autre.
+    left_pct:        3.5,   // % de la largeur — le bord gauche de la COLONNE
+                            // (boussole, puis titres décalés). C'est la seule
+                            // origine : style.css lit --col-gauche, écrit par
+                            // app.js à partir d'ici.
+    titres_centre_em: 2.1,  // centre vertical du bloc titre + sous-titre, en em
+                            // de la police de sous-titre, sous le haut du titre
+                            // (3,2 % ; le sous-titre s'empile à 2,6 em, ligne
+                            // de 1,6 em). La boussole s'y centre.
+    titres_gap:      0.42,  // espace entre la boussole et les titres, en
+                            // fraction de la taille de la boussole
     panel_scale:     3.4,   // côté de la carte dépliée, en multiples de la
                             // taille d'une flèche
     compass_open:    0.55,  // taille de la boussole une fois la carte ouverte

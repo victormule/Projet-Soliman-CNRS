@@ -415,12 +415,23 @@ body.peine-aim #cursor.hotspot::after {
 
 /* ══════════════════════════════════════════════════════════════════
    TITLES
+   ──────────────────────────────────────────────────────────────────
+   LA COLONNE HAUT-GAUCHE : boussole, titre, sous-titre, titre de
+   sous-partie. La boussole l'ouvre, à gauche ; les trois titres se
+   décalent d'autant.
+
+   --col-gauche et --col-decalage sont ÉCRITS PAR app.js (poserColonne)
+   à partir de CONFIG.MAP — une seule origine pour les deux moitiés de
+   l'accord, puisque les titres sont placés par cette feuille tandis
+   que la boussole se mesure en JS (sa taille suit celle d'une flèche).
+   Sans boussole (MAP.active à false, ou appareil tactile), le décalage
+   vaut zéro et les titres reprennent le bord de la colonne.
    ══════════════════════════════════════════════════════════════════ */
 
 #site-title {
   position: absolute;
   top: 3.2%;
-  left: 3.5%;
+  left: calc(var(--col-gauche) + var(--col-decalage));
   z-index: 15;
   pointer-events: none;
   text-transform: uppercase;
@@ -452,7 +463,7 @@ body.peine-aim #cursor.hotspot::after {
 #chapitre-subtitle {
   position: absolute;
   top: calc(3.2% + 2.6em);
-  left: 3.5%;
+  left: calc(var(--col-gauche) + var(--col-decalage));
   z-index: 15;
   max-width: 42%;
   line-height: 1.6;
@@ -476,7 +487,7 @@ body.peine-aim #cursor.hotspot::after {
 #chapitre-part-title {
   position: absolute;
   top: calc(3.2% + 5.0em);
-  left: 3.5%;
+  left: calc(var(--col-gauche) + var(--col-decalage));
   z-index: 15;
   max-width: 42%;
   line-height: 1.6;

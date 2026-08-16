@@ -74,6 +74,11 @@ export class Chapitre3Scene extends Scene {
 
   /* ── Cycle de vie ──────────────────────────────────────────────────────── */
 
+
+  /** La flèche de cette scène — un départ l'efface et la rend inaccessible.
+      Voir Scene.beginLeave(). */
+  arrows() { return [this._arrow]; }
+
   async enter(params = {}) {
     await super.enter(params);
 
@@ -189,10 +194,11 @@ export class Chapitre3Scene extends Scene {
   /* ── Flèche de retour ──────────────────────────────────────────────────── */
 
   _showArrow() {
-    if (!this.isActive) return;
+    if (!this.isActive || this.leaving) return;
     // Clic → sortie cinématographique déléguée au module (fondu + coupe audio),
     // qui émettra 'chp3:navigate-back'.
-    this._arrow.show(() => this._leaveToCollaboration());
+    // Le clic passe par leaveTo() : UN SEUL CHEMIN, verrou et effacement compris.
+    this._arrow.show(() => this.leaveTo('collaboration'));
   }
 
   /**
@@ -201,6 +207,7 @@ export class Chapitre3Scene extends Scene {
    * leaveTo('collaboration') ; la carte peut viser plus loin.
    */
   leaveTo(to, params = {}) {
+    if (!this.beginLeave()) return;   // un départ, un seul : la flèche part avec
     this._pendingTo     = to;
     this._pendingParams = params;
     this._leaveToCollaboration();

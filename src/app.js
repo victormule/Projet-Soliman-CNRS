@@ -168,7 +168,45 @@ if (compass) {
      revient avec elle. Émis par les scènes qui superposent un lecteur à leur
      décor — la règle d'auteur ne change pas d'un chapitre à l'autre. */
   bus.on('place:media', ({ ouvert }) => compass.eclipse(!!ouvert));
+
+  /* LA CARTE PREND LA PLACE DES TITRES. Dépliée, elle occupe exactement le
+     coin où ils s'écrivent : les laisser dessous ferait deux textes l'un sur
+     l'autre. Ils s'effacent donc pendant qu'elle est ouverte et reviennent
+     quand elle se referme — un aller-retour, pas une destruction : le contenu
+     reste en place, seule l'opacité bouge (Title.eclipse).
+
+     Le même patron que 'place:media' juste au-dessus : la carte ne connaît pas
+     les titres, elle annonce son état ; c'est ici, à la racine de composition,
+     que les deux se rencontrent. */
+  bus.on('carte:ouverte', ({ ouvert }) => title.eclipse(!!ouvert));
 }
+
+/* ── 5ter. LA COLONNE HAUT-GAUCHE ────────────────────────────────────────────
+   Boussole, titre, sous-titre, titre de sous-partie : quatre éléments alignés,
+   UNE seule origine. CONFIG.MAP.left_pct donne le bord gauche de la colonne ;
+   la boussole s'y pose et les titres se décalent de sa largeur, plus un espace.
+
+   Écrit en variables CSS parce que les titres sont placés par la feuille de
+   style tandis que la boussole se mesure en JS (sa taille suit celle d'une
+   flèche). Les publier ici, au même endroit, évite que les deux moitiés de
+   l'accord divergent.
+
+   ⚠️ Quand la carte n'est pas construite (MAP.active à false, ou appareil
+   tactile), le décalage vaut ZÉRO et les titres reprennent le bord de la
+   colonne. Ce n'est pas un repli qui doublerait un réglage : c'est l'absence
+   de boussole, et elle doit se voir. */
+function poserColonne() {
+  const M = C.MAP;
+  if (M?.left_pct == null || M?.titres_gap == null) {
+    console.warn('[app] MAP.left_pct / MAP.titres_gap manquants : la colonne ' +
+                 'haut-gauche se pose contre le bord de l’écran.');
+  }
+  const S = carteActive ? refSizeFn() : 0;
+  const r = document.documentElement.style;
+  r.setProperty('--col-gauche',   (M?.left_pct ?? 0) + '%');
+  r.setProperty('--col-decalage', Math.round(S * (1 + (M?.titres_gap ?? 0))) + 'px');
+}
+poserColonne();
 
 /* ── 6. Systems injectés ─────────────────────────────────────── */
 const systems = {
@@ -337,6 +375,7 @@ window.addEventListener('resize', () => {
 
     _lastVW = vw; _lastVH = vh;
     torch.resize();
+    poserColonne();
     // La colonne de titres (les trois niveaux) se redimensionne ICI, une fois,
     // pour tout le site. Quatre scènes en portaient chacune une copie — et
     // aucune ne traitait exactement les mêmes éléments que les autres.
@@ -357,6 +396,7 @@ window.addEventListener('resize', () => {
       _lastVW = window.innerWidth;
       _lastVH = window.innerHeight;
       torch.resize();
+      poserColonne();
       title.resize();
       manager.onResize();
       player.resize();

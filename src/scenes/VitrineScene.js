@@ -70,6 +70,11 @@ export class VitrineScene extends Scene {
     this._navigationActive = false;
   }
 
+
+  /** La flèche de cette scène — un départ l'efface et la rend inaccessible.
+      Voir Scene.beginLeave(). */
+  arrows() { return [this._arrow]; }
+
   async enter(params = {}) {
     await super.enter(params);
 
@@ -149,9 +154,11 @@ export class VitrineScene extends Scene {
       await this._waitUntil(t0, C.arrow.appear_at);
 
       // La flèche ouvre la navigation vers la phrénologie, mais seulement une
-      // fois _navigationActive passé à true.
+      // fois _navigationActive passé à true. Le départ passe par leaveTo() —
+      // UN SEUL CHEMIN pour quitter une scène, celui qu'emprunte aussi la
+      // carte du parcours : c'est lui qui ferme le verrou et efface la flèche.
       this._arrow.show(() => {
-        if (this._navigationActive) bus.emit('navigate', { to: 'phrenologie' });
+        if (this._navigationActive) this.leaveTo('phrenologie');
       });
 
       // ---------------------------------------------------------------------

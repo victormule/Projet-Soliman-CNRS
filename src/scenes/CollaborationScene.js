@@ -83,6 +83,11 @@ export class CollaborationScene extends Scene {
    *                                 accélérer l'apparition des cercles lors
    *                                 d'un retour depuis chapitre1.
    */
+
+  /** La flèche de cette scène — un départ l'efface et la rend inaccessible.
+      Voir Scene.beginLeave(). */
+  arrows() { return [this._arrow]; }
+
   async enter(params = {}) {
     await super.enter(params);
 
@@ -149,8 +154,10 @@ export class CollaborationScene extends Scene {
 
       // La flèche est visible, mais la navigation reste protégée par
       // _navigationActive tant que l'introduction n'est pas totalement finie.
+      // Départ par leaveTo() — UN SEUL CHEMIN pour quitter une scène, celui
+      // qu'emprunte aussi la carte : il ferme le verrou et efface la flèche.
       this._arrow.show(() => {
-        if (this._navigationActive) bus.emit('navigate', { to: 'phrenologie' });
+        if (this._navigationActive) this.leaveTo('phrenologie');
       });
 
       // ───────────────────────────────────────────────────────────────────────
@@ -173,7 +180,7 @@ export class CollaborationScene extends Scene {
         // navigation n'est pas activée.
         const callbacks = C.circles.actions.map((action) => () => {
           if (!this._navigationActive) return;
-          if (action) bus.emit('navigate', { to: action });
+          if (action) this.leaveTo(action);
         });
 
         this.circles.show(callbacks);

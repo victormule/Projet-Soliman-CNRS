@@ -40,6 +40,11 @@ export class Title {
 
     /** Titre de niveau 1 actuellement posé ('site' | 'collab' | null). */
     this._pose = null;
+
+    /** La colonne est-elle éclipsée (carte du parcours dépliée) ? */
+    this._eclipsee = false;
+    /** Jeton d'éclipse — voir eclipse(). */
+    this._jetonEclipse = 0;
   }
 
   /* ═══════════════════════════════════════════════ NIVEAU 1 — le site ══ */
@@ -153,6 +158,48 @@ export class Title {
       el.style.transform = '';
       requestAnimationFrame(() => { el.style.transition = ''; });
     });
+  }
+
+  /* ══════════════════════════════════════════ S'effacer, sans partir ══ */
+
+  /**
+   * LA CARTE PREND LA PLACE DES TITRES. Dépliée, elle occupe exactement le coin
+   * où ils s'écrivent : ils s'effacent le temps qu'elle est ouverte, et
+   * reviennent quand elle se referme.
+   *
+   * ⚠️ C'EST UNE ÉCLIPSE, PAS UN EFFACEMENT — le même mot et la même idée que
+   * ArrowBase.eclipse() : on ne touche qu'à l'opacité, le contenu reste en
+   * place. Vider les titres ici obligerait la carte à savoir les réécrire, donc
+   * à connaître la scène courante ; et un titre de niveau 2 posé PENDANT que la
+   * carte est ouverte (on peut entrer dans une scène ainsi) serait perdu. Avec
+   * une éclipse, il s'écrit normalement dessous et paraît à la fermeture.
+   *
+   * @param {boolean} masquee
+   * @param {number}  [ms]  durée du fondu
+   */
+  eclipse(masquee, ms = 320) {
+    this._eclipsee = !!masquee;
+    const jeton = ++this._jetonEclipse;
+
+    [this.el, this.subEl, this.partEl].forEach(el => {
+      if (!el) return;
+      el.style.transition = `opacity ${ms}ms ease`;
+      el.style.opacity    = masquee ? '0' : '';
+    });
+
+    /* ⚠️ LA TRANSITION EN LIGNE NE DOIT PAS SURVIVRE AU GESTE. Elle vaut 320 ms
+       ici, quand le sous-titre a la sienne (1,1 s, après 0,3 s d'attente) : la
+       laisser posée changerait, pour tout le reste de la scène, la façon dont
+       il s'en va. On la rend à la feuille de style une fois le fondu fini — et
+       le jeton garantit qu'une éclipse plus récente ne se fait pas défaire par
+       le nettoyage d'une plus ancienne. */
+    if (masquee) return;
+    setTimeout(() => {
+      if (jeton !== this._jetonEclipse) return;
+      [this.el, this.subEl, this.partEl].forEach(el => {
+        if (el) el.style.transition = '';
+      });
+    }, ms + 20);
   }
 
   /* ═════════════════════════════════════════════════════════ Communs ══ */

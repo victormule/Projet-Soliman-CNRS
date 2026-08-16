@@ -218,6 +218,12 @@ les alias torche supprimés.
 | `chp2:media` `{ouvert}` | sous-parties chp2 | scène (efface flèche + boussole) |
 | `chp4:listen` `{ouvert}` | chp4-bubbles | scène (efface flèche + boussole) |
 
+À cela s'ajoutent deux signaux du bus interne (`src/core/EventBus.js`, et non
+`window`) : `place:media` `{ouvert}` — un média passe devant, la boussole
+s'éclipse avec la flèche — et `carte:ouverte` `{ouvert}` — la carte se déplie,
+les titres lui laissent la place. Tous deux sont raccordés dans `app.js` : le
+composant qui émet ignore celui qui écoute.
+
 ## Progression du chapitre 2
 
 Déblocage séquentiel des crânes 136 → 137 → 138 (voir `chp2-progress.js`).
@@ -279,10 +285,34 @@ Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
 
 ## La carte du parcours (boussole, haut-gauche)
 
-Une boussole de la taille d'une flèche, alignée sur la colonne des titres. Elle
-se déplie en une carte du site où ne figure **que ce qu'on a déjà parcouru** :
-un point n'apparaît, et la route qui y mène ne se trace, qu'une fois l'endroit
-atteint. Le point courant s'illumine ; cliquer un point déjà visité y conduit.
+Une boussole de la taille d'une flèche, qui **ouvre la colonne haut-gauche** :
+elle se pose à GAUCHE du titre et du sous-titre, qui se décalent d'autant, et
+se centre verticalement sur eux. Elle se déplie en une carte du site où ne
+figure **que ce qu'on a déjà parcouru** : un point n'apparaît, et la route qui y
+mène ne se trace, qu'une fois l'endroit atteint. Le point courant s'illumine ;
+cliquer un point déjà visité y conduit.
+
+**LA CARTE PREND LA PLACE DES TITRES.** Dépliée, elle occupe exactement le coin
+où ils s'écrivent : ils s'ÉCLIPSENT (`Title.eclipse`, opacité seule — pas un
+effacement) et reviennent au repli. La carte ne les connaît pas : elle émet
+`carte:ouverte`, `app.js` fait le rapprochement — même patron que `place:media`
+pour la flèche. Une éclipse plutôt qu'un effacement parce qu'on peut entrer dans
+une scène carte ouverte : le sous-titre s'écrit alors normalement dessous et
+paraît à la fermeture.
+
+⚠️ **La colonne a UNE origine.** `CONFIG.MAP.left_pct` donne son bord gauche,
+`MAP.titres_gap` l'espace après la boussole ; `app.js` (`poserColonne`) les
+publie en variables CSS `--col-gauche` / `--col-decalage`, que `style.css`
+applique aux trois titres. C'est nécessaire parce que les titres sont placés par
+la feuille tandis que la boussole se MESURE en JS (sa taille suit celle d'une
+flèche) — les deux moitiés de l'accord doivent venir du même endroit. Sans
+boussole (`MAP.active` à false, ou appareil tactile), le décalage vaut zéro et
+les titres reprennent le bord de la colonne.
+
+⚠️ **La position verticale se DÉDUIT.** `MAP.titres_centre_em` donne le centre
+du bloc titre + sous-titre en em de la police de sous-titre, exactement l'unité
+dans laquelle `style.css` les empile (3,2 % puis + 2,6 em). La boussole s'y
+centre. Aucun nombre magique à tenir à jour de deux côtés.
 
 **Un seul interrupteur** : `CONFIG.MAP.active`. À `false`, l'objet n'est jamais
 construit — pas de DOM, pas d'écouteur, pas de coût. `MAP.ordinateur_seulement`
@@ -553,6 +583,35 @@ attentes de scène rejettent aussitôt l'avortement, seuls quelques awaits hors
 lancement). Dépassé, on part quand même, en le disant.
 
 ## Un seul chemin pour quitter une scène : `leaveTo(to)`
+
+**UN DÉPART, UN SEUL — ET LA FLÈCHE PART AVEC.** `Scene.beginLeave()` ouvre
+TOUT départ : il ferme le verrou de navigation et efface les flèches déclarées
+par `Scene.arrows()`. Appelé une seconde fois, il rend `false` — la scène sait
+alors qu'un départ court déjà et ne rejoue pas sa mise en scène.
+
+Sans lui, une sortie ÉCRITE laissait ses flèches vivantes tout du long : partir
+d'une installation du chapitre 2 prend **35 s** (retour écrit, bougie,
+citation), pendant lesquelles la flèche restait visible et **cliquable**. Par
+la carte, on pouvait demander une destination alors qu'on partait déjà vers une
+autre.
+
+⚠️ **`arrows()` doit être COMPLET.** Le chapitre 2 en déclare cinq (la flèche de
+l'ouverture, une par installation, la croix de fermeture d'un média) ; une
+flèche oubliée dans cette liste, c'est le défaut qui revient — en silence.
+
+⚠️ **`ArrowBase.hide()` rend la flèche inaccessible TOUT DE SUITE**
+(`pointer-events: none`), pas à la fin du fondu. Le clic ne partait qu'avec
+`onclick = null`, posé après `ARROW.hide_duration` : pendant tout le fondu la
+flèche était déjà invisible et pourtant encore cliquable. `eclipse()` posait
+déjà cette ligne ; `hide()`, qui est le geste DÉFINITIF, ne l'avait pas.
+
+⚠️ **Toutes les flèches passent par `leaveTo`**, y compris celles de la vitrine,
+de l'espace collaboratif (cercles romains compris) et du chapitre 1, qui
+émettaient encore `bus.emit('navigate')` ou appelaient directement leur sortie
+écrite. Un chemin qui contourne `leaveTo` contourne le verrou.
+Corollaire : `_showArrow()` / `_showOpeningArrow()` / `_showPartArrow()` testent
+`this.leaving` — un moteur de chapitre peut réémettre son signal « prêt »
+pendant qu'on s'en va, et redessinerait sinon une flèche sur une scène en fuite.
 
 Dix `bus.emit('navigate')` portaient une destination écrite en dur. Les scènes
 qui ont une sortie ÉCRITE (la bougie et la citation du chapitre 2, la fumée de

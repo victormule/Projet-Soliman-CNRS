@@ -121,6 +121,11 @@ export class PhrenologieScene extends Scene {
    *
    * @param {Object} params - Paramètres éventuels de navigation entrante.
    */
+
+  /** La flèche de cette scène — un départ l'efface et la rend inaccessible.
+      Voir Scene.beginLeave(). */
+  arrows() { return [this._arrow]; }
+
   async enter(params = {}) {
     await super.enter(params);
 
@@ -358,9 +363,12 @@ export class PhrenologieScene extends Scene {
    */
   leaveTo(to, params = {}) {
     if (!this._navigationActive) return;
+    // Le verrou et l'effacement de la flèche AVANT la fumée : elle dure ~2,2 s,
+    // pendant lesquelles la flèche restait cliquable. beginLeave() ferme aussi
+    // _navigationActive — la garde ci-dessus suffit donc pour les clics suivants.
+    if (!this.beginLeave()) return;
     const wait = this._docOverlay.close() || 0;
     if (wait > 0) {
-      this._navigationActive = false;
       this.addTimer(() => bus.emit('navigate', { to, ...params }), wait);
     } else {
       bus.emit('navigate', { to, ...params });
