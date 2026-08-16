@@ -151,7 +151,7 @@ Toujours chercher par NOM DE CLÉ, jamais par chemin.
 | Voile derrière un document ouvert : `DOCS.overlay.veil_opacity` (0 = image nue, 1 = noir) et `veil_hides_torch` (la torche s'efface pour qu'on voie l'image ailleurs que dans son halo) | `config.js` |
 | **Carte du parcours** : l'interrupteur `MAP.active`, la réserve à l'ordinateur, les libellés des points, les cadences | `config.js` → `MAP` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
-| Chapitre 2 : sous-titre, bougies, ambiance invisibilisation | `Chapitre2/chp2-src/chp2-config.js` |
+| Chapitre 2 : sous-titre, bougies, ambiance invisibilisation, **torche du journal (« Peine démesurée »)** | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : **sous-titre**, textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
 | Chapitre 4 : sous-titre, mise en page (photo/dessin), palette, **chronologie du dessin**, vie du dessin, **libellés + sons des bulles**, carte | `Chapitre4/chp4-src/chp4-config.js` |
 
@@ -246,6 +246,23 @@ Rejouer l'expérience « première visite » :
 `setTarget(fraction)` pose la taille, `grow(durationMs)` l'anime, `setCentered()`
 dit « fixe » ou « suit ». **C'est tout.** Ne pas réintroduire de « cible » en
 pixels : seule la fraction survit à un redimensionnement.
+
+**Un chapitre qui veut la même lumière prend le même système, pas un autre.**
+`new TorchSystem(config, canvas)` accepte un canvas au choix, et l'instance se
+défait par `destroy()`. C'est ce que fait « Une peine démesurée » (chapitre 2) :
+torche FIXE au centre, grande, la page bien éclairée et seuls les bords plus
+sombres — réglée dans `chp2-config.js` → `peine.torch`.
+⚠️ Ce qu'on ne pouvait PAS réutiliser, c'est le canvas : `#overlay-canvas` vit
+dans `#app` à z 1, et `#chapitre2-root` est un contexte d'empilement à z 500 —
+vu de là, il est enterré. D'où le canvas propre à l'installation (`.pd-torche`,
+`position: fixed` car le journal DÉFILE sous lui).
+⚠️ **L'interface passe au-dessus sans qu'on ait rien à déclarer** : ce canvas
+est confiné dans `#chapitre2-root` (plafonné à 500 vu de `#app`) quand la
+flèche de retour est à z 9999 et la boussole, les titres et le plein écran à
+z 600. C'est structurel, pas un réglage.
+⚠️ Une instance de chapitre NON détruite laisserait à chaque visite une boucle
+`requestAnimationFrame` perpétuelle et deux écouteurs de pointeur sur
+`document`. `destroy()` est appelé dans le `destroy()` du module.
 
 Ce qui a été supprimé, et pourquoi il ne faut pas le refaire :
 - `updateTarget(page)` devinait la taille depuis un numéro de page et des alias
@@ -389,15 +406,37 @@ invisible dans la scène suivante.
 donc l'or du survol ne s'effaçait plus JAMAIS et la carte finissait toute
 allumée. Même piège que celui du curseur, plus bas.
 
-## Le noir est aussi un SILENCE (audit d'août 2026)
+## La frontière : chaque scène DÉCLARE ce qui est vrai chez elle
 
 `SceneManager.go()` garantissait le noir entre deux scènes ; il garantit
-maintenant aussi le silence. Entre `exit()` et `enter()` il tient un
-**rendez-vous dans le noir** (`onBoundary`) dont il ignore le contenu ; `app.js`
-y appelle `audio.enforceSilence(AMBIANCE[destination])`.
+maintenant aussi le silence **et le titre**. Entre `exit()` et `enter()` il
+tient un **rendez-vous dans le noir** (`onBoundary`) dont il ignore le contenu ;
+`app.js` y lit **une seule table**, `LIEUX` :
 
-**Chaque scène DÉCLARE ce qu'on entend chez elle**, dans la table `AMBIANCE`
-d'`app.js` — et tout ce qui n'est pas déclaré se tait à l'entrée.
+```js
+const LIEUX = {
+  vitrine:       { sons: ['musee'],           titre: 'site'   },
+  collaboration: { sons: ['musee', 'collab'], titre: 'collab' },
+  chapitre2:     { sons: [],                  titre: 'collab' },
+  …
+};
+```
+→ `audio.enforceSilence(sons)`, `title.set(titre)`, `title.clearChapter()`.
+
+**Tout ce qui n'est pas déclaré n'est pas là quand on entre.** Une scène ajoutée
+sans ligne entre dans le silence, sous le titre du site, et le dit en console.
+
+⚠️ **Pourquoi une table, et pas un réglage par scène.** Ce qu'il faut garder
+dépend de la scène qui ARRIVE, pas de celle qui part : une scène ne peut donc
+pas porter seule la réponse. C'était le défaut d'origine **deux fois** — chaque
+`exit()` devinait sa destination pour le son, `CollaborationScene` la devinait
+pour le titre (`swapSiteTitle`, supprimé). Les deux devinettes étaient justes
+tant qu'on n'accédait aux chapitres QUE par l'espace collaboratif ; la carte du
+parcours a ouvert d'autres routes et les deux se sont mises à mentir. Mesuré :
+le musée jouait par-dessus les chapitres 3 et 4 ; « Abounaddara — CNRS — 2026 »
+s'affichait au-dessus d'un chapitre (aller de la phrénologie DIRECTEMENT au
+chapitre 2, c'est ne jamais passer par `CollaborationScene`), et revenir d'un
+chapitre à la vitrine gardait « Espace collaboratif » au-dessus du musée.
 
 ⚠️ **Pourquoi une table, et pas un réglage par scène.** Le sens de « garder »
 dépend de la scène qui ARRIVE, pas de celle qui part : une scène ne peut donc
@@ -414,9 +453,45 @@ du tronc commun (l'espace collaboratif l'atténue à zéro en entrant et le
 rétablit en partant), il les traverse donc sans coupure. Aucun chapitre ne le
 déclare : il s'arrête, quel que soit le chemin emprunté.
 
-⚠️ **Une scène ajoutée sans ligne dans `AMBIANCE` entre dans le silence complet
-et le dit en console.** C'est le bon mode de panne : on entend un manque, on ne
+⚠️ **Une scène ajoutée sans ligne dans `LIEUX` entre dans le silence complet et
+le dit en console.** C'est le bon mode de panne : on entend un manque, on ne
 subit pas un débordement.
+
+## La colonne de titres : trois niveaux, un seul propriétaire
+
+`src/ui/Title.js` possède les trois — `#site-title`, `#chapitre-subtitle`,
+`#chapitre-part-title` — et **rien d'autre n'y touche**.
+
+| Niveau | Qui décide | Où |
+|---|---|---|
+| 1 · « Abounaddara — CNRS — 2026 » / « Espace collaboratif » | la table `LIEUX` | `app.js`, appliqué à la frontière |
+| 2 · sous-titre du chapitre | la scène, en entrant | `CHPx.subtitle` → `title.showSubtitle()` |
+| 3 · titre de sous-partie | la scène, à l'ouverture | `CHP2.parts[part]` → `title.showPart()` |
+
+`Title.set()` est **idempotent** : redemander le titre déjà posé ne le réécrit
+pas (sans quoi il se retaperait à chaque passage d'une scène du musée à une
+autre). La bascule se joue à la frontière, donc **sur un écran noir** : c'est
+ce qui a permis de retirer le fondu-vers-le-haut `.fading-out` et son réglage
+`TITLE_SWAP_MS` — 620 ms d'attente avant un geste que personne ne regardait.
+
+`title.clearChapter()` remet les niveaux 2 et 3 à zéro à chaque frontière. Ce
+n'est pas un doublon des `exit()` de chapitre, c'est la GARANTIE : un sous-titre
+ne peut plus survivre au chapitre qui l'a écrit, quel que soit le chemin pris.
+⚠️ Il efface aussi les **styles en ligne** : la sortie écrite du chapitre 1
+estompe son sous-titre en posant `opacity:0` à la main (son geste remonte, quand
+le geste ordinaire du site descend) et ne les nettoie que 900 ms plus tard —
+quitter entre-temps laissait un `opacity:0` sur l'élément PARTAGÉ, et le
+sous-titre du chapitre suivant recevait sa classe `.visible` en restant
+invisible. Un style en ligne bat toujours une feuille.
+
+⚠️ **Le niveau 3 du chapitre 2 est VIDE par choix éditorial** (`chp2-config.js`
+→ `parts`, trois chaînes vides). Ne pas le lire comme une panne.
+
+Quatre scènes portaient chacune une copie mot pour mot de `_showSubtitle` /
+`_hideSubtitle` / `_applySubtitleFont`, et cinq une copie du recalcul de taille
+au redimensionnement — sans que deux traitent tout à fait les mêmes éléments.
+Une seule mécanique reste ; `title.resize()` est appelé **une fois**, dans
+`app.js`.
 
 ⚠️ **`stopPhrenoSound()` ne rétablit plus le musée.** Elle le faisait — c'était
 décider, depuis l'AudioManager, de ce qu'on entendrait APRÈS. Son unique
@@ -429,6 +504,53 @@ des **WeakRef** — jamais l'élément (une référence forte recréerait la fui
 d'arbre détaché documentée plus bas). À la frontière, tout média encore en
 lecture est mis en pause ET **dénoncé en console**, nommément. Les modules de
 chapitre restent responsables de leurs médias.
+
+## Le SceneManager : quatre étapes, et aucune ne peut geler les autres
+
+```
+await unwind()            → l'entrée en cours est dénouée
+await currentScene.exit() → noir garanti
+await onBoundary()        → silence + titre garantis
+await nextScene.enter()   → visible garanti
+```
+
+**On ne démonte pas une scène qui est encore en train de se monter.** Une
+chorégraphie d'entrée est longue (17 s pour la vitrine) et rien n'interdit de
+partir pendant qu'elle se joue — la carte du parcours le permet. `go()`
+interrompt donc la scène (`Scene.interrupt()`, un simple avortement du signal),
+**attend que son `enter()` se dénoue**, et sort seulement ensuite.
+
+Trois trous de contrat, chacun suffisant à lui seul pour **bloquer le site
+définitivement, sans un mot en console** (mesuré : départ demandé à 900 ms de
+l'entrée de la vitrine) :
+
+1. **`Scene.wait()` ignorait un signal DÉJÀ avorté.** Un `AbortSignal` déjà
+   déclenché n'émettra plus jamais `abort` : l'écouteur ne servait à rien et
+   l'attente se résolvait normalement. L'entrée interrompue continuait donc de
+   se jouer — la vitrine reprenait à 2159 ms et **annonçait son arrivée à
+   7115 ms**, alors qu'on était au chapitre 4 depuis longtemps (titre d'onglet,
+   annonce au lecteur d'écran, point de la carte : tous faux).
+2. **`TorchSystem.fadeOut()` lâchait sa promesse quand on la préemptait.**
+   `grow()` commence par `cancelFade()`, qui annulait le rAF **sans régler la
+   promesse** que les `exit()` attendent. `exit()` n'est jamais revenu,
+   `isTransitioning` est resté vrai, plus aucune navigation n'est passée.
+   `cancelFade()` RÉSOUT désormais — l'appelant demande « préviens-moi quand
+   cette extinction ne t'appartient plus », pas « garantis-moi le noir ».
+3. **`go()` n'attendait pas l'`enter()` en vol**, si bien que sortie et entrée
+   s'écrivaient l'une par-dessus l'autre.
+
+⚠️ **Une scène qu'on a quittée n'annonce pas son arrivée** :
+`Scene.announceEntered()` porte la garde, en un seul endroit plutôt que répétée
+dans les sept scènes. Ne pas revenir à `bus.emit('scene:entered')` en direct.
+
+⚠️ **L'étape `exit()` est isolée dans son propre `try`.** Une sortie qui échoue
+ne doit pas empêcher d'ARRIVER : sinon la moindre erreur de nettoyage laissait
+le visiteur nulle part, sur un écran noir, sans plus aucune issue.
+
+`SceneManager.UNWIND_MS` (4 s) plafonne l'attente du dénouement : toutes les
+attentes de scène rejettent aussitôt l'avortement, seuls quelques awaits hors
+`Scene` restent (le fondu d'un fond, le décodage d'un mp3 au tout premier
+lancement). Dépassé, on part quand même, en le disant.
 
 ## Un seul chemin pour quitter une scène : `leaveTo(to)`
 
@@ -459,8 +581,10 @@ défauts mesurés venaient de là. Trois règles remplacent la vigilance.
 
 **1. Un canvas qui sert de MASQUE est repeint dans le même tour que son
 redimensionnement.** Écrire `canvas.width` EFFACE le canvas. Trois canvas du
-site portent le noir — `LightSystem` (chp2-opening), `Chapter1LightSystem` et
-le `TorchSystem` PARTAGÉ — et tous trois s'en remettaient à une boucle de rendu
+site portaient le noir — `LightSystem` (chp2-opening), `Chapter1LightSystem` et
+le `TorchSystem` PARTAGÉ (un quatrième depuis : la torche de « Peine
+démesurée », qui hérite de la règle en héritant du système) — et tous trois
+s'en remettaient à une boucle de rendu
 qui a le droit de ne pas venir : elle saute quand une sous-partie couvre l'écran
 (chp2) ou quand `_paused` est posé (torche, sous un document ouvert). Mesuré au
 chapitre 2 : une bascule plein écran pendant une sous-partie laissait le

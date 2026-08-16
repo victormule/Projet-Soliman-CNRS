@@ -120,6 +120,30 @@
 #peine-demesuree-root .grille,
 #peine-demesuree-root .article-main { opacity: 0; }
 
+/* ===========================================================
+   LA TORCHE DU JOURNAL
+   -----------------------------------------------------------
+   Canvas-masque plein écran : il porte le noir et y perce un halo fixe au
+   centre de la fenêtre (voir chp2-peine-demesuree.js et src/systems/
+   TorchSystem.js). La page est donc bien éclairée, seuls les bords s'assombrissent.
+
+   position: FIXED, et non absolute : le root défile (overflow-y: auto) et le
+   journal est plus haut que l'écran. Une lumière absolue glisserait avec le
+   papier ; celle-ci reste au centre de la fenêtre de navigation, ce qui est
+   tout le propos.
+
+   z 9500 : au-dessus du journal et de ses médias, sous le voile d'ouverture
+   (#pd-veil, 9999) qui doit rester du noir franc. L'interface du site (flèche,
+   boussole, titres, plein écran) vit HORS de ce root : elle passe au-dessus
+   sans qu'on ait rien à déclarer ici.
+   =========================================================== */
+#peine-demesuree-root .pd-torche {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    pointer-events: none;
+}
+
 #peine-demesuree-root #pd-veil {
     position: absolute; inset: 0;
     background: #000;

@@ -1,25 +1,22 @@
 /**
  * TransitionManager.js
- * Gestion des transitions visuelles : voile noir, swap titre, citation tapée.
+ * Gestion des transitions visuelles : voile noir et citation tapée.
  *
- * CORRECTIONS vs version initiale :
+ * DEUX PRIMITIVES, ET RIEN QUI DÉCIDE. fadeVeil() pose le noir, typeQuote()
+ * écrit une citation caractère par caractère : les scènes composent avec.
+ * La séquence complète de sortie du chapitre 1 vit dans
+ * Chapitre1Scene.transitionOutWithQuote(), parce qu'elle dépend de l'état
+ * interne de la scène — pas ici.
  *
- * 1. swapSiteTitle() ajouté.
- *    PROBLÈME ORIGINAL : absent, le titre ne changeait jamais quand on entrait
- *    dans l'espace collaboratif. Fidèle à swapSiteTitle() de main.js.
+ * typeQuote() : annulation par token, vérifié AVANT chaque await (pas après),
+ * pour stopper l'écriture dès le prochain caractère sans attendre la fin du
+ * délai en cours. hideQuote() incrémente le token ET retire .visible.
  *
- * 2. typeQuote() : annulation par token robustifiée.
- *    Le token est vérifié AVANT chaque await (pas après), pour stopper le typing
- *    dès le prochain caractère sans attendre la fin du délai en cours.
- *    hideQuote() incrémente le token ET retire .visible, identique à main.js.
- *
- * 3. transitionChapitre1ToCollabWithQuote() : séquence complète fidèle à main.js.
- *    PROBLÈME ORIGINAL : la séquence était trop simplifiée (fade in → typing → wait
- *    fixe → fade out). Il manquait : cacher l'UI page3, démarrer Silence.mp3,
- *    bouton Skip interruptible, showPage2UIReturn, grow torch, stop Silence.
- *    FIX : la séquence complète est dans Chapitre1Scene.transitionOutWithQuote()
- *    car elle dépend de l'état interne de la scène. TransitionManager expose
- *    seulement les primitives (fadeVeil, typeQuote, hideQuote, swapSiteTitle).
+ * ⚠️ LE TITRE N'EST PLUS ICI. swapSiteTitle() y basculait « Abounaddara — CNRS
+ * — 2026 » ↔ « Espace collaboratif » sur demande de CollaborationScene, seule
+ * à savoir. La colonne de titres a désormais un propriétaire unique
+ * (src/ui/Title.js) et son contenu se DÉCLARE par scène dans la table LIEUX
+ * d'app.js. resizeTitle() est parti avec : elle n'avait plus aucun appelant.
  */
 
 export class TransitionManager {
@@ -38,92 +35,6 @@ export class TransitionManager {
       this.veil.style.opacity    = String(opacity);
       setTimeout(resolve, durationMs + 20);
     });
-  }
-
-  /* ─────────────────────────────────────────── Swap titre ── */
-
-  /**
-   * Swap cinématographique du titre haut-gauche.
-   * toCollab=true  → "Espace collaboratif" (entrée pages 2/3)
-   * toCollab=false → CONFIG.TITLE.texte     (retour pages 0/1)
-   * Fidèle à swapSiteTitle() de main.js.
-   */
-  swapSiteTitle(toCollab) {
-    const el = document.getElementById('site-title');
-    if (!el) return;
-
-    // 1. Fade out vers le haut
-    el.classList.add('fading-out');
-
-    setTimeout(() => {
-      el.classList.remove('fading-out');
-      this._applyTitleFont(el);
-
-      if (toCollab) {
-        const text = 'Espace collaboratif';
-        let html = '';
-        text.split('').forEach((ch, i) => {
-          html += `<span class="char" data-i="${i}">${ch === ' ' ? '&nbsp;' : ch}</span>`;
-        });
-        el.innerHTML = html;
-        el.querySelectorAll('.char').forEach((s, i) => {
-          setTimeout(() => {
-            s.style.opacity   = '1';
-            s.style.transform = 'translateY(0)';
-          }, i * this.config.TIMING.title_char_delay + Math.random() * 20);
-        });
-      } else {
-        let html = '';
-        let charIdx = 0;
-        this.config.TITLE.texte.forEach(part => {
-          if (part === '—') {
-            html += `<span class="sep">—</span>`;
-          } else {
-            part.split('').forEach(ch => {
-              html += `<span class="char" data-i="${charIdx}">${ch === ' ' ? '&nbsp;' : ch}</span>`;
-              charIdx++;
-            });
-          }
-        });
-        el.innerHTML = html;
-        el.querySelectorAll('.char').forEach((s, i) => {
-          setTimeout(() => {
-            s.style.opacity   = '1';
-            s.style.transform = 'translateY(0)';
-          }, i * this.config.TIMING.title_char_delay + Math.random() * 20);
-        });
-        el.querySelectorAll('.sep').forEach((s, i) => {
-          setTimeout(() => { s.style.opacity = '0.6'; }, (i + 1) * 340);
-        });
-      }
-    }, this.config.TITLE_SWAP_MS);
-  }
-
-  /**
-   * Recalcule la taille du titre au resize — appelé depuis onResize() des scènes.
-   * Ne touche qu'à fontSize pour ne pas casser la couleur (qui varie selon collab/normal).
-   */
-  resizeTitle() {
-    const el = document.getElementById('site-title');
-    if (!el || !el.innerHTML) return;
-    const f = this.config.FONTS?.title;
-    if (!f) return;
-    const vW = Math.max(this.config.MIN_SIZE.width, window.innerWidth);
-    const sz = Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100)));
-    el.style.fontSize = sz + 'px';
-  }
-
-  _applyTitleFont(el) {
-    const f = this.config.FONTS?.title;
-    if (!f) return;
-    const vW = Math.max(this.config.MIN_SIZE.width, window.innerWidth);
-    const sz = Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100)));
-    el.style.fontFamily    = f.family;
-    el.style.fontSize      = sz + 'px';
-    el.style.fontWeight    = f.weight;
-    el.style.letterSpacing = f.spacing;
-    el.style.fontStyle     = f.style;
-    el.style.color         = f.color;
   }
 
   /* ─────────────────────────────────────── Citation tapée ── */

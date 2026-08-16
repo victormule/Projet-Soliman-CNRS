@@ -25,6 +25,32 @@ export class Scene {
     this._cleanup();
   }
 
+  /* ── Interruption d'une ENTRÉE en cours ───────────────────────────────
+     Une chorégraphie d'entrée dure longtemps (17 s pour la vitrine) : on peut
+     très bien demander à partir pendant qu'elle se joue. Le SceneManager
+     interrompt alors la scène AVANT de la faire sortir, et attend que son
+     enter() se dénoue — on ne démonte pas une scène qui est encore en train
+     de se monter.
+
+     C'est un simple avortement du signal : toutes les attentes de la scène
+     (wait/pause/_waitUntil) rejettent, et le `catch` qui enveloppe chaque
+     enter() les absorbe. exit() ré-avortera, sans effet — l'opération est
+     idempotente. */
+  interrupt() { this._abortCtrl?.abort(); }
+
+  /* ── Annonce d'arrivée ────────────────────────────────────────────────
+     UNE SCÈNE QU'ON A QUITTÉE N'ANNONCE PAS SON ARRIVÉE. Le signal ne sert
+     pas qu'à l'affichage : il écrit le titre de l'onglet, l'annonce au lecteur
+     d'écran, la mémoire du parcours (Journey) et le point courant de la carte.
+     Émis par une entrée interrompue, il allumait sur la carte un lieu où l'on
+     n'était plus, et disait au visiteur non-voyant qu'il venait d'arriver dans
+     une scène déjà quittée. La garde est ici, en un seul endroit, plutôt que
+     répétée dans les sept scènes. */
+  announceEntered() {
+    if (!this.isActive) return;
+    bus.emit('scene:entered', { name: this.name });
+  }
+
   /* ── Départ ───────────────────────────────────────
      UN SEUL CHEMIN POUR QUITTER UNE SCÈNE, quelle que soit la destination.
 
@@ -67,6 +93,20 @@ export class Scene {
    */
   wait(ms, signal = this._abortCtrl?.signal) {
     return new Promise((resolve, reject) => {
+      /* ⚠️ UN SIGNAL DÉJÀ AVORTÉ N'ÉMETTRA PLUS JAMAIS 'abort'.
+         Sans ce test, l'écouteur posé plus bas ne servait à rien et l'attente
+         se résolvait NORMALEMENT : une entrée de scène interrompue continuait
+         donc de se jouer, plusieurs secondes après qu'on l'a quittée.
+
+         Mesuré sur la vitrine : quitter à 900 ms laissait son enter() reprendre
+         à 2159 ms et appeler torch.grow() — en plein milieu du torch.fadeOut()
+         de son propre exit(). grow() annule le fondu, dont la promesse était
+         alors perdue (corrigé aussi, cf. TorchSystem.cancelFade) : exit()
+         attendait pour toujours, isTransitioning restait vrai, et PLUS AUCUNE
+         navigation ne passait. La scène annonçait même son arrivée à 7115 ms,
+         alors qu'on était ailleurs depuis longtemps. */
+      if (signal?.aborted) { reject(new Error('scene_aborted')); return; }
+
       // ⚠️ L'écouteur 'abort' doit être RETIRÉ quand la minuterie se résout
       // normalement. Sans cela, chaque wait() en laissait un sur le signal de
       // la scène : une chorégraphie longue (chapitre 1, phrénologie) en

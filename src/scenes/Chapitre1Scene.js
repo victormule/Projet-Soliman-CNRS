@@ -53,6 +53,7 @@ export class Chapitre1Scene extends Scene {
     this.audio      = systems.audio;
     this.bgMgr      = systems.bgMgr;
     this.transition = systems.transition;
+    this.title      = systems.title;
     this.player     = systems.player;
     this.torch      = systems.torch;
 
@@ -209,7 +210,7 @@ export class Chapitre1Scene extends Scene {
       }, { once: true });
 
       // Signal d'entrée de scène pour le reste de l'application
-      bus.emit('scene:entered', { name: 'chapitre1' });
+      this.announceEntered();
 
       // Délai configurable avant d'autoriser le skip pendant le son
       const skipIntroDelay = CHP1.timing?.skip_intro_delay ?? 0;
@@ -489,35 +490,7 @@ export class Chapitre1Scene extends Scene {
       if (currentOnClick) this._showSkipButton(currentOnClick);
     }
 
-    this._resizeTitleFonts();
-  }
-
-  /**
-   * Recalcule la taille du titre principal et du sous-titre.
-   * -----------------------------------------------------------------------------
-   * Utilise les paramètres typographiques centralisés dans CONFIG.FONTS.
-   */
-  _resizeTitleFonts() {
-    // Titre principal du site
-    const titleEl = document.getElementById('site-title');
-    if (titleEl) {
-      const f = window.CONFIG.FONTS?.title;
-      if (f) {
-        const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-        const sz = Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100)));
-        titleEl.style.fontSize = sz + 'px';
-      }
-    }
-
-    // Sous-titre du chapitre, seulement s'il est actuellement visible
-    if (this._subtitle?.classList.contains('visible')) {
-      const f = window.CONFIG.FONTS?.subtitle;
-      const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-      if (f && this._subtitle) {
-        const sz = Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100)));
-        this._subtitle.style.fontSize = sz + 'px';
-      }
-    }
+    // (La colonne de titres est redimensionnée par app.js, pour tout le site.)
   }
 
 
@@ -1200,58 +1173,30 @@ export class Chapitre1Scene extends Scene {
    * - après certains resets visuels.
    */
   _showSubtitle() {
-    const C = CHP1;
-
-    // Rien à afficher si la configuration ou l'élément DOM est absent.
-    if (!C?.subtitle || !this._subtitle) return;
-
-    this._subtitle.innerHTML = C.subtitle;
-
-    // Application du style typographique responsive.
-    const f = window.CONFIG.FONTS?.subtitle;
-    const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-
-    if (f) {
-      this._subtitle.style.fontFamily = f.family;
-      this._subtitle.style.fontSize =
-        Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100))) + 'px';
-      this._subtitle.style.fontWeight = f.weight;
-      this._subtitle.style.letterSpacing = f.spacing;
-      this._subtitle.style.fontStyle = f.style;
-    }
-
-    // La classe "visible" déclenche les transitions CSS d'entrée.
-    this._subtitle.classList.add('visible');
+    // Sans temporisation : ici le sous-titre s'écrit DERRIÈRE un voile encore
+    // opaque, qui s'ouvrira ensuite — il n'y a aucun fondu d'entrée à éviter.
+    this.title.showSubtitle(CHP1.subtitle, 0);
   }
 
   /**
    * Masque le sous-titre du chapitre.
    * -----------------------------------------------------------------------------
-   * Deux modes :
-   * - immediate = true  : suppression instantanée, sans animation
-   * - immediate = false : sortie douce avec fondu + léger déplacement
-   *
    * @param {boolean} immediate
-   * true : suppression instantanée (pas d'animation)
+   *   true  → coupe net (délégué à Title, comme partout ailleurs).
+   *   false → LA SORTIE ÉCRITE DU CHAPITRE 1, qui lui appartient : le
+   *           sous-titre s'estompe en REMONTANT (-6px, 0,75 s, sans délai),
+   *           là où le geste ordinaire du site le fait descendre (+8px,
+   *           1,1 s, après 0,3 s d'attente). C'est pourquoi il s'écrit ici,
+   *           en styles en ligne, et pas dans le composant partagé.
+   *           Le nettoyage de ces styles est aussi garanti par
+   *           Title.clearChapter() à la frontière : quitter la scène pendant
+   *           les 900 ms laisserait sinon un `opacity:0` sur un élément que
+   *           le chapitre suivant réutilise.
    */
   _hideSubtitle(immediate = false) {
     if (!this._subtitle) return;
 
-    if (immediate) {
-      // Mode hard reset :
-      // utile quand on doit remettre l'état à zéro sans laisser d'animation
-      // résiduelle (ex : changement brutal de phase / exit).
-      this._subtitle.style.transition = 'none';
-      this._subtitle.classList.remove('visible');
-
-      // Force un reflow pour s'assurer que le navigateur enregistre bien
-      // l'état sans transition avant la prochaine réapparition.
-      void this._subtitle.offsetHeight;
-
-      // On rend ensuite la main aux transitions CSS normales.
-      this._subtitle.style.transition = '';
-      return;
-    }
+    if (immediate) { this.title.hideSubtitle(true); return; }
 
     // Sortie douce :
     // le sous-titre s'estompe et remonte légèrement pour une disparition discrète.

@@ -61,6 +61,7 @@ export class Chapitre4Scene extends Scene {
     this.audio      = systems.audio;
     this.bgMgr      = systems.bgMgr;
     this.transition = systems.transition;
+    this.title      = systems.title;
 
     /** Flèche de retour → Espace collaboratif (encre sombre : page claire). */
     this._arrow = new ArrowChp4(window.CONFIG);
@@ -92,9 +93,10 @@ export class Chapitre4Scene extends Scene {
       this.bgMgr.blackout();
       await this.transition.fadeVeil(0, 0);
 
-      // Tier 2 : sous-titre du chapitre sous « Espace collaboratif »
-      // (#site-title reste géré par CollaborationScene).
-      this._showSubtitle();
+      // Niveau 2 : sous-titre du chapitre sous « Espace collaboratif »
+      // (le niveau 1 est déclaré dans la table LIEUX d'app.js).
+      if (CHP4.subtitle) this.title.showSubtitle(CHP4.subtitle);
+      else console.warn('[chp4] chp4-config.subtitle absent : aucun sous-titre affiché.');
 
       // ── ORDRE D'ENTRÉE (noir garanti, zéro flash) ──────────────────────
       // 1. CSS AVANT le DOM : la photo naît à `opacity:0` par la feuille (et
@@ -139,7 +141,7 @@ export class Chapitre4Scene extends Scene {
       // Le site change de scène sans changer d'URL : sans ce signal, ni le
       // lecteur d'écran ni le titre de l'onglet n'apprennent l'arrivée — et
       // la carte ne sait pas où allumer son point.
-      bus.emit('scene:entered', { name: 'chapitre4' });
+      this.announceEntered();
 
     } catch (err) {
       if (err?.message === 'scene_aborted') return;
@@ -157,7 +159,7 @@ export class Chapitre4Scene extends Scene {
     this._pageReadyCleanup?.();
     this._pageReadyCleanup = null;
 
-    this._hideSubtitle();
+    this.title.hideSubtitle();
 
     document.body.classList.remove('chp4-active');
     this._removeDOM();
@@ -172,7 +174,6 @@ export class Chapitre4Scene extends Scene {
 
   onResize() {
     this._arrow.resize?.();
-    this._applySubtitleFont(document.getElementById('chapitre-subtitle'));
     // Le dessin lui-même n'a rien à recalculer (il vit dans le viewBox du SVG,
     // le navigateur le remet à l'échelle) — mais la RÉPARTITION entre la
     // photographie et le dessin suit la forme de la fenêtre : c'est le moteur
@@ -180,51 +181,10 @@ export class Chapitre4Scene extends Scene {
     this._module?.onResize?.();
   }
 
-  /* ── Sous-titre (tier 2) ────────────────────────────────────────────────
-     Réutilise le #chapitre-subtitle statique de index.html — même mécanique
-     qu'aux chapitres 2 et 3 (fondu + translation portés par .visible en CSS).
-  ─────────────────────────────────────────────────────────────────────────── */
-
-  _applySubtitleFont(el) {
-    const f = window.CONFIG.FONTS?.subtitle;
-    if (!f || !el) return;
-    const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-    el.style.fontFamily    = f.family;
-    el.style.fontSize      = Math.max(f.size_min, Math.min(f.size_max,
-                              Math.round(vW * f.size_vw / 100))) + 'px';
-    el.style.fontWeight    = f.weight;
-    el.style.letterSpacing = f.spacing;
-    el.style.fontStyle     = f.style;
-  }
-
-  _showSubtitle() {
-    const el = document.getElementById('chapitre-subtitle');
-    if (!el) return;
-    if (!CHP4.subtitle) {
-      console.warn('[chp4] chp4-config.subtitle absent : aucun sous-titre affiché.');
-      return;
-    }
-    el.innerHTML = CHP4.subtitle;
-    this._applySubtitleFont(el);
-    // Temporisation : ne pas chevaucher le fondu d'entrée de scène.
-    this.addTimer(() => { if (this.isActive) el.classList.add('visible'); }, 400);
-  }
-
-  /**
-   * @param {boolean} immediate  true  → coupe net (retour Espace collaboratif),
-   *                             false → laisse jouer la transition CSS de sortie.
-   */
-  _hideSubtitle(immediate = true) {
-    const el = document.getElementById('chapitre-subtitle');
-    if (!el) return;
-    if (immediate) {
-      el.style.transition = 'none';
-      el.classList.remove('visible');
-      requestAnimationFrame(() => { el.style.transition = ''; });
-    } else {
-      el.classList.remove('visible');
-    }
-  }
+  /* ── Sous-titre (niveau 2) ─────────────────────────────────────────────
+     La mécanique (police, temporisation, classe .visible) appartient à
+     src/ui/Title.js. Cette scène ne fait que nommer son texte.
+  ─────────────────────────────────────────────────────────────────────── */
 
   /* ── Flèche de retour ──────────────────────────────────────────────────── */
 
@@ -249,7 +209,7 @@ export class Chapitre4Scene extends Scene {
     // sous-titre est remonté à z 600 : sans ceci il flotterait au-dessus du
     // noir puis disparaîtrait sèchement. On le fait s'effacer en douceur, en
     // parallèle du fondu du moteur (~1,1 s).
-    this._hideSubtitle(false);
+    this.title.hideSubtitle(false);
 
     if (this._module?.leaveToCollaboration) {
       this._module.leaveToCollaboration();

@@ -96,6 +96,7 @@ export class Chapitre2Scene extends Scene {
     this.audio      = systems.audio;
     this.bgMgr      = systems.bgMgr;
     this.transition = systems.transition;
+    this.title      = systems.title;
 
     /** Flèche opening → Collaboration. */
     this._openingArrow = new ArrowChp2Opening(window.CONFIG);
@@ -169,9 +170,10 @@ export class Chapitre2Scene extends Scene {
       this.bgMgr.blackout();
       await this.transition.fadeVeil(0, 0);
 
-      // Tier 2 : sous-titre « L'héritage colonial du musée » sous « Espace collaboratif »
-      this._showSubtitle();
-      this._hidePartTitle(true);
+      // Niveau 2 : sous-titre « L'héritage colonial du musée » sous « Espace
+      // collaboratif ». Le niveau 1, lui, est déclaré dans LIEUX (app.js).
+      this.title.showSubtitle(CHP2.subtitle ?? 'L’héritage colonial du musée');
+      this.title.hidePart(true);
 
       // ── ORDRE D'ENTRÉE (noir garanti, zéro flash) ──────────────────────
       // 1. CSS AVANT le DOM et ATTENDU : sans la feuille, les images du
@@ -227,7 +229,7 @@ export class Chapitre2Scene extends Scene {
       // lecteur d'écran ni le titre de l'onglet n'apprennent l'arrivée — et
       // la carte ne sait pas où allumer son point. Les chapitres 2, 3 et 4
       // ne l'émettaient pas, alors que app.js tenait leurs libellés prêts.
-      bus.emit('scene:entered', { name: 'chapitre2' });
+      this.announceEntered();
 
     } catch (err) {
       if (err.message === 'scene_aborted') return;
@@ -266,10 +268,10 @@ export class Chapitre2Scene extends Scene {
       quoteEl.innerHTML = '';
     }
 
-    // Tier 2 + tier 3 : disparaissent en quittant le chapitre 2.
-    // (#site-title « Espace collaboratif » reste géré par CollaborationScene.)
-    this._hidePartTitle(true);
-    this._hideSubtitle();
+    // Niveaux 2 et 3 : disparaissent en quittant le chapitre 2. (La frontière
+    // les remet à zéro de toute façon — ceci les retire tout de suite.)
+    this.title.hidePart(true);
+    this.title.hideSubtitle();
 
     // Retirer les listeners window
     this._unregisterWindowListeners();
@@ -292,19 +294,7 @@ export class Chapitre2Scene extends Scene {
     this._openingArrow.resize?.();
     Object.values(this._partArrows).forEach(a => a.resize?.());
     this._skip.resize();
-    this._resizeTitleFonts();
-  }
-
-  /** Recalcule la taille de police du sous-titre et du titre de sous-partie. */
-  _resizeTitleFonts() {
-    const f  = window.CONFIG.FONTS?.subtitle;
-    if (!f) return;
-    const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-    const sz = Math.max(f.size_min, Math.min(f.size_max, Math.round(vW * f.size_vw / 100))) + 'px';
-    const sub  = document.getElementById('chapitre-subtitle');
-    const part = document.getElementById('chapitre-part-title');
-    if (sub?.classList.contains('visible'))  sub.style.fontSize  = sz;
-    if (part?.classList.contains('visible')) part.style.fontSize = sz;
+    // (La colonne de titres est redimensionnée par app.js, pour tout le site.)
   }
 
   /* ── Flèche OPENING → Collaboration ───────────────────────────────────
@@ -346,9 +336,10 @@ export class Chapitre2Scene extends Scene {
 
   _leaveToCollaboration() {
     // Le sous-titre et le titre de sous-partie s'estompent en fondu pendant
-    // l'extinction de la bougie (le #site-title « Espace collaboratif » reste).
-    this._hidePartTitle(false);
-    this._hideSubtitle(false);
+    // l'extinction de la bougie (le titre de niveau 1 reste : il appartient à
+    // la scène qui arrive, et la frontière tranchera).
+    this.title.hidePart(false);
+    this.title.hideSubtitle(false);
 
     // Délègue l'extinction progressive (lumière + son + fondu) au module ;
     // il émettra 'chp2:navigate-back' une fois le noir atteint.
@@ -464,7 +455,7 @@ export class Chapitre2Scene extends Scene {
     // n'aura pas eu le temps de se voir. La boussole, elle, est déjà éclipsée
     // et refuse de reparaître d'elle-même (CompassMap._eclipsee).
     if (this._mediaOuvert) arrow.eclipse(true, 0, { signale: false });
-    this._showPartTitle(part);
+    this.title.showPart(CHP2.parts?.[part] ?? '');
   }
 
   _hidePartArrow(part) {
@@ -474,7 +465,7 @@ export class Chapitre2Scene extends Scene {
       this._openPart = null;
       bus.emit('journey:place', { id: 'chapitre2' });   // retour au travelling
     }
-    this._hidePartTitle();
+    this.title.hidePart();
   }
 
   /* ── Saut d'un lieu à l'autre SANS quitter le chapitre ─────────────────
@@ -526,68 +517,15 @@ export class Chapitre2Scene extends Scene {
     });
   }
 
-  /* ── Titres (3 niveaux) ────────────────────────────────────────────────
-     #site-title « Espace collaboratif » : posé par CollaborationScene, conservé.
-     #chapitre-subtitle « L'héritage colonial du musée » : tier 2 (chp2).
-     #chapitre-part-title : tier 3 (sous-partie).
+  /* ── Titres ────────────────────────────────────────────────────────────
+     Les trois niveaux appartiennent à src/ui/Title.js. Cette scène ne fait que
+     NOMMER ce qu'elle veut y lire :
+       niveau 1  déclaré dans LIEUX (app.js) → « Espace collaboratif »
+       niveau 2  CHP2.subtitle               → « L'héritage colonial du musée »
+       niveau 3  CHP2.parts[part]            → le titre de l'installation ouverte
+     (Quatre scènes portaient chacune une copie mot pour mot de la mécanique
+     d'affichage — police, temporisation, classe .visible. Une seule reste.)
   ─────────────────────────────────────────────────────────────────────────── */
-
-  _applySubtitleFont(el) {
-    const f = window.CONFIG.FONTS?.subtitle;
-    if (!f || !el) return;
-    const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-    el.style.fontFamily    = f.family;
-    el.style.fontSize      = Math.max(f.size_min, Math.min(f.size_max,
-                              Math.round(vW * f.size_vw / 100))) + 'px';
-    el.style.fontWeight    = f.weight;
-    el.style.letterSpacing = f.spacing;
-    el.style.fontStyle     = f.style;
-  }
-
-  _showSubtitle() {
-    const el = document.getElementById('chapitre-subtitle');
-    if (!el) return;
-    el.innerHTML = CHP2.subtitle ?? 'L\u2019héritage colonial du musée';
-    this._applySubtitleFont(el);
-    // Temporisation : ne pas chevaucher le fondu d'entrée de scène.
-    setTimeout(() => { if (this.isActive) el.classList.add('visible'); }, 400);
-  }
-
-  _hideSubtitle(immediate = true) {
-    const el = document.getElementById('chapitre-subtitle');
-    if (!el) return;
-    if (immediate) {
-      el.style.transition = 'none';
-      el.classList.remove('visible');
-      requestAnimationFrame(() => { el.style.transition = ''; });
-    } else {
-      el.classList.remove('visible');   // laisse jouer la transition CSS de sortie
-    }
-  }
-
-  _showPartTitle(part) {
-    const el = document.getElementById('chapitre-part-title');
-    if (!el) return;
-    const label = CHP2.parts?.[part] ?? '';
-    if (!label) return;
-    el.innerHTML = label;
-    this._applySubtitleFont(el);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (this.isActive) el.classList.add('visible');
-    }));
-  }
-
-  _hidePartTitle(immediate = false) {
-    const el = document.getElementById('chapitre-part-title');
-    if (!el) return;
-    if (immediate) {
-      el.style.transition = 'none';
-      el.classList.remove('visible');
-      requestAnimationFrame(() => { el.style.transition = ''; });
-    } else {
-      el.classList.remove('visible');   // laisse jouer la transition CSS de sortie
-    }
-  }
 
   /* ── Listeners window : ready / return des sous-parties ────────────────
      - '<part>-ready'           → dessiner la flèche + afficher le titre de partie.

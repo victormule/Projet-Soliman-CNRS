@@ -32,8 +32,6 @@ export class CollaborationScene extends Scene {
    * @param {Object} systems.torch - Système de torche / focus lumineux.
    * @param {Object} systems.bgMgr - Gestionnaire des fonds de scène.
    * @param {Object} systems.circles - Composant des cercles romains.
-   * @param {Object} [systems.transition] - Gestionnaire optionnel des titres /
-   *                                       transitions textuelles.
    */
   constructor(systems) {
     super('collaboration');
@@ -46,8 +44,6 @@ export class CollaborationScene extends Scene {
     this.bgMgr      = systems.bgMgr;
     /** @type {Object} Composant interactif des cercles romains. */
     this.circles    = systems.circles;
-    /** @type {?Object} Outil de transition de titre, utilisé si disponible. */
-    this.transition = systems.transition ?? null;
 
     /**
      * Flèche de navigation spécifique à la scène Collaboration.
@@ -94,8 +90,8 @@ export class CollaborationScene extends Scene {
     const C         = window.CONFIG.COLLABORATION;
     /** @type {number} Origine temporelle absolue de la scène. */
     const t0        = Date.now();
-    /** @type {boolean} Retour depuis un chapitre (1 à 4) : le titre
-     * « Espace collaboratif » est déjà en place, on ne le reswape pas. */
+    /** @type {boolean} Retour depuis un chapitre (1 à 4) : les cercles
+     * reparaissent plus vite, on ne refait pas attendre le visiteur. */
     const fromChap1 = params.from === 'chapitre1' || params.from === 'chapitre2'
                    || params.from === 'chapitre3' || params.from === 'chapitre4';
 
@@ -120,10 +116,11 @@ export class CollaborationScene extends Scene {
       this.audio.fadeMusee(0, 1500);
       this.audio.startCollabLoop();
 
-      // Quand on arrive depuis chapitre1, le titre collaboratif est déjà en
-      // place visuellement. On évite donc de le reswaper pour ne pas créer de
-      // clignotement ou de micro-fondu inutile.
-      if (!fromChap1) this.transition?.swapSiteTitle(true);
+      // (Le titre « Espace collaboratif » n'est plus posé ici. Cette scène
+      //  devinait, pour l'entrée comme pour la sortie, ce que la scène d'à-côté
+      //  affichait — et se trompait dès que la carte du parcours contournait
+      //  l'espace collaboratif. Il est maintenant DÉCLARÉ dans la table LIEUX
+      //  d'app.js et posé à la frontière. Voir src/ui/Title.js.)
 
       // ───────────────────────────────────────────────────────────────────────
       // 2) Affichage du fond de scène
@@ -190,7 +187,7 @@ export class CollaborationScene extends Scene {
       await this.pause(C.arrow.draw_duration);
 
       this._navigationActive = true;
-      bus.emit('scene:entered', { name: 'collaboration' });
+      this.announceEntered();
 
     } catch {
       // Toute interruption (ex: changement de scène pendant enter()) est
@@ -239,8 +236,8 @@ export class CollaborationScene extends Scene {
     await this.torch.fadeOut(C.torch.fade_out_duration);
     await this.bgMgr.hide('collaboration', 400);
 
-    // On restaure le titre du musée si la destination le nécessite.
-    if (toMusee) this.transition?.swapSiteTitle(false);
+    // (Le titre du musée n'est plus rétabli ici : la scène qui ARRIVE déclare
+    //  le sien, et la frontière l'applique.)
 
     // Très courte pause dans le noir pour garder un cut propre entre scènes.
     await this._rawWait(C.timing.exit_black_pause);
@@ -265,21 +262,9 @@ export class CollaborationScene extends Scene {
     if (this.circles?.el?.classList.contains('visible')) {
       this._resizeCircles();
     }
-
-    // Le titre peut contenir soit "Espace collaboratif", soit une autre
-    // variation injectée par le système de transition. On ne touche donc à la
-    // taille que s'il y a déjà du contenu.
-    const titleEl = document.getElementById('site-title');
-    if (titleEl && titleEl.innerHTML) {
-      const f = window.CONFIG.FONTS?.title;
-      if (f) {
-        const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-        titleEl.style.fontSize = Math.max(
-          f.size_min,
-          Math.min(f.size_max, Math.round(vW * f.size_vw / 100))
-        ) + 'px';
-      }
-    }
+    // (La colonne de titres est redimensionnée par app.js — une fois, pour
+    //  tout le site. Quatre scènes en portaient une copie, aucune tout à fait
+    //  identique aux autres.)
   }
 
   /**
@@ -323,53 +308,8 @@ export class CollaborationScene extends Scene {
     });
   }
 
-  /**
-   * Programme l'exécution d'une fonction à un instant absolu de la scène.
-   *
-   * Exemple : si targetMs vaut 5000, la fonction sera appelée à t0 + 5000 ms,
-   * même si plusieurs opérations ont déjà consommé une partie de ce temps.
-   *
-   * @param {number} t0 - Timestamp de référence (début de scène).
-   * @param {number} targetMs - Instant absolu visé depuis t0, en millisecondes.
-   * @param {Function} fn - Fonction à exécuter.
-   */
-  _scheduleAt(t0, targetMs, fn) {
-    const remaining = Math.max(0, targetMs - (Date.now() - t0));
-    this.addTimer(fn, remaining);
-  }
-
-  /**
-   * Attend jusqu'à un instant absolu donné depuis t0.
-   *
-   * Si l'instant est déjà dépassé, la méthode se résout immédiatement.
-   * L'attente passe par pause(), donc reste compatible avec les interruptions
-   * de scène gérées par la classe de base.
-   *
-   * @param {number} t0 - Timestamp de référence (début de scène).
-   * @param {number} targetMs - Instant absolu à atteindre depuis t0.
-   */
-  async _waitUntil(t0, targetMs) {
-    const remaining = targetMs - (Date.now() - t0);
-    if (remaining > 0) await this.pause(remaining);
-  }
-
-  /**
-   * Enregistre un timer nettoyable par le système de scène.
-   *
-   * La classe Scene maintient un tableau _timers vidé lors des sorties.
-   * Cette méthode s'aligne sur ce contrat pour éviter qu'un setTimeout lancé
-   * dans une scène continue à agir après un changement d'écran.
-   *
-   * @param {Function} fn - Fonction déclenchée à l'expiration.
-   * @param {number} delayMs - Délai avant exécution, en millisecondes.
-   * @returns {number} Identifiant natif du setTimeout.
-   */
-  addTimer(fn, delayMs) {
-    const id = setTimeout(() => {
-      this._timers = this._timers.filter(t => t !== id);
-      fn();
-    }, delayMs);
-    this._timers.push(id);
-    return id;
-  }
+  /* Les helpers temporels (addTimer, _waitUntil, _scheduleAt) vivent dans
+     core/Scene.js et NULLE PART AILLEURS. Cette scène en portait la dernière
+     copie mot pour mot — deux vérités possibles pour un même contrat de
+     nettoyage des minuteries. Supprimée : la classe de base suffit. */
 }

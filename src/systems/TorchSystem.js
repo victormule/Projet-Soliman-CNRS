@@ -6,10 +6,33 @@
 import { O, osc } from '../utils/oscillators.js';
 
 export class TorchSystem {
-  constructor(config) {
+  /**
+   * @param {Object} config
+   * @param {HTMLCanvasElement} [canvas]  Le canvas à peindre. Par défaut celui
+   *   du tronc commun (#overlay-canvas, z 1 dans #app).
+   *
+   *   ⚠️ POURQUOI UN CANVAS AU CHOIX. Les chapitres vivent dans un root
+   *   `position:fixed; z-index:500` qui crée son propre contexte d'empilement :
+   *   vu de là, le canvas du tronc commun est ENTERRÉ, il ne peut rien éclairer.
+   *   Une installation qui veut la même lumière ne peut donc pas emprunter le
+   *   canvas global — mais elle n'a aucune raison de réécrire la torche pour
+   *   autant. Elle construit sa propre instance sur son propre canvas, et
+   *   hérite de tout : setTarget/grow/fadeOut/setCentered, l'oscillation qui la
+   *   fait vivre, et le repeint synchrone au redimensionnement (cf. resize()).
+   *
+   *   Une instance ainsi créée DOIT être défaite par destroy() quand
+   *   l'installation se démonte — sinon sa boucle de rendu et ses deux
+   *   écouteurs de pointeur survivraient à chaque visite.
+   */
+  constructor(config, canvas = document.getElementById('overlay-canvas')) {
     this.config = config;
-    this.canvas = document.getElementById('overlay-canvas');
+    this.canvas = canvas;
     this.ctx    = this.canvas.getContext('2d');
+
+    /** Boucle de rendu (pour pouvoir l'arrêter) et écouteurs de pointeur posés. */
+    this._loopId    = null;
+    this._pointeurs = [];
+    this._detruit   = false;
 
     this.mouseX = 0;
     this.mouseY = 0;
@@ -25,6 +48,7 @@ export class TorchSystem {
     this.growAnimId      = null;
 
     this._fadeAnimId = null;  // ← Séparé de growAnimId pour éviter collision
+    this._fadeResolve = null; // resolve() du fadeOut en cours — cf. cancelFade()
 
     /**
      * Gel du rendu. Quand un overlay PLEIN ÉCRAN et OPAQUE recouvre la scène
@@ -65,8 +89,28 @@ export class TorchSystem {
       this.mouseY = e.clientY;
     };
     // pointermove : suivi continu ; pointerdown : cible immédiate au 1ᵉʳ contact.
-    document.addEventListener('pointermove', track, { passive: true });
-    document.addEventListener('pointerdown', track, { passive: true });
+    ['pointermove', 'pointerdown'].forEach(type => {
+      document.addEventListener(type, track, { passive: true });
+      this._pointeurs.push({ type, track });
+    });
+  }
+
+  /**
+   * Défait tout : boucle de rendu, écouteurs, animations en cours.
+   *
+   * La torche du tronc commun n'est jamais détruite (elle vit autant que le
+   * site). C'est pour les instances de chapitre — construites à chaque visite
+   * d'une installation — que cette méthode existe : sans elle, chaque visite
+   * laisserait derrière elle une boucle rAF perpétuelle et deux écouteurs de
+   * pointeur sur `document`.
+   */
+  destroy() {
+    this._detruit = true;
+    this.cancelGrow();
+    this.cancelFade();                      // règle la promesse en attente
+    if (this._loopId) { cancelAnimationFrame(this._loopId); this._loopId = null; }
+    this._pointeurs.forEach(({ type, track }) => document.removeEventListener(type, track));
+    this._pointeurs = [];
   }
 
   /* ─────────────────────────────── Cible torche ── */
@@ -126,12 +170,32 @@ export class TorchSystem {
 
   /**
    * Annule toute animation fadeOut en cours.
+   *
+   * ⚠️ UNE PROMESSE ANNULÉE SE RÈGLE QUAND MÊME — c'est tout l'objet de la
+   * seconde moitié de cette méthode, et son absence a valu au site un blocage
+   * COMPLET, silencieux et définitif.
+   *
+   * fadeOut() rend une promesse que les exit() de scène attendent. Ici on
+   * annulait le rAF sans jamais la régler : quiconque préemptait l'extinction
+   * — et grow() commence par appeler cancelFade() — laissait cette promesse
+   * en suspens pour toujours. Mesuré sur la vitrine : exit() lançait
+   * fadeOut(1500) à 1019 ms, l'entrée interrompue appelait grow(15000) à
+   * 2159 ms, et `await this.torch.fadeOut(...)` n'est jamais revenu. Le
+   * SceneManager restait sur isTransitioning = true : plus une seule
+   * navigation ne passait, sans un mot en console.
+   *
+   * On RÉSOUT plutôt que de rejeter : l'appelant demande « préviens-moi quand
+   * cette extinction ne t'appartient plus », pas « garantis-moi le noir ».
+   * Rejeter ferait exploser des exit() qui n'ont aucune raison d'attraper.
    */
   cancelFade() {
     if (this._fadeAnimId) {
       cancelAnimationFrame(this._fadeAnimId);
       this._fadeAnimId = null;
     }
+    const regler = this._fadeResolve;
+    this._fadeResolve = null;
+    regler?.();
   }
 
   /**
@@ -184,6 +248,10 @@ export class TorchSystem {
     const startT    = performance.now();
 
     return new Promise(resolve => {
+      // Retenue pour que cancelFade() puisse la régler si l'extinction est
+      // préemptée : une promesse rendue est une promesse tenue.
+      this._fadeResolve = resolve;
+
       const step = (now) => {
         const p = Math.min((now - startT) / Math.max(1, durationMs), 1);
         const e = 1 - Math.pow(1 - p, 2); // ease-out quadratique
@@ -196,6 +264,7 @@ export class TorchSystem {
           this._baseFrac = 0;
           this.torchBaseRadius = 0;
           this._fadeAnimId = null;
+          this._fadeResolve = null;
           resolve();
         }
       };
@@ -319,8 +388,12 @@ export class TorchSystem {
   }
 
   startRenderLoop() {
-    const loop = (t) => { this.render(t); requestAnimationFrame(loop); };
-    requestAnimationFrame(loop);
+    const loop = (t) => {
+      if (this._detruit) return;
+      this.render(t);
+      this._loopId = requestAnimationFrame(loop);
+    };
+    this._loopId = requestAnimationFrame(loop);
   }
 
   /* ─────────────────────────────────────── Resize ── */

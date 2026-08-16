@@ -206,38 +206,53 @@ bus.on('navigate', ({ to, ...params }) => {
   manager.go(to, params);
 });
 
-/* ── 8ter. LE SILENCE DE FRONTIÈRE ───────────────────────────────────────────
-   CHAQUE SCÈNE DÉCLARE CE QU'ON ENTEND CHEZ ELLE. Tout ce qui n'est pas déclaré
-   se tait au moment où l'on entre — dans le noir, entre exit() et enter().
+/* ── 8ter. CE QUE CHAQUE LIEU DÉCLARE ────────────────────────────────────────
+   UNE LIGNE PAR SCÈNE, ET UN SEUL ENDROIT. Tout ce qui n'est pas déclaré ici
+   n'est pas là quand on entre : le son se tait, le titre revient à celui du
+   site, les sous-titres de chapitre sont effacés.
+
+   Appliquée À LA FRONTIÈRE — dans le noir, entre exit() et enter() : le seul
+   instant où plus aucune scène n'est à l'écran, donc le seul où l'on peut tout
+   remettre à plat sans que rien ne se voie.
 
    ⚠️ C'EST LA SEULE TABLE À TENIR À JOUR. Une scène ajoutée sans ligne ici
-   entrera dans le silence complet et le dira en console : c'est le bon mode de
-   panne (on entend un manque, on ne subit pas un débordement).
+   entre dans le silence, sous le titre du site, et le dit en console : c'est le
+   bon mode de panne (on remarque un manque, on ne subit pas un débordement).
 
-   Pourquoi une table plutôt qu'un réglage par scène : le sens de « garder »
-   dépend de la scène qui ARRIVE, pas de celle qui part. Une scène ne peut donc
-   pas porter seule la réponse — c'était précisément le défaut d'origine, où
-   chaque exit() devinait sa destination. Le musée est déclaré par les trois
-   scènes du tronc commun (l'espace collaboratif l'atténue à zéro en entrant et
-   le rétablit en partant) : il les traverse sans coupure, comme avant. Aucun
-   chapitre ne le déclare : il s'arrête, quel que soit le chemin emprunté.
+   ⚠️ POURQUOI UNE TABLE PLUTÔT QU'UN RÉGLAGE PAR SCÈNE. Ce qu'il faut garder
+   dépend de la scène qui ARRIVE, pas de celle qui part : une scène ne peut donc
+   pas porter seule la réponse. C'était le défaut d'origine, deux fois — chaque
+   exit() devinait sa destination pour le son, CollaborationScene la devinait
+   pour le titre. Les deux devinettes étaient justes tant qu'on n'accédait aux
+   chapitres QUE par l'espace collaboratif ; la carte du parcours a ouvert
+   d'autres routes et les deux se sont mises à mentir, mesurément (le musée
+   jouait par-dessus les chapitres 3 et 4 ; « Abounaddara — CNRS — 2026 »
+   s'affichait au-dessus d'un chapitre).
 
-   Les noms sont ceux des pistes d'AudioManager.tracks. Les chapitres gèrent
-   leurs propres <audio>/<video> ; le filet du registre les couvre aussi. */
-const AMBIANCE = {
-  vitrine:       ['musee'],
-  phrenologie:   ['musee'],
-  collaboration: ['musee', 'collab'],
-  chapitre1:     [],      // 'phreno' puis 'silence' — démarrées APRÈS la frontière
-  chapitre2:     [],      // 'chp2' (fredonnement) — idem
-  chapitre3:     [],      // ambiance et thèmes internes au chapitre
-  chapitre4:     [],      // aucun fond : seulement les sons des bulles
+   sons  : noms des pistes d'AudioManager.tracks à laisser vivre. Les chapitres
+           gèrent leurs propres <audio>/<video> ; le registre les couvre aussi.
+   titre : niveau 1 de la colonne de titres — 'site' ou 'collab' (voir Title).
+           Les chapitres sont chez l'espace collaboratif : ils en gardent le
+           titre et posent leur propre sous-titre par-dessous. */
+const LIEUX = {
+  vitrine:       { sons: ['musee'],            titre: 'site'   },
+  phrenologie:   { sons: ['musee'],            titre: 'site'   },
+  collaboration: { sons: ['musee', 'collab'],  titre: 'collab' },
+  // 'phreno' puis 'silence' — démarrées APRÈS la frontière
+  chapitre1:     { sons: [],                   titre: 'collab' },
+  chapitre2:     { sons: [],                   titre: 'collab' },  // 'chp2' — idem
+  chapitre3:     { sons: [],                   titre: 'collab' },  // ambiance interne
+  chapitre4:     { sons: [],                   titre: 'collab' },  // seulement les bulles
 };
 
 manager.onBoundary = ({ to }) => {
-  const garder = AMBIANCE[to];
-  if (!garder) console.warn(`[app] AMBIANCE : scène « ${to} » non déclarée — silence total à l'entrée.`);
-  audio.enforceSilence(garder ?? []);
+  const lieu = LIEUX[to];
+  if (!lieu) console.warn(`[app] LIEUX : scène « ${to} » non déclarée — silence et titre du site.`);
+  audio.enforceSilence(lieu?.sons ?? []);
+  title.set(lieu?.titre ?? 'site');
+  // Les niveaux 2 et 3 appartiennent à la scène qui les pose : elle les
+  // redéclare en entrant, ou ils ne sont pas là.
+  title.clearChapter();
 };
 
 /* ── 8bis. Annonce des changements de scène ──────────────────────────────────
@@ -322,6 +337,10 @@ window.addEventListener('resize', () => {
 
     _lastVW = vw; _lastVH = vh;
     torch.resize();
+    // La colonne de titres (les trois niveaux) se redimensionne ICI, une fois,
+    // pour tout le site. Quatre scènes en portaient chacune une copie — et
+    // aucune ne traitait exactement les mêmes éléments que les autres.
+    title.resize();
     manager.onResize();
     player.resize();
     fullscreen.resize();
@@ -338,6 +357,7 @@ window.addEventListener('resize', () => {
       _lastVW = window.innerWidth;
       _lastVH = window.innerHeight;
       torch.resize();
+      title.resize();
       manager.onResize();
       player.resize();
       fullscreen.resize();

@@ -272,7 +272,7 @@ export class PhrenologieScene extends Scene {
       this._navigationActive = true;
 
       // Signal applicatif : la scène est complètement entrée et utilisable.
-      bus.emit('scene:entered', { name: 'phrenologie' });
+      this.announceEntered();
 
     } catch {
       /**
@@ -332,32 +332,15 @@ export class PhrenologieScene extends Scene {
   /**
    * Gestion du resize viewport.
    *
-   * Responsabilités :
-   *   - redimensionner les composants UI qui en ont besoin ;
-   *   - recalculer la taille du titre si celui-ci est déjà présent dans le DOM.
-   *
-   * Note :
-   * Le titre peut avoir été modifié par un gestionnaire externe (ex.
-   * TransitionManager). Comme cette scène n'a pas accès à ce système ici, elle
-   * applique directement le recalcul typographique nécessaire.
+   * Responsabilités : redimensionner les composants UI qui en ont besoin.
+   * (La colonne de titres appartient à src/ui/Title.js et se redimensionne
+   * depuis app.js, une fois pour tout le site.)
    */
   onResize() {
     this._arrow.resize();
     this.docBtns.resize();
     this.navBar.resize();
     this._docOverlay.resize();   // retrace les cadres aux nouvelles dimensions
-
-    const titleEl = document.getElementById('site-title');
-    if (titleEl && titleEl.innerHTML) {
-      const f = window.CONFIG.FONTS?.title;
-      if (f) {
-        const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-        titleEl.style.fontSize = Math.max(
-          f.size_min,
-          Math.min(f.size_max, Math.round(vW * f.size_vw / 100))
-        ) + 'px';
-      }
-    }
   }
 
   /**

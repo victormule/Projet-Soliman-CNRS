@@ -24,6 +24,8 @@
 
 import { mediaMap } from './chp2-data-peine-demesuree.js';
 import { setVideoSrc } from '../../src/utils/media.js';
+import { CONFIG as CHP2 } from './chp2-config.js';
+import { TorchSystem } from '../../src/systems/TorchSystem.js';
 
 /* ─────────────────────────────────────────────────────────────
    ÉTAT DU MODULE
@@ -99,6 +101,49 @@ function mount(root) {
             const id = setTimeout(resolve, ms);
             _timeouts.push(id);
         });
+    }
+
+    /* ─────────────────────────────────────────────────────────
+       LA TORCHE DU JOURNAL — fixe, au centre de la fenêtre.
+
+       MÊME SYSTÈME QUE LA PHRÉNOLOGIE, pas un deuxième. TorchSystem sait
+       déjà tout faire : le mode fixe (setCentered), la taille en fraction du
+       viewport (setTarget), l'allumage progressif (grow), l'oscillation qui
+       la fait respirer, et le repeint SYNCHRONE au redimensionnement — sans
+       lequel un canvas-masque se vide d'un coup et laisse la page à nu
+       (invariant écrit en tête de TorchSystem.resize).
+
+       ⚠️ CE QU'ON NE POUVAIT PAS RÉUTILISER, C'EST LE CANVAS. Celui du tronc
+       commun (#overlay-canvas) vit dans #app à z 1, et #chapitre2-root est un
+       contexte d'empilement à z 500 : vu d'ici, il est ENTERRÉ. On donne donc
+       à la torche un canvas à nous, dans le root de l'installation.
+
+       ⚠️ L'INTERFACE PASSE AU-DESSUS, ET C'EST STRUCTUREL. Ce canvas est
+       confiné dans #chapitre2-root, donc plafonné à 500 vu de #app ; la
+       flèche de retour (z 9999), la boussole et les titres (z 600) vivent
+       dans #app. Rien à régler : ils sont au-dessus de la torche ET du noir,
+       par construction.
+    ───────────────────────────────────────────────────────── */
+    const T = CHP2.peine?.torch ?? {};
+    const canvasTorche = document.createElement('canvas');
+    canvasTorche.className = 'pd-torche';
+    canvasTorche.setAttribute('aria-hidden', 'true');
+    root.appendChild(canvasTorche);
+
+    const torche = new TorchSystem(window.CONFIG, canvasTorche);
+    torche.setCentered(true);          // fixe au centre — comme la phrénologie
+    torche.setRadius(0);               // on part du noir
+    torche.setTarget(T.size ?? 0.92);  // …et on ouvre jusque-là
+
+    // Le redimensionnement passe par le système : il repeint dans le même tour.
+    on(window, 'resize', () => torche.resize(), { passive: true });
+
+    /** Allume la torche, sans bloquer la chorégraphie de la page. */
+    function allumerTorche() {
+        const id = setTimeout(() => {
+            if (!_aborted) torche.grow(T.grow_duration ?? 3000);
+        }, T.delay ?? 600);
+        _timeouts.push(id);
     }
 
     /* ─────────────────────────────────────────────────────────
@@ -264,6 +309,9 @@ function mount(root) {
 
         await wait(300);  $('main-wrap')?.classList.add('is-visible');
         await wait(800);  $('pd-veil')?.classList.add('lifted');
+        // La lumière monte AVEC la page, sans retenir la suite : le voile met
+        // 2 s à se lever, la torche s'ouvre pendant ce temps-là.
+        allumerTorche();
         await wait(400);
         const tb = $('titre-bloc');
         if (tb) { tb.style.opacity = '1'; tb.style.transition = 'opacity 0.01s'; }
@@ -859,6 +907,10 @@ function mount(root) {
     function destroy() {
         _aborted = true;
         stopTracking();
+        // La torche est une instance À NOUS : sans destroy(), sa boucle de rendu
+        // et ses deux écouteurs de pointeur survivraient à chaque visite.
+        // (Son canvas, lui, part avec la restauration du markup, plus bas.)
+        torche.destroy();
         // Curseur : filet — couper le mode viseur quel que soit le chemin de sortie.
         document.body.classList.remove('peine-aim');
         setAimHot(false);

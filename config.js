@@ -511,13 +511,21 @@ window.CONFIG = {
   TITLE: {
     // Le texte, mot à mot (les tirets sont des mots : ils se posent aussi).
     texte: ['Abounaddara', '—', 'CNRS', '—', '2026'],
+    // Le titre que porte l'espace collaboratif ET ses quatre chapitres.
+    // Quelle scène affiche lequel des deux se déclare dans la table LIEUX
+    // d'app.js — un seul endroit, appliqué dans le noir de la frontière.
+    collab: 'Espace collaboratif',
     // La CADENCE est dans TIMING (title_start, title_char_delay) et la COULEUR
     // dans FONTS.title.color. Ce bloc portait des doublons (couleur, char_delay,
     // start_delay) que personne ne lisait : régler la couleur ici n'avait aucun
     // effet. Retirés à l'audit de juillet 2026.
   },
 
-  TITLE_SWAP_MS: 620,   // bascule « Abounaddara… » ↔ « Espace collaboratif »
+  /* (TITLE_SWAP_MS a été retiré : il temporisait un fondu-vers-le-haut du titre
+     AVANT sa bascule. Cette bascule se joue désormais à la frontière entre deux
+     scènes, c'est-à-dire sur un écran noir — le geste ne pouvait donc plus être
+     vu de personne, et son délai ne faisait que retarder l'écriture du titre
+     suivant. Voir src/ui/Title.js.) */
 
 
 /* ══════════════════════════════════════════════════════════════════
@@ -642,7 +650,7 @@ window.CONFIG = {
                             // (fraction de sa taille repliée)
     compass_hover:   1.18,  // grossissement au survol — il dit « cliquable »,
                             // repliée comme dépliée (dépliée, elle REFERME)
-    compass_dx:     -0.17,  // glissement de la boussole quand la carte s'ouvre,
+    compass_dx:     -0.18,  // glissement de la boussole quand la carte s'ouvre,
     compass_dy:     -0.16,  // en fraction de sa taille (négatif = vers le haut
                             // et vers la gauche). Elle se pose ainsi au coin du
                             // cadre, PAR-DESSUS la carte, comme un fleuron.

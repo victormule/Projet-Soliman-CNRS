@@ -57,6 +57,7 @@ export class Chapitre3Scene extends Scene {
     this.audio      = systems.audio;
     this.bgMgr      = systems.bgMgr;
     this.transition = systems.transition;
+    this.title      = systems.title;
 
     /** Flèche de retour opening → Espace collaboratif. */
     this._arrow = new ArrowChp3Opening(window.CONFIG);
@@ -90,7 +91,7 @@ export class Chapitre3Scene extends Scene {
 
       // Tier 2 : sous-titre « Le Général Jean-Baptiste Kléber » sous
       // « Espace collaboratif » (#site-title reste géré par CollaborationScene).
-      this._showSubtitle();
+      this.title.showSubtitle(CHP3.subtitle ?? 'Le Général Jean-Baptiste Kléber');
 
       // ── ORDRE D'ENTRÉE (noir garanti, zéro flash) ──────────────────────
       // 1. CSS AVANT le DOM : `.travelling-img{opacity:0}` vient de la feuille ;
@@ -143,7 +144,7 @@ export class Chapitre3Scene extends Scene {
       // lecteur d'écran ni le titre de l'onglet n'apprennent l'arrivée — et
       // la carte ne sait pas où allumer son point. Les chapitres 2, 3 et 4
       // ne l'émettaient pas, alors que app.js tenait leurs libellés prêts.
-      bus.emit('scene:entered', { name: 'chapitre3' });
+      this.announceEntered();
 
     } catch (err) {
       if (err?.message === 'scene_aborted') return;
@@ -163,7 +164,7 @@ export class Chapitre3Scene extends Scene {
 
     // Tier 2 : le sous-titre disparaît en quittant le chapitre 3.
     // (#site-title « Espace collaboratif » reste géré par CollaborationScene.)
-    this._hideSubtitle();
+    this.title.hideSubtitle();
 
     document.body.classList.remove('chp3-active');
     this._removeDOM();
@@ -178,51 +179,12 @@ export class Chapitre3Scene extends Scene {
 
   onResize() {
     this._arrow.resize?.();
-    this._applySubtitleFont(document.getElementById('chapitre-subtitle'));
   }
 
-  /* ── Sous-titre (tier 2) ────────────────────────────────────────────────
-     Réutilise le #chapitre-subtitle statique de index.html : l'apparition et
-     la disparition cinématographiques (fondu + translation) sont portées par
-     la classe .visible en CSS — strictement le même mécanisme qu'au chapitre 2.
-  ─────────────────────────────────────────────────────────────────────────── */
-
-  _applySubtitleFont(el) {
-    const f = window.CONFIG.FONTS?.subtitle;
-    if (!f || !el) return;
-    const vW = Math.max(window.CONFIG.MIN_SIZE.width, window.innerWidth);
-    el.style.fontFamily    = f.family;
-    el.style.fontSize      = Math.max(f.size_min, Math.min(f.size_max,
-                              Math.round(vW * f.size_vw / 100))) + 'px';
-    el.style.fontWeight    = f.weight;
-    el.style.letterSpacing = f.spacing;
-    el.style.fontStyle     = f.style;
-  }
-
-  _showSubtitle() {
-    const el = document.getElementById('chapitre-subtitle');
-    if (!el) return;
-    el.innerHTML = CHP3.subtitle ?? 'Le Général Jean-Baptiste Kléber';
-    this._applySubtitleFont(el);
-    // Temporisation : ne pas chevaucher le fondu d'entrée de scène.
-    setTimeout(() => { if (this.isActive) el.classList.add('visible'); }, 400);
-  }
-
-  /**
-   * @param {boolean} immediate  true  → coupe net (retour Espace collaboratif),
-   *                             false → laisse jouer la transition CSS de sortie.
-   */
-  _hideSubtitle(immediate = true) {
-    const el = document.getElementById('chapitre-subtitle');
-    if (!el) return;
-    if (immediate) {
-      el.style.transition = 'none';
-      el.classList.remove('visible');
-      requestAnimationFrame(() => { el.style.transition = ''; });
-    } else {
-      el.classList.remove('visible');
-    }
-  }
+  /* ── Sous-titre (niveau 2) ─────────────────────────────────────────────
+     La mécanique (police, temporisation, classe .visible) appartient à
+     src/ui/Title.js. Cette scène ne fait que nommer son texte.
+  ─────────────────────────────────────────────────────────────────────── */
 
   /* ── Flèche de retour ──────────────────────────────────────────────────── */
 
@@ -249,7 +211,7 @@ export class Chapitre3Scene extends Scene {
     // sous-titre est remonté à z 600 : sans ceci il flotterait au-dessus du noir
     // puis disparaîtrait sèchement. On le fait s'effacer en douceur (transition
     // CSS ~1.1s) en parallèle du fondu (~1.2s).
-    this._hideSubtitle(false);
+    this.title.hideSubtitle(false);
 
     if (this._module?.leaveToCollaboration) {
       this._module.leaveToCollaboration();

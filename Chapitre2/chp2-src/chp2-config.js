@@ -57,4 +57,32 @@ export const CONFIG = {
     exitFadeMs:  2500,
   },
 
+  // ── Sous-partie « Une peine démesurée » (le journal) ────────────────────
+  // LA TORCHE DU JOURNAL. Même système que la phrénologie — TorchSystem en
+  // mode fixe, au centre de la fenêtre — mais peinte sur un canvas propre à
+  // l'installation : le root du chapitre (z 500) enterre celui du tronc commun.
+  //
+  //   size            : rayon, en fraction de min(largeur, hauteur) du
+  //                     viewport. GRAND ici, et c'est le propos : la page doit
+  //                     être bien éclairée, seuls les bords un peu plus
+  //                     sombres, pour détacher l'interface du décor. Descendre
+  //                     vers 0.6 resserre la lumière sur le centre ; monter
+  //                     au-delà de 1 efface presque les bords.
+  //   grow_duration   : allumage progressif à l'ouverture (ms).
+  //   delay           : attente avant l'allumage (ms) — le voile de
+  //                     l'installation se lève d'abord, la lumière vient
+  //                     ensuite, et monte avec la page.
+  //
+  // (Pas de durée d'extinction : la sortie de l'installation fait fondre son
+  //  root ENTIER au noir, canvas compris. Une extinction de torche par-dessus
+  //  éclaircirait la page pendant qu'elle disparaît — et un réglage qui
+  //  n'agit pas n'a rien à faire dans une config.)
+  peine: {
+    torch: {
+      size:          0.92,
+      grow_duration: 3000,
+      delay:          600,
+    },
+  },
+
 };

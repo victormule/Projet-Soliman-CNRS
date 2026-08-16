@@ -49,25 +49,18 @@ export class VitrineScene extends Scene {
      * audio : gestion des boucles sonores et fondus audio.
      * torch : système de torche / lumière interactive.
      * bgMgr : gestionnaire des fonds de scène.
-     * title : composant chargé de révéler et redimensionner le titre principal.
+     * (Le titre n'est plus injecté ici : il est déclaré dans la table LIEUX
+     *  d'app.js et posé à la frontière, avant même cet enter().)
      */
     this.audio = systems.audio;
     this.torch = systems.torch;
     this.bgMgr = systems.bgMgr;
-    this.title = systems.title;
 
     /**
      * Flèche d'ouverture propre à la scène vitrine.
      * Le composant gère son rendu SVG, son animation et son resize.
      */
     this._arrow = new ArrowOpening(window.CONFIG);
-
-    /**
-     * Indique si le titre a déjà été révélé au moins une fois.
-     * On évite ainsi de rejouer inutilement son animation si la scène est
-     * revisitée plus tard dans le parcours.
-     */
-    this._titleShown = false;
 
     /**
      * Verrou de navigation.
@@ -124,16 +117,10 @@ export class VitrineScene extends Scene {
         this.audio.fadeMusee(window.CONFIG.AUDIO.musee_vol, 800);
       }
 
-      // ---------------------------------------------------------------------
-      // 3) Révélation du titre principal
-      // ---------------------------------------------------------------------
-      // Le titre ne doit être animé qu'une seule fois dans le parcours pour
-      // conserver son impact d'ouverture. En revanche, son resize reste géré
-      // ailleurs via onResize().
-      if (!this._titleShown) {
-        this.title.reveal();
-        this._titleShown = true;
-      }
+      // (Le titre principal n'est plus posé ici : il est DÉCLARÉ par la scène
+      //  dans la table LIEUX d'app.js et écrit à la frontière, juste avant
+      //  cet enter(). Title.set() est idempotent — il ne se réécrit donc pas
+      //  quand on revient à la vitrine, ce que gardait naguère _titleShown.)
 
       // ---------------------------------------------------------------------
       // 4) Apparition du fond de la scène
@@ -177,7 +164,7 @@ export class VitrineScene extends Scene {
 
       // À partir d'ici, la scène est considérée comme entièrement disponible.
       this._navigationActive = true;
-      bus.emit('scene:entered', { name: 'vitrine' });
+      this.announceEntered();
 
     } catch {
       /**
@@ -219,14 +206,9 @@ export class VitrineScene extends Scene {
 
 
   onResize() {
-    /**
-     * La scène délègue le recalcul de dimensions à ses composants.
-     *
-     * - la flèche recalcule sa géométrie SVG ;
-     * - le titre adapte sa taille à la nouvelle taille de viewport.
-     */
+    // La flèche recalcule sa géométrie SVG. La colonne de titres, elle, est
+    // redimensionnée UNE fois par app.js : elle n'appartient plus aux scènes.
     this._arrow.resize();
-    this.title?.resize();
   }
 
 
