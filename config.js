@@ -654,7 +654,7 @@ window.CONFIG = {
     // elle ne bouge jamais d'une scène à l'autre.
     gauche_pct:      3,
     haut_pct:        4,
-    titres_gauche_pct: 9.6,
+    titres_gauche_pct: 8.2,
     panel_scale:     3.4,   // côté de la carte dépliée, en multiples de la
                             // taille d'une flèche
     compass_open:    0.55,  // taille de la boussole une fois la carte ouverte

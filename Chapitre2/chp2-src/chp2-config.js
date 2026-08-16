@@ -51,10 +51,25 @@ export const CONFIG = {
   //   fluteVol    : volume de l'ambiance flûte (0..1).
   //   fluteFadeMs : durée des fondus de la flûte (entrée/coupure/reprise).
   //   exitFadeMs  : durée d'extinction progressive à la sortie (fondu au noir).
+  //   image_frac  : TAILLE DE L'IMAGE DES YEUX, en fraction de la fenêtre.
+  //                 1 = plein cadre (l'image touche deux bords) ; 0.88 lui
+  //                 laisse une marge tout autour — la légende de droite
+  //                 respire, et le titre et la boussole du coin haut-gauche se
+  //                 détachent au lieu d'être posés sur la photo.
+  //                 ⚠️ UN SEUL NOMBRE POUR TOUTE LA GÉOMÉTRIE. La position des
+  //                 yeux, les cibles de zoom, les globes qui suivent le
+  //                 curseur, les calques de fondu et la légende se déduisent
+  //                 TOUS de la boîte calculée par buildRect() — la changer les
+  //                 déplace ensemble, aucune animation n'a à être retouchée.
+  //                 Le zoom (×120) porte sur cette même boîte : l'iris final
+  //                 est donc réduit d'autant, ce qui à ce facteur ne se voit
+  //                 pas (il déborde très largement de l'écran dans les deux
+  //                 cas).
   invisibilisation: {
     fluteVol:    0.30,
     fluteFadeMs: 1500,
     exitFadeMs:  2500,
+    image_frac:  0.88,
   },
 
   // ── Sous-partie « Une peine démesurée » (le journal) ────────────────────

@@ -100,11 +100,35 @@
   contain: layout style;
 }
 
+/* ⚠️ LE CADRE DE L'IMAGE, ET RIEN D'AUTRE.
+   --inv-img (fraction, posée par le JS depuis chp2-config → image_frac) réduit
+   la boîte où les calques se peignent : l'image des yeux garde une marge tout
+   autour, la légende de droite respire, et le titre et la boussole du coin
+   haut-gauche se détachent au lieu d'être posés sur la photo.
+
+   ⚠️ LES QUATRE VALEURS SONT POSÉES EXPLICITEMENT, et ce n'est pas de la
+   verbosité. Un `inset` seul avec `width/height: auto` ne réduit PAS une
+   <img> : pour un élément REMPLACÉ positionné en absolu, `width: auto` prend
+   la taille intrinsèque et le `right` surcontraint est simplement ignoré —
+   mesuré, l'image restait pleine largeur et débordait même en hauteur.
+   left/top + width/height ne laissent aucune place à l'interprétation.
+
+   Les pourcentages résolvent par axe (hauteur pour top/height, largeur pour
+   left/width) : la boîte est réduite du même facteur dans les deux sens et
+   reste centrée — exactement ce que buildRect() calcule côté JS. Le CSS peint,
+   le JS mesure, tous deux lisent le même nombre.
+
+   ⚠️ La règle vise .layer, qui ne vit QUE dans #scene (les images de fond, les
+   reflets, les globes). Les sk-play*, hors de #scene, portent leur géométrie
+   en ligne, déduite du même buildRect() : ils suivent sans qu'on les touche. */
 #invisibilisation-root .layer {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  left:   calc((100% - 100% * var(--inv-img)) / 2);
+  top:    calc((100% - 100% * var(--inv-img)) / 2);
+  right:  auto;
+  bottom: auto;
+  width:  calc(100% * var(--inv-img));
+  height: calc(100% * var(--inv-img));
   object-fit: contain;
   object-position: center;
   backface-visibility: hidden;

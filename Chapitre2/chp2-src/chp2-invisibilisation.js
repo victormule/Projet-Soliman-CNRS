@@ -130,6 +130,21 @@ if (_isTouch) document.body.classList.add('invisibilisation-touch');
 const IMG_W = 1920;
 const IMG_H = 1342;
 
+/* TAILLE DE L'IMAGE, en fraction de la fenêtre (chp2-config → invisibilisation).
+   Elle est posée sur le root en variable CSS (--inv-img) pour que les calques
+   se peignent dans la même boîte que celle calculée par buildRect() : le CSS
+   peint, le JS mesure, et les deux lisent LE MÊME nombre. */
+const IMG_FRAC = (() => {
+  const f = CONFIG?.invisibilisation?.image_frac;
+  if (f == null) {
+    console.warn('[Invisibilisation] chp2-config.invisibilisation.image_frac ' +
+                 'absent : l’image est laissée en plein cadre.');
+    return 1;
+  }
+  return f;
+})();
+root.style.setProperty('--inv-img', String(IMG_FRAC));
+
 const R_WAKE  = 0.34;
 const R_CLOSE = 0.06;
 
@@ -206,6 +221,19 @@ function clearTransition(el) {
 
 let rect = buildRect();
 
+/**
+ * LA BOÎTE DE L'IMAGE — et, par elle, TOUTE la géométrie de l'installation :
+ * la position des quatre yeux, les cibles de zoom, les globes qui suivent le
+ * curseur, les calques de fondu, la légende de droite. Tous s'écrivent en
+ * fractions de `rW`/`rH` à partir de `oX`/`oY` : changer cette boîte les
+ * déplace ENSEMBLE, sans qu'aucune animation ait à être retouchée.
+ *
+ * L'image ne remplit plus forcément la fenêtre : IMG_FRAC lui laisse une marge
+ * (voir chp2-config → invisibilisation.image_frac). On calcule donc la boîte
+ * `contain` à l'intérieur d'un cadre réduit, centré — et le CSS peint dans le
+ * même cadre grâce à --inv-img. À IMG_FRAC = 1, on retrouve exactement le
+ * plein écran d'avant.
+ */
 function buildRect() {
   // Mesurer le ROOT et non window.inner* : sur tactile le root est calé sur
   // 100svh (hauteur stable), alors qu'innerHeight « respire » avec la barre du
@@ -213,19 +241,19 @@ function buildRect() {
   // ce que le CSS affiche réellement. Desktop : les deux sont identiques.
   const vw = root.clientWidth  || window.innerWidth;
   const vh = root.clientHeight || window.innerHeight;
+
+  // Le cadre où l'image a le droit de se peindre.
+  const cW = vw * IMG_FRAC;
+  const cH = vh * IMG_FRAC;
+
   const ir = IMG_W / IMG_H;
-  const vr = vw / vh;
-  if (vr > ir) {
+  let rW, rH;
+  if (cW / cH > ir) { rH = cH; rW = rH * ir; }   // cadre plus large que l'image
+  else              { rW = cW; rH = rW / ir; }   // cadre plus haut que l'image
 
-    const rH = vh;
-    const rW = rH * ir;
-    return { rW, rH, oX: (vw - rW) / 2, oY: 0, vw, vh };
-  } else {
-
-    const rW = vw;
-    const rH = rW / ir;
-    return { rW, rH, oX: 0, oY: (vh - rH) / 2, vw, vh };
-  }
+  // Centrée dans la FENÊTRE (et non dans le cadre) : les deux ont le même
+  // centre, la formule est donc la même et vaut aussi pour IMG_FRAC = 1.
+  return { rW, rH, oX: (vw - rW) / 2, oY: (vh - rH) / 2, vw, vh };
 }
 
 function imgToViewport(cx, cy) {
