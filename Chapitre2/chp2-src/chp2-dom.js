@@ -15,9 +15,9 @@ export function buildChapitre2DOM(assetPath) {
       <div id="chp2-scene">
         <div id="chp2-shake">
           <img id="chp2-img" src="${assetPath}chp2-images/vue-general.webp" alt="Vue" draggable="false">
-          <img class="chp2-overlay" id="chp2-ov-136" src="${assetPath}chp2-images/crane-136.png" alt="" draggable="false">
-          <img class="chp2-overlay" id="chp2-ov-137" src="${assetPath}chp2-images/crane-137.png" alt="" draggable="false">
-          <img class="chp2-overlay" id="chp2-ov-138" src="${assetPath}chp2-images/crane-138.png" alt="" draggable="false">
+          <img class="chp2-overlay" id="chp2-ov-136" src="${assetPath}chp2-images/cartel-136.png" alt="" draggable="false">
+          <img class="chp2-overlay" id="chp2-ov-137" src="${assetPath}chp2-images/cartel-137.png" alt="" draggable="false">
+          <img class="chp2-overlay" id="chp2-ov-138" src="${assetPath}chp2-images/cartel-138.png" alt="" draggable="false">
         </div>
       </div>
       <div id="chp2-legend">

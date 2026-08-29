@@ -416,6 +416,22 @@ function setSkullHot(on) {
   _skullHot = on;
   if (hotCursor) hotCursor.classList.toggle('hotspot', on);
 }
+// Curseur SYSTÈME (souris, hors tactile) : les cartels sont en pointer-events:none
+// (détection au clic/survol faite « à la main » par box fractionnaire, cf.
+// updateHover), donc aucun :hover CSS ne peut jamais s'y déclencher. On pose
+// donc une classe sur #chapitre2-root — la propriété `cursor` s'hérite à tous
+// les descendants — plutôt qu'un style en ligne, pour rester dans l'idiome du
+// site (classList, jamais .style.cursor). setSkullHot pilote le curseur DESSINÉ
+// (tactile) ; setHandCursor pilote le curseur NATIF (souris) : les deux mêmes
+// déclencheurs, deux publics différents.
+var chp2Root = null;
+var _handCursor = false;
+function setHandCursor(on) {
+  on = !!on;
+  if (on === _handCursor) return;
+  _handCursor = on;
+  if (chp2Root) chp2Root.classList.toggle('chp2-cursor-pointer', on);
+}
 var legend  = null;
 var legNum  = null;
 var legLab  = null;
@@ -423,12 +439,26 @@ var shakeEl = null;
 var fadeEl  = null;
 
 /* =============================================================================
-   CRÂNES — zones de clic fractionnaires
+   CARTELS — zones de clic fractionnaires
+   ─────────────────────────────────────────────────────────────────────────────
+   `box` sert DEUX fois : c'est lui qui centre la lumière (getCenter(), plus
+   bas — le centre du pool est le centre du box) ET la zone de survol/clic
+   (updateHover). Les crânes servaient autrefois de cible ; ce sont maintenant
+   les CARTELS (cartel-13x.png) — le box a donc été redescendu et resserré sur
+   leur propre empreinte, mesurée sur le canal alpha de chaque PNG (centroïde
+   des pixels opaques, cf. script d'audit ponctuel — pas de repère à l'oeil).
+   Les crânes, eux, sortent du pool (rayon LIGHT.craneFinalFrac inchangé) : ils
+   retombent dans la pénombre sans qu'il ait fallu réduire la lumière elle-même.
+   ⚠️ 137 et 138 sont VISUELLEMENT proches (la photo les place presque l'un sur
+   l'autre) : leurs empreintes réelles se chevauchent légèrement. Les box ont
+   été coupées à leur frontière pour rester DISJOINTES — updateHover() retient
+   toujours le premier crâne touché dans l'ordre du tableau, un chevauchement
+   aurait rendu une partie de 138 injoignable au survol.
 ============================================================================= */
 var SKULLS = [
   {
     id:     "136",
-    box:    { x0: 0.12, y0: 0.220, x1: 0.300, y1: 0.700 },
+    box:    { x0: 0.138, y0: 0.696, x1: 0.390, y1: 0.882 },
     num:    "136",
     label:  "Taire le passé",
     url:    null,
@@ -438,7 +468,7 @@ var SKULLS = [
   },
   {
     id:     "137",
-    box:    { x0: 0.550, y0: 0.180, x1: 0.740, y1: 0.730 },
+    box:    { x0: 0.484, y0: 0.658, x1: 0.748, y1: 0.896 },
     num:    "137",
     label:  "Une peine démesurée",
     url:    null,
@@ -448,7 +478,7 @@ var SKULLS = [
   },
   {
     id:     "138",
-    box:    { x0: 0.80, y0: 0.170, x1: 1.0, y1: 0.640 },
+    box:    { x0: 0.762, y0: 0.569, x1: 1.0, y1: 0.737 },
     num:    "138",
     label:  "La violence et ses traces",
     url:    null,
@@ -559,6 +589,12 @@ function updateHover() {
     // retirerait le hotspot à chaque frame et neutraliserait ces survols.
     // Le hotspot du dernier crâne survolé est nettoyé UNE fois à l'entrée de
     // la sous-partie (open*Overlay).
+    // setHandCursor, lui, N'EST LU NULLE PART AILLEURS : aucun survol de
+    // sous-partie n'y touche, donc le retirer ici à chaque frame ne peut rien
+    // neutraliser. Il évite qu'un curseur « main » posé juste avant l'ouverture
+    // ne s'hérite, via #chapitre2-root, sur la sous-partie qui vient de couvrir
+    // l'écran.
+    setHandCursor(false);
     return;
   }
   if (!interactive) {
@@ -567,6 +603,7 @@ function updateHover() {
     if (legend) legend.classList.remove("visible");
     if (cursor) cursor.classList.remove("clickable");
     setSkullHot(false);
+    setHandCursor(false);
     return;
   }
   if (vpH === 0 || imgW === 0) return;
@@ -600,6 +637,7 @@ function updateHover() {
     }
     if (cursor) cursor.classList.toggle("clickable", !!(hit && (hit.url || hit.action)));
     setSkullHot(!!(hit && (hit.url || hit.action)));
+    setHandCursor(!!(hit && (hit.url || hit.action)));
   }
 }
 
@@ -935,6 +973,7 @@ function openPeineDemesureeOverlay() {
   if (document.body.classList.contains('peine-demesuree-open')) return;
   _subOpen = true;
   setSkullHot(false);
+  setHandCursor(false);
   if (legend) legend.classList.remove("visible");
   if (hoveredSkull && hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
   if (_arrowHide) _arrowHide();
@@ -971,6 +1010,7 @@ function openPeineDemesureeOverlay() {
 function openCartelOverlay() {
   _subOpen = true;
   setSkullHot(false);
+  setHandCursor(false);
   if (legend) legend.classList.remove("visible");
   if (hoveredSkull && hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
   if (_arrowHide) _arrowHide();
@@ -1054,6 +1094,7 @@ function openInvisibilisationOverlay() {
   if (document.body.classList.contains('invisibilisation-open')) return;
   _subOpen = true;
   setSkullHot(false);
+  setHandCursor(false);
   if (legend) legend.classList.remove("visible");
   if (hoveredSkull && hoveredSkull.el) hoveredSkull.el.classList.remove("visible");
   if (_arrowHide) _arrowHide();
@@ -1221,6 +1262,7 @@ function init() {
   imgEl     = document.getElementById("chp2-img");
   bar       = document.getElementById("chp2-bar");
   hotCursor = document.getElementById('cursor');
+  chp2Root  = document.getElementById('chapitre2-root');
   legend    = document.getElementById("chp2-legend");
   legNum    = document.getElementById("chp2-leg-num");
   legLab    = document.getElementById("chp2-leg-label");
@@ -1234,7 +1276,7 @@ function init() {
   lastClientX = 0; lastClientY = 0; lastMt = 0; lastMx2 = 0; lastMy2 = 0;
   velocity = 0; shakeMul = 1;
   vpH = 0; vpW = 0; imgW = 0; maxTx = 0; targetX = 0; currentX = 0; ratio = 0;
-  started = false; _skullHot = false; navigating = false;
+  started = false; _skullHot = false; _handCursor = false; navigating = false;
 
   /* ── Mouvement (souris + touch) ── */
   _mousemoveHandler = function(e) { onMove(e.clientX, e.clientY); };
@@ -1476,6 +1518,7 @@ export function stopChapitre2() {
   _subOpen = false;
   _ignited = false;
   setSkullHot(false);
+  setHandCursor(false);
   navigating = false;
   interactive = false;
   _suspended = false;
@@ -1528,7 +1571,7 @@ export function stopChapitre2() {
      Chapitre2Scene._removeDOM() (voir releaseMediaElements dans helpers.js).
      Ce bloc-ci est de l'hygiène, pas un correctif : ne pas lui prêter un
      pouvoir qu'il n'a pas. */
-  imgEl = bar = cursor = hotCursor = null;
+  imgEl = bar = cursor = hotCursor = chp2Root = null;
   legend = legNum = legLab = null;
   shakeEl = fadeEl = null;
   SKULLS.forEach(function(s) { s.el = null; });

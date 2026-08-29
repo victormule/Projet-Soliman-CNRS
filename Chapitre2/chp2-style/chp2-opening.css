@@ -20,6 +20,15 @@
   box-sizing: border-box;
 }
 
+/* Curseur natif « main » au survol d'un cartel déverrouillé (souris, hors
+   tactile). Les cartels sont en pointer-events:none — aucun :hover CSS ne
+   peut s'y déclencher — la détection est faite « à la main » en JS
+   (updateHover, chp2-opening.js), qui pose cette classe sur la racine.
+   `cursor` s'hérite : un seul point suffit, la sous-partie ouverte
+   (#invisibilisation-root.is-open etc.) reprend la main avec son propre
+   `cursor`. Sur tactile, `body.is-touch *` (style.css) l'emporte (!important). */
+#chapitre2-root.chp2-cursor-pointer { cursor: pointer; }
+
 /* ─── Scène ─── */
 #chp2-scene {
   position: fixed;
