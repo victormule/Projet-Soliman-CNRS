@@ -2078,6 +2078,13 @@ body.peine-aim #cursor.aim-hot {
 .ab-hook text { font-family: 'Playfair Display', Georgia, serif; }
 .ab-t--base   { font-weight: 400; }
 
+/* Le passage frappé (« condamnation à mort ») : un peu plus gras que le corps
+   du texte, pour porter le poids de la sentence même une fois le trait
+   disparu (voir plus bas). GRAISSE RÉELLE — la même fonte 700 romaine que
+   « général Kléber » (.ab-t--kw.ab-t--engraved), jamais synthétisée : voir
+   _font() (mesure) et hookFont() (fumée de sortie), même accord. */
+.ab-t--base.ab-t--struck { font-weight: 700; }
+
 /* Lit commun : tracé blanc, encrage blanc cassé.
    Délais inline (2 valeurs : tracé, encrage). */
 .ab-t--base tspan {
@@ -2201,12 +2208,32 @@ body.peine-aim #cursor.aim-hot {
    La barre n'est PAS dessinée, elle est PORTÉE : 130 ms au lieu de 950, et une
    courbe qui accélère jusqu'à s'arrêter net (le contraire d'un ease-out, qui
    ralentit en arrivant et raconte une calligraphie). Épaisse, elle déborde du
-   mot et penche : géométrie et délai posés en inline par le JS. */
+   mot et penche : géométrie et délai posés en inline par le JS.
+   Deux animations, deux délais (posés en inline, valeurs séparées par une
+   virgule — même idiome que .ab-t--kw tspan plus haut) : abDraw la porte,
+   puis abUnderlineErase l'efface — un temps de lecture plus tard, DANS LE
+   MÊME SENS (gauche → droite), jamais en arrière. abUnderlineErase n'a QUE
+   `forwards` (pas `both`) : avant son délai elle ne contribue rien, laissant
+   abDraw seule tenir le trait tracé jusque-là (cf. T.underline_hold, JS). */
 .ab-underline {
   stroke: rgba(255, 255, 255, 0.96);
   stroke-width: 2.8;
   stroke-linecap: round;
-  animation: abDraw 130ms cubic-bezier(0.55, 0, 0.9, 0.35) both;
+  animation:
+    abDraw 130ms cubic-bezier(0.55, 0, 0.9, 0.35) both,
+    abUnderlineErase 600ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+/* Le dashoffset continue au-delà de 0 (trait plein) jusqu'à l'opposé de sa
+   longueur (--ab-underline-erase, posé en inline par le JS, DÉJÀ NÉGATIF et
+   sans unité) : la même mécanique dash/offset qui DESSINAIT le trait de
+   gauche à droite l'EFFACE maintenant dans le même sens — le début du trait
+   disparaît en premier.
+   ⚠️ Ne pas remplacer par `calc(var(--ab-underline-len) * -1)` : une longueur
+   calc ne s'interpole pas contre le `0` unitless de `from`, et le trait
+   sautait alors à l'état effacé d'un seul coup, sans balayage (mesuré). */
+@keyframes abUnderlineErase {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: var(--ab-underline-erase, 0); }
 }
 
 /* L'ÉCLAT — le mot blanchit à l'impact. Même mécanique que les halos : un clone
@@ -2420,9 +2447,27 @@ body.peine-aim #cursor.aim-hot {
 }
 .doc-ov-about.ab-settled .ab-t--base tspan { fill: rgba(255, 255, 255, 0.96); }
 .doc-ov-about.ab-settled .ab-t--kw   tspan { fill: rgba(224, 192, 116, 1); }
-.doc-ov-about.ab-settled .ab-underline {
+/* ── L'ÉTAT DE REPOS DE LA BARRE : elle n'est plus là ──────────────────────
+   Le trait est un GESTE, pas un ornement : il s'efface de lui-même après son
+   temps de lecture (abUnderlineErase). Partout où la chorégraphie s'arrête,
+   son état est donc EFFACÉ, jamais tracé — sans quoi il resurgirait d'un bloc.
+   Les trois arrêts possibles disent la même chose, et la disent ICI :
+     .ab-settled → la séquence s'est posée d'elle-même (le trait est parti
+                   bien avant, T.underline_hold + T.underline_fade tombant
+                   pendant l'accroche) ;
+     .ab-skip    → on a sauté ; sauter, c'est renoncer à l'événement — l'éclat
+                   et la secousse n'ont pas lieu non plus (voir plus bas).
+                   ⚠️ Ne PAS accélérer ses animations comme on le fait pour les
+                   lettres : elles sont DEUX (abDraw puis abUnderlineErase) et
+                   rejoueraient le geste entier en une milliseconde.
+   (Le troisième, prefers-reduced-motion, est en fin de fichier : une media
+   query ne peut pas rejoindre cette liste de sélecteurs.)
+   La FUMÉE de sortie, elle, ne lit pas ces classes : elle mesure le trait
+   réellement affiché (_visibleStrike) et n'emporte que lui. */
+.doc-ov-about.ab-settled .ab-underline,
+.doc-ov-about.ab-skip .ab-underline {
   animation: none;
-  stroke-dashoffset: 0 !important;
+  stroke-dashoffset: var(--ab-underline-erase, 0) !important;
 }
 .doc-ov-about.ab-settled .ab-hook-glow--white,
 .doc-ov-about.ab-settled .ab-hook-glow--strike { animation: none; opacity: 0; }
@@ -2504,14 +2549,15 @@ body.peine-aim #cursor.aim-hot {
 
 /* ── FAST-FORWARD (clic sur le texte) : tout saute à l'état final ─────────── */
 .doc-ov-about.ab-skip .ab-hook tspan,
-.doc-ov-about.ab-skip .ab-underline,
 .doc-ov-about.ab-skip .ab-hook-glow--gold {
   animation-duration: 1ms !important;
   animation-delay: 0ms !important;
 }
 /* Le coup ne se rejoue pas en accéléré : sauter, c'est renoncer à l'événement.
-   La barre est simplement là, l'éclat et la secousse n'ont pas lieu (le JS ne
-   les programme plus — ses timers sont purgés). */
+   L'éclat et la secousse n'ont pas lieu (le JS ne les programme plus — ses
+   timers sont purgés), et LA BARRE non plus : son état de repos est d'être
+   partie, posé avec celui de .ab-settled (voir « L'ÉTAT DE REPOS DE LA
+   BARRE », plus haut) — les deux arrêts disent la même chose au même endroit. */
 .doc-ov-about.ab-skip .ab-hook-glow--white,
 .doc-ov-about.ab-skip .ab-hook-glow--strike { animation: none; opacity: 0; }
 /* Sauter, c'est aller au texte corrigé : le raté n'a pas lieu. */
@@ -2541,7 +2587,14 @@ body.peine-aim #cursor.aim-hot {
   .doc-ov-about .ab-hook-glow--white  { animation: none; }
   .doc-ov-about .ab-hook-glow--strike { animation: none; opacity: 0; }
   .doc-ov-about .ab-hook-glow--gold   { animation: none; opacity: 0.45; }
-  .doc-ov-about .ab-underline { animation: none; stroke-dashoffset: 0 !important; }
+  /* Le trait est un GESTE, et son état de repos est d'être parti (il s'efface
+     de lui-même après un temps de lecture). Sans mouvement, on donne le repos
+     — pas un trait posé là pour toujours, que la mise en scène ne laisse
+     jamais à l'écran. */
+  .doc-ov-about .ab-underline {
+    animation: none;
+    stroke-dashoffset: var(--ab-underline-erase, 0) !important;
+  }
   /* ⚠️ La règle ci-dessus rend les lettres du brouillon visibles (tracé nul,
      remplissage plein) : sans ceci, « meurtrier » resterait affiché PAR-DESSUS
      « assassin ». L'opacité du groupe tranche. */

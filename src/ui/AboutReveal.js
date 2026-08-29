@@ -123,7 +123,7 @@ const T = {
                       // émerge du brouillon qui s'en va, il ne le remplace
                       // pas après coup. Doit rester < erase.
 
-  /* ── LE COUP (passage `underline: true`) — quatre temps ──────────────────
+  /* ── LE COUP (passage `underline: true`) — cinq temps ─────────────────────
      1. LE SILENCE  : l'écriture s'arrête net (strike_hold). C'est LUI qui fait
         la violence, pas le trait : depuis 15 s le texte s'écrit à cadence
         métronomique, et soudain plus rien. Ne pas le raboter.
@@ -131,13 +131,24 @@ const T = {
      3. L'ONDE      : la plaque encaisse (strike_shock) et le mot blanchit
         (strike_flash), décalés de strike_wave — le temps que la barre arrive.
      4. LA RÉSONANCE: strike_after, puis la phrase REPREND. Le coup tombe au
-        milieu de la phrase et la phrase continue quand même. */
+        milieu de la phrase et la phrase continue quand même.
+     5. LA DISPARITION : la barre elle-même ne reste pas — la lecture, elle,
+        continue. Après un temps de lecture (underline_hold), le trait
+        s'efface à son tour DE GAUCHE À DROITE (underline_fade) — le même
+        sens que le texte qui s'écrit, jamais un retour en arrière. Portée
+        par une SECONDE animation sur le même <line> (abUnderlineErase,
+        superposée à abDraw en CSS) : le dashoffset continue au-delà de 0,
+        vers l'opposé de la longueur du trait (--ab-underline-len, posé en
+        inline par le JS) — la même mécanique dash/offset qui le dessinait,
+        poussée plus loin. */
   strike_hold:  520,  // silence après la dernière lettre soulignée
   strike:       130,  // la barre s'abat              (= CSS .ab-underline)
   strike_wave:   90,  // retard de l'onde : la barre est en train d'arriver
   strike_flash: 340,  // éclat blanc sur le mot       (= CSS abStrikeFlash)
   strike_shock: 280,  // secousse de la plaque        (= CSS abShock)
   strike_after: 620,  // résonance avant que la phrase reprenne
+  underline_hold: 1500, // le trait reste, le temps de le lire
+  underline_fade:  600, // = CSS abUnderlineErase — il s'efface ensuite
 
   /* ── LE POINT D'INTERROGATION — la question se referme ────────────────────
      Toute l'accroche s'écrit : une main, à la plume, qui hésite et se corrige.
@@ -584,17 +595,21 @@ export class AboutReveal {
     // n'est pas redessiné : le mot raturé ne peut structurellement pas hanter la
     // fumée — on ne dessine que ce que l'on choisit.
     let svgR = null, scale = 1, hookPx = 0;
-    const hookFont = (kw, eng, px = hookPx) => kw
+    // Même accord que _font() : le passage frappé (.ab-t--struck) relit en 700
+    // romain, comme un mot-clef « gravé » mais sans l'or — struck ne joue que
+    // si le mot n'est pas déjà un mot-clef (kw prime, cf. _wordRuns).
+    const hookFont = (kw, eng, struck = false, px = hookPx) => kw
       ? `${eng ? '' : 'italic '}700 ${px}px ${HOOK_FONT}`
-      : `400 ${px}px ${HOOK_FONT}`;
+      : `${struck ? '700' : '400'} ${px}px ${HOOK_FONT}`;
     if (this.svg) {
       svgR   = this.svg.getBoundingClientRect();
       scale  = svgR.width / SVG_W;
       hookPx = (parseFloat(this.svg.style.fontSize) || 32) * scale;
       for (const t of this.svg.querySelectorAll('text')) {
         if (t.closest('.ab-draft')) continue;
-        const kw  = t.classList.contains('ab-t--kw');
-        const eng = t.classList.contains('ab-t--engraved');
+        const kw     = t.classList.contains('ab-t--kw');
+        const eng    = t.classList.contains('ab-t--engraved');
+        const struck = t.classList.contains('ab-t--struck');
         // LE TAMPON — il est posé plus grand et penché (voir Q). Ses x,y sont
         // déjà ceux de la pose : seules sa TAILLE et son BIAIS restent à lire,
         // faute de quoi il se redresserait et rapetisserait au premier souffle.
@@ -610,7 +625,7 @@ export class AboutReveal {
         }
         if (!letters.length) continue;
         letters.forEach(l => { l.dx = l.ax - x0; });
-        words.push({ font: hookFont(kw, eng, px),
+        words.push({ font: hookFont(kw, eng, struck, px),
                      color: kw ? 'rgba(224,192,116,1)' : 'rgba(255,255,255,0.96)',
                      x: x0, y: base,
                      top: base - px * 0.8, bottom: base + px * 0.26,
@@ -620,15 +635,24 @@ export class AboutReveal {
       }
     }
 
-    // LA BARRE du coup : un trait, le même vol qu'un mot.
+    // LA BARRE du coup : un trait, le même vol qu'un mot — MAIS SEULEMENT CE
+    // QUI EST ENCORE À L'ÉCRAN. La barre s'efface d'elle-même après son temps
+    // de lecture (abUnderlineErase) : au moment de la fumée elle n'est
+    // normalement PLUS LÀ. Lire sa géométrie sans lire son état la
+    // ressuscitait — un trait que le lecteur ne voyait plus s'envolait avec le
+    // texte, à l'ouverture d'un document comme à la fermeture.
+    // La fumée n'emporte que ce qu'on voit : ailleurs dans cette fonction, le
+    // brouillon raturé est écarté pour la même raison (« on ne dessine que ce
+    // que l'on choisit »).
     let strike = null;
     const uLine = this.svg?.querySelector('.ab-underline');
-    if (uLine && svgR) {
+    const uSeg  = uLine ? this._visibleStrike(uLine) : null;
+    if (uSeg && svgR) {
       strike = {
-        x1: svgR.left + parseFloat(uLine.getAttribute('x1')) * scale,
-        y1: svgR.top  + parseFloat(uLine.getAttribute('y1')) * scale,
-        x2: svgR.left + parseFloat(uLine.getAttribute('x2')) * scale,
-        y2: svgR.top  + parseFloat(uLine.getAttribute('y2')) * scale,
+        x1: svgR.left + uSeg.x1 * scale,
+        y1: svgR.top  + uSeg.y1 * scale,
+        x2: svgR.left + uSeg.x2 * scale,
+        y2: svgR.top  + uSeg.y2 * scale,
         w:  2.8 * scale,
       };
     }
@@ -1095,18 +1119,61 @@ export class AboutReveal {
    * Fonte d'un run, pour la MESURE canvas.
    *
    * ⚠️ RÈGLE D'OR : elle doit correspondre EXACTEMENT à ce qui rendra le glyphe
-   * — le CSS du <text> (.ab-t--kw / .ab-t--engraved / .ab-t--base) et celui du
-   * clone de halo (.ab-g--*). Mesurer en italique ce qui sera rendu en romain
-   * décale toute la justification. Trois endroits, un seul accord.
+   * — le CSS du <text> (.ab-t--kw / .ab-t--engraved / .ab-t--base / .ab-t--struck)
+   * et celui du clone de halo (.ab-g--*), ET la fonte relue par smokeOut()
+   * (hookFont(), même accord). Mesurer en italique ce qui sera rendu en romain
+   * décale toute la justification. Quatre endroits, un seul accord.
+   * Le passage frappé (`run.u`) est légèrement plus gras que le corps du texte
+   * — GRAISSE RÉELLE (la même fonte 700 romaine que « général Kléber »), jamais
+   * synthétisée : voir l'avertissement sur HOOK_FONT plus haut.
    */
   _font(run, size) {
-    if (!run.gold) return `400 ${size}px ${HOOK_FONT}`;
-    return `${run.engraved ? '' : 'italic '}700 ${size}px ${HOOK_FONT}`;
+    if (run.gold) return `${run.engraved ? '' : 'italic '}700 ${size}px ${HOOK_FONT}`;
+    if (run.u)    return `700 ${size}px ${HOOK_FONT}`;
+    return `400 ${size}px ${HOOK_FONT}`;
   }
 
   /** Nom de la fonte d'un run, pour la classe du clone de halo (.ab-g--*). */
   _fontKey(run) {
     return !run.gold ? 'base' : (run.engraved ? 'engraved' : 'hand');
+  }
+
+  /**
+   * Portion RÉELLEMENT VISIBLE de la barre du coup, en unités du viewBox —
+   * ou `null` s'il n'y a rien à l'écran.
+   *
+   * La barre se dessine ET s'efface par le même jeu dash/offset (dasharray =
+   * sa longueur, cf. _buildHook et abUnderlineErase) : son état ne se lit donc
+   * pas dans sa géométrie, qui ne bouge jamais, mais dans son `dashoffset`.
+   *   offset = +len → pas encore tracée  (rien)
+   *   offset =    0 → tracée en entier   (tout)
+   *   offset = -len → effacée            (rien)
+   * Entre les deux, la longueur montrée vaut `len - |offset|` : par la GAUCHE
+   * tant qu'elle se trace (offset > 0), par la DROITE quand elle s'efface
+   * (offset < 0, le début s'en va le premier). On rend le sous-segment
+   * correspondant, pour que la fumée emporte exactement ce qui se voit — un
+   * trait à moitié effacé s'envole donc à moitié.
+   */
+  _visibleStrike(line) {
+    const x1 = parseFloat(line.getAttribute('x1'));
+    const y1 = parseFloat(line.getAttribute('y1'));
+    const x2 = parseFloat(line.getAttribute('x2'));
+    const y2 = parseFloat(line.getAttribute('y2'));
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    if (!isFinite(len) || len <= 0) return null;
+
+    // Le dashoffset est exprimé dans le repère du viewBox, comme la géométrie
+    // ci-dessus : les deux se comparent directement, sans conversion.
+    const off = parseFloat(getComputedStyle(line).strokeDashoffset) || 0;
+    const shown = len - Math.abs(off);
+    if (shown <= 0.5) return null;              // rien à l'écran : rien à emporter
+
+    const t0 = off < 0 ? -off / len : 0;
+    const t1 = off < 0 ? 1 : shown / len;
+    return {
+      x1: x1 + (x2 - x1) * t0, y1: y1 + (y2 - y1) * t0,
+      x2: x1 + (x2 - x1) * t1, y2: y1 + (y2 - y1) * t1,
+    };
   }
 
   /** Largeur cumulée des `i` premières lettres d'un run (crénage préservé). */
@@ -1217,7 +1284,7 @@ export class AboutReveal {
           const t = document.createElementNS(NS, 'text');
           t.setAttribute('class', run.gold
             ? ('ab-t ab-t--kw' + (run.engraved ? ' ab-t--engraved' : ''))
-            : 'ab-t ab-t--base');
+            : ('ab-t ab-t--base' + (run.u ? ' ab-t--struck' : '')));
           svg.appendChild(t);
           wordTexts[run.key] = t;
           if (run.gold) {
@@ -1467,17 +1534,27 @@ export class AboutReveal {
       const x2   = u.x2 + over;
       const y1   = y;
       const y2   = y + (x2 - x1) * 0.012;          // ~0,7° : le geste n'est pas droit
-      const len  = Math.max(1, Math.hypot(x2 - x1, y2 - y1));  // vraie longueur
+      const len     = Math.max(1, Math.hypot(x2 - x1, y2 - y1));  // vraie longueur
+      const dashLen = Math.ceil(len);
       lineEl.setAttribute('class', 'ab-underline');
       lineEl.setAttribute('x1', x1.toFixed(2));
       lineEl.setAttribute('x2', x2.toFixed(2));
       lineEl.setAttribute('y1', y1.toFixed(2));
       lineEl.setAttribute('y2', y2.toFixed(2));
-      lineEl.style.strokeDasharray  = String(Math.ceil(len));
-      lineEl.style.strokeDashoffset = String(Math.ceil(len));
-      lineEl.style.animationDelay   = `${strikeAt}ms`;
+      lineEl.style.strokeDasharray  = String(dashLen);
+      lineEl.style.strokeDashoffset = String(dashLen);
+      // --ab-underline-erase alimente abUnderlineErase (CSS) : le dashoffset y
+      // continue au-delà de 0, jusqu'à l'opposé de cette longueur — le trait
+      // s'efface DE GAUCHE À DROITE, du même geste dash/offset qui l'a dessiné.
+      // ⚠️ La valeur est posée NÉGATIVE et SANS UNITÉ, pas calculée en CSS :
+      // `calc(var(…) * -1)` produit une longueur calc que le navigateur
+      // n'interpole PAS contre le `0` unitless du keyframe — mesuré, le
+      // dashoffset sautait alors de 0 à -331 d'un coup, sans balayage.
+      lineEl.style.setProperty('--ab-underline-erase', String(-dashLen));
+      const eraseAt = strikeAt + T.strike + T.underline_hold;
+      lineEl.style.animationDelay = `${strikeAt}ms, ${eraseAt}ms`;
       svg.appendChild(lineEl);
-      endMax = Math.max(endMax, strikeAt + T.strike + T.strike_flash);
+      endMax = Math.max(endMax, eraseAt + T.underline_fade);
       maxY   = Math.max(maxY, Math.max(y1, y2) + size * 0.2);
     });
 
