@@ -18,38 +18,68 @@
          dans CLAUDE.md, section « La page d'attente ». Trois gestes, dont
          un qu'on oublie (le banc d'essai) — d'où la fiche.
 
+       ══ UN ÉCRAN, DEUX VUES ══
+       L'écran est celui d'accueil du site (§ START SCREEN de style.css) :
+       même dégradé, même grain, même grille, même Playfair flottant. Seule
+       différence, la pastille est ici INERTE — c'est l'avertissement, et
+       c'est le propos de la page tant que les travaux durent.
+
+       Entre les deux paragraphes, un bouton « À propos » CHANGE LE CONTENU du
+       bloc, en fondu : le texte d'accueil s'efface, la présentation du projet
+       paraît à sa place, « Retour » ramène. Le titre, la pastille et la
+       signature ne bougent pas — l'avertissement ne quitte jamais l'écran.
+       Mécanique : une case à cocher masquée et deux règles CSS (§ 2 de la
+       feuille). Pas une ligne de script, et le texte des DEUX vues est dans
+       le HTML dès le premier octet.
+
        ⚠️ AUCUN SCRIPT ICI, ET C'EST VOULU. La page ne charge ni config.js,
        ni le graphe ESM, ni la moindre image du site : un visiteur qui
-       arrive pendant les travaux ne télécharge que ce fichier et deux
-       polices. Elle se lit aussi sans JavaScript — donc par TOUS les
-       robots d'indexation, y compris ceux qui n'exécutent pas de JS. Le
-       site, lui, ne peut par nature rien leur montrer : c'est cette page
-       qui porte le référencement du projet pendant les travaux.
+       arrive pendant les travaux ne télécharge que ce fichier et trois
+       polices (la troisième, l'italique de Playfair, pour les deux mots-clefs
+       dorés de la question — le navigateur la demande dès la mise en page,
+       même si la vue est masquée). Elle se lit aussi sans JavaScript — donc par TOUS les robots d'indexation,
+       y compris ceux qui n'exécutent pas de JS. Le site, lui, ne peut par
+       nature rien leur montrer : c'est cette page qui porte le référencement
+       du projet pendant les travaux.
+
+       ⚠️ LES APPARITIONS SONT EN CSS, PAS EN JAVASCRIPT — la cascade
+       d'ouverture par un simple retard (`--d`, écrit dans le HTML pour qu'on
+       lise la partition dans la page), le fondu de bascule par une
+       transition. Un navigateur qui ignore `transition-behavior:
+       allow-discrete` bascule sans fondu, instantanément : rien ne dépend de
+       l'animation.
 
        Les styles sont INLINE plutôt que dans style.css : cette page doit
        survivre seule, sans dépendre d'une feuille de 2 700 lignes écrite
        pour l'expérience — et sans qu'une retouche de celle-ci puisse la
-       casser. Ils reprennent volontairement, à l'identique, le
-       vocabulaire de l'écran d'accueil (§ START SCREEN de style.css) :
-       même dégradé, même grain, même grille, même Playfair flottant. La
-       seule différence tient au bouton : la pastille est ici INERTE.
+       casser.
        ══════════════════════════════════════════════════════════════════ -->
 
   <!-- ══ Référencement ══
        ⚠️ PAS DE TEXTE MASQUÉ. Aucun bloc invisible bourré de mots-clefs :
        Google sanctionne le procédé (« cloaking ») et le gain supposé se
-       paierait en déclassement. Le corps de la page est court À DESSEIN —
-       c'est un choix éditorial, pas un oubli de référencement.
+       paierait en déclassement.
 
-       Ce qui porte le référencement, ce sont donc les deux emplacements
-       PRÉVUS pour cela : le résumé ci-dessous (que le moteur affiche sous le
-       titre, dans ses résultats) et le JSON-LD plus bas, qui NOMME les
-       entités dont la page traite — le projet, ses porteurs, son financeur,
-       la personne. Ni l'un ni l'autre n'est du texte caché : ce sont les
+       Le référencement de cette page tient à TROIS choses, toutes visibles
+       ou prévues pour cela :
+         · la vue « À propos » — le texte du site, À L'ÉCRAN, lisible par un
+           humain comme par un robot. C'est elle qui nomme Alep, l'expédition
+           d'Égypte, le Muséum, le « Syrien fanatique » : les mots par
+           lesquels on cherche ce sujet. ⚠️ ÊTRE MASQUÉE AU DÉPART NE LUI
+           COÛTE RIEN : son texte est dans le HTML, servi à tout le monde dès
+           le premier octet, et Google l'indexe — depuis l'index mobile-first,
+           un contenu masqué derrière un bouton n'est plus dévalué. Ce qui
+           pénalise, c'est le texte ABSENT de la page et injecté par script,
+           ou montré au seul robot. Ni l'un ni l'autre ici : le bouton est
+           visible, la bascule est un choix d'INTERFACE ;
+         · le résumé ci-dessous, que le moteur affiche sous le titre ;
+         · le JSON-LD plus bas, qui NOMME les entités dont la page traite —
+           le projet, ses porteurs, son financeur, la personne.
+       Ni le résumé ni le JSON-LD ne sont du texte caché : ce sont les
        métadonnées d'une page, et elles disent la même chose qu'elle, en plus
-       précis. Le site lui-même ne peut rien dire aux moteurs (c'est une SPA :
-       sans JavaScript, elle ne montre rien), d'où leur importance ici. -->
-  <meta name="description" content="Projet de recherche collaboratif consacré à Soliman al-Halabi, écrivain public d'Alep exécuté en 1800 pour le meurtre du général Kléber, et au devenir de son corps conservé au Muséum national d'Histoire naturelle. Mené par Abounaddara et le CNRS, avec le soutien de l'ANR. Site en construction." />
+       précis. ⚠️ Corollaire, qui vaut règle : tout fait ajouté au JSON-LD
+       doit être VRAI et PRÉSENT dans la page. -->
+  <meta name="description" content="Projet de recherche collaboratif consacré à Soliman al-Halabi, écrivain public d'Alep exécuté en 1800 pour le meurtre du général Kléber, et au devenir de son corps ramené par l'expédition d'Égypte puis conservé au Muséum national d'Histoire naturelle. Mené par Abounaddara et le CNRS, avec le soutien de l'ANR. Site en construction." />
   <meta name="author" content="Abounaddara · CNRS" />
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
   <meta name="theme-color" content="#0b0b0b" />
@@ -70,7 +100,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="images/favicon-180.png">
 
   <!-- Polices locales (aucun appel à Google — cf. l'index de l'expérience) :
-       Playfair Display pour le titre, Inter pour les libellés. -->
+       Playfair Display pour le titre et la question, Inter pour le texte.
+       Seules les deux fontes de l'accueil sont préchargées ; celle des
+       mots-clefs dorés (italique) part avec le reste, en `font-display: swap`. -->
   <link rel="preload" as="font" type="font/woff2" href="fonts/playfair-display-var-latin.woff2" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="fonts/inter-var-latin.woff2" crossorigin>
   <link rel="stylesheet" href="fonts/fonts.css">
@@ -83,7 +115,11 @@
        ou « Muséum » plutôt que de deviner depuis des mots.
        ⚠️ Tout fait ajouté ici doit être VRAI et présent dans la page. Un
        balisage qui promet ce que la page ne montre pas est une cause connue
-       de perte du bénéfice (« structured data spam »). -->
+       de perte du bénéfice (« structured data spam »). C'est pourquoi le
+       Muséum (`mentions`) et le second financeur (France-Berkeley Fund)
+       n'ont pu être écrits qu'une fois ces noms présents à l'écran : le
+       Muséum dans le second paragraphe de l'accueil comme dans la vue
+       « À propos », France-Berkeley Fund dans le premier. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -99,11 +135,22 @@
         "publisher": { "@id": "https://soliman-al-halabi.fr/#projet" }
       },
       {
+        "@type": "WebPage",
+        "@id": "https://soliman-al-halabi.fr/#page",
+        "url": "https://soliman-al-halabi.fr/",
+        "name": "Soliman al-Halabi — projet de recherche Abounaddara · CNRS",
+        "description": "Présentation du projet de recherche collaboratif consacré à Soliman al-Halabi et au devenir de son corps, en attendant l'ouverture du site-expérience.",
+        "inLanguage": "fr-FR",
+        "isPartOf": { "@id": "https://soliman-al-halabi.fr/#site" },
+        "about": { "@id": "https://soliman-al-halabi.fr/#soliman" },
+        "mainEntity": { "@id": "https://soliman-al-halabi.fr/#projet" }
+      },
+      {
         "@type": "ResearchProject",
         "@id": "https://soliman-al-halabi.fr/#projet",
         "name": "Projet de recherche Soliman al-Halabi",
         "url": "https://soliman-al-halabi.fr/",
-        "description": "Recherche collaborative réunissant chercheurs, étudiants et lycéens autour du corps de Soliman al-Halabi, écrivain public originaire d'Alep exécuté en 1800 pour le meurtre du général Kléber, ramené en France dans les bagages de l'expédition d'Égypte et conservé au Muséum national d'Histoire naturelle.",
+        "description": "Recherche collaborative réunissant chercheurs, étudiants et lycéens autour du corps de Soliman al-Halabi, écrivain public originaire d'Alep exécuté en 1800 pour le meurtre du général Kléber, ramené en France dans les bagages de l'expédition d'Égypte et conservé au Muséum national d'Histoire naturelle, où il fut exposé en vitrine jusque dans les années 1980.",
         "inLanguage": "fr-FR",
         "member": [
           { "@type": "Organization", "name": "Abounaddara" },
@@ -119,11 +166,23 @@
           "author": { "@type": "Person", "name": "Frédéric Keck" },
           "inLanguage": "fr-FR"
         },
-        "funder": {
+        "funder": [
+          {
+            "@type": "Organization",
+            "name": "Agence nationale de la recherche",
+            "alternateName": "ANR",
+            "url": "https://anr.fr/"
+          },
+          {
+            "@type": "Organization",
+            "name": "France-Berkeley Fund",
+            "url": "https://fbf.berkeley.edu/"
+          }
+        ],
+        "mentions": {
           "@type": "Organization",
-          "name": "Agence nationale de la recherche",
-          "alternateName": "ANR",
-          "url": "https://anr.fr/"
+          "name": "Muséum national d'Histoire naturelle",
+          "url": "https://www.mnhn.fr/fr"
         },
         "about": { "@id": "https://soliman-al-halabi.fr/#soliman" }
       },
@@ -141,14 +200,37 @@
   </script>
 
   <style>
-    /* ── Socle ─────────────────────────────────────────────────── */
+    /* ══════════════════════════════════════════════════════════════
+       1 · SOCLE — la page ne défile pas
+       ──────────────────────────────────────────────────────────────
+       ⚠️ TOUT TIENT DANS LA FENÊTRE, ET C'EST UN PARTI PRIS DE MISE EN PAGE.
+       L'écran fait exactement une hauteur de fenêtre : aucune barre de
+       défilement ne paraît sur le côté, dans l'une ou l'autre vue. Deux
+       mécanismes s'en chargent, dans cet ordre :
+         1. LA TYPOGRAPHIE EST FLUIDE EN HAUTEUR AUTANT QU'EN LARGEUR. Les
+            `clamp()` de cette feuille sont bornés par `min(…vw, …vh)` : sur
+            une fenêtre basse, le texte se resserre au lieu de déborder.
+            C'est ce qui fait tenir la présentation complète sur un portable
+            16/9, où une taille réglée à la seule largeur la ferait sortir.
+         2. LE CORPS DU TEXTE EST LE SEUL À DÉFILER, à l'intérieur de son
+            propre cadre (`.cs-prose`), et seulement quand la fenêtre est
+            vraiment trop basse — un téléphone à l'horizontale. La question,
+            le bouton, la pastille et la signature restent en place.
+       ⚠️ NE PAS remplacer `100svh` par `100dvh` : sur mobile, `dvh` change à
+       chaque escamotage de la barre d'adresse et la mise en page sauterait à
+       chaque geste. `svh` prend la hauteur barres DÉPLOYÉES, donc la plus
+       petite : ce qui tient, tient toujours.
+       ══════════════════════════════════════════════════════════════ */
+
     * { box-sizing: border-box; }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-    }
+    /* Autorise l'interpolation des mots-clefs de taille : c'est ce qui permet
+       à la hauteur du cadre de glisser de `auto` (l'avertissement) à la
+       hauteur de la présentation. Ignoré par les navigateurs qui ne le
+       connaissent pas — la bascule y est alors instantanée, sans plus. */
+    :root { interpolate-size: allow-keywords; }
+
+    html, body { margin: 0; padding: 0; height: 100%; }
 
     body {
       background: #080808;
@@ -160,17 +242,17 @@
     /* ── L'écran, repris de #start-screen ──────────────────────── */
     .cs-screen {
       position: relative;
-      min-height: 100vh;
-      min-height: 100dvh;   /* barres d'adresse mobiles : évite le saut */
+      height: 100vh;
+      height: 100svh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12vh 6vw;
+      padding: clamp(1.4rem, 5.5vh, 6rem) 6vw;
       overflow: hidden;
       background: radial-gradient(circle at center, #121212 0%, #080808 100%);
     }
 
-    /* Grain — même data-URI que l'écran d'accueil. */
+    /* Grain — même data-URI que l'écran d'accueil du site. */
     .cs-screen::before {
       content: "";
       position: absolute;
@@ -201,71 +283,73 @@
       border-left: 1px solid rgba(255, 255, 255, 0.3);
     }
 
-    /* ── Contenu ───────────────────────────────────────────────── */
+    /* ── Le bloc ───────────────────────────────────────────────────
+       Il est large pour la présentation ; à l'accueil, ce sont les
+       paragraphes eux-mêmes qui se limitent (54 signes de large), donc rien
+       ne change à l'œil.
+       ⚠️ `min-height: 0` : sans lui, un enfant de flex refuse de se réduire
+       en dessous de son contenu, et le corps du texte ne pourrait jamais
+       défiler dans son cadre — il pousserait le bouton hors de l'écran. */
     .cs-inner {
       position: relative;
       z-index: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       text-align: center;
-      width: min(700px, 85vw);
+      width: min(900px, 100%);
+      max-height: 100%;
+      min-height: 0;
     }
 
     .cs-eyebrow {
-      color: #888;
+      flex: none;
+      color: #707070;
       font-family: 'Inter', sans-serif;
-      font-size: clamp(0.6rem, 0.8vw, 0.75rem);
+      font-size: clamp(0.58rem, min(0.8vw, 1.1vh), 0.75rem);
       font-weight: 300;
       letter-spacing: 0.5em;
       text-transform: uppercase;
-      margin-bottom: 1.2rem;
-      opacity: 0.8;
+      margin-bottom: clamp(0.7rem, 1.6vh, 1.2rem);
       /* letter-spacing ajoute un blanc APRÈS la dernière lettre : on le
          reprend à gauche pour que le mot reste optiquement centré. */
       text-indent: 0.5em;
     }
 
     .cs-rule {
+      flex: none;
       width: 40px;
       height: 1px;
       background: rgba(255, 255, 255, 0.2);
-      margin-bottom: 1.6rem;
+      margin-bottom: clamp(0.9rem, 2.2vh, 1.6rem);
     }
 
-    .cs-rule--short { margin-bottom: 1.4rem; }
+    .cs-rule--short { margin: 0 0 clamp(1rem, 2.4vh, 1.5rem); }
 
     .cs-title {
-      margin: 0 0 1.6rem;
+      flex: none;
+      margin: 0 0 clamp(0.9rem, 2.2vh, 1.6rem);
       color: #fff;
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(2.5rem, 6vw, 5.5rem);
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(2rem, min(6vw, 8vh), 5.5rem);
       font-weight: 400;
       line-height: 1.1;
       letter-spacing: -0.02em;
       word-break: keep-all;
       overflow-wrap: normal;
-      animation: csTitleFloat 6s ease-in-out infinite;
-    }
-
-    @keyframes csTitleFloat {
-      0%   { transform: translateY(0); }
-      50%  { transform: translateY(-5px); }
-      100% { transform: translateY(0); }
     }
 
     .cs-body {
       max-width: 54ch;
       color: #aaa;
       font-family: 'Inter', sans-serif;
-      font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+      font-size: clamp(0.85rem, min(1.1vw, 1.9vh), 1.05rem);
       font-weight: 300;
       line-height: 1.75;
       letter-spacing: 0.02em;
-      margin: 0 0 1.1rem;
+      margin: 0 0 clamp(0.7rem, 1.6vh, 1.1rem);
     }
-
-    .cs-body:last-of-type { margin-bottom: 1.8rem; }
 
     /* Les noms d'institutions se détachent sans crier. */
     .cs-body strong {
@@ -273,10 +357,28 @@
       font-weight: 400;
     }
 
-    /* ── Liens vers les institutions ───────────────────────────────
-       Soulignés en creux (border-bottom plutôt que text-decoration) pour
-       que le trait reste à distance des jambages ; il s'allume au survol
-       et au focus clavier. */
+    /* Un nom en gras QUI EST AUSSI UN LIEN. Il garde la couleur du gras et
+       prend le souligné en creux : la ligne ne change pas de teinte, seul le
+       filet dit qu'on peut cliquer.
+       ⚠️ Les mêmes institutions sont liées dans les deux vues. Ce n'est pas
+       un doublon à l'écran — jamais les deux vues ensemble — et un moteur ne
+       compte pas deux fois une même adresse. En revanche, une institution
+       nommée SANS lien dans l'une et AVEC dans l'autre, ça, ça se remarque. */
+    .cs-body strong .cs-link {
+      color: inherit;
+      border-bottom-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .cs-body strong .cs-link:hover,
+    .cs-body strong .cs-link:focus-visible {
+      color: #fff;
+      border-bottom-color: rgba(255, 255, 255, 0.75);
+    }
+
+    /* ── Liens ─────────────────────────────────────────────────────
+       Soulignés en creux (border-bottom plutôt que text-decoration) pour que
+       le trait reste à distance des jambages ; il s'allume au survol et au
+       focus clavier. */
     .cs-link {
       color: #d8d7d0;
       text-decoration: none;
@@ -293,30 +395,476 @@
 
     /* Le halo doré du site — même langage que l'expérience. */
     .cs-link:focus-visible {
-      outline: 2px solid rgba(212, 175, 55, 0.9);
+      outline: 2px solid rgba(255, 210, 80, 0.95);
       outline-offset: 3px;
       border-radius: 2px;
     }
 
-    /* ── Pastille d'état ───────────────────────────────────────────
-       Elle reprend la forme du bouton « Cliquez pour commencer », mais
-       elle est INERTE : ni bouton, ni lien, ni survol, ni curseur main.
-       C'est le point de la page — on reconnaît l'entrée du site, et on
-       voit du même coup qu'elle ne s'ouvre pas encore. */
+    /* ══════════════════════════════════════════════════════════════
+       2 · LA BASCULE — « À propos » change le contenu du bloc
+       ──────────────────────────────────────────────────────────────
+       Une case à cocher MASQUÉE (mais focusable) tient l'état, et le CSS
+       montre l'une ou l'autre vue. Pas une ligne de script : le texte des
+       DEUX vues est dans le HTML, servi dès le premier octet, donc lu par
+       tous les robots — c'est la raison d'être de cette page (cf. l'en-tête).
+
+       ⚠️ LA CASE EST LE PREMIER ENFANT DU BLOC, ET DOIT LE RESTER. Tout ce
+       qui suit se règle depuis elle par le combinateur `~` : les deux vues,
+       mais aussi la taille du titre et l'espacement, qui se resserrent quand
+       la présentation paraît. La déplacer romprait la moitié de la feuille,
+       en silence.
+
+       ⚠️ L'ENCHAÎNEMENT EST SÉQUENTIEL, PAS SIMULTANÉ. La vue sortante garde
+       sa place le temps de s'effacer (`transition-behavior: allow-discrete`
+       retient le `display` pendant le fondu), et la vue entrante attend ce
+       temps-là avant de paraître. Deux vues affichées ensemble
+       additionneraient leurs hauteurs : le bloc sauterait à chaque bascule.
+       ⚠️ Un navigateur qui ignore `allow-discrete` / `@starting-style`
+       bascule SANS fondu — instantanément, et c'est tout. Rien ne dépend de
+       l'animation : les deux vues sont deux blocs de texte ordinaires.
+       ══════════════════════════════════════════════════════════════ */
+
+    /* La case : hors de l'écran mais dans l'ordre de tabulation (jamais
+       `display: none`, qui la retirerait du clavier). Espace la coche, donc
+       bascule la vue ; les deux libellés (« À propos » / « Retour ») la
+       désignent par `for`, et lui donnent son nom accessible. */
+    .cs-toggle {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* ⚠️ LA VUE MASQUÉE SORT DU FLUX (`position: absolute`), ELLE N'EST NI
+       DÉMONTÉE NI SUPERPOSÉE. Trois choses en découlent, et c'est ce trio
+       qui rend la bascule propre :
+         · le cadre ne mesure QUE la vue visible — la masquée ne lui donne
+           plus sa hauteur, donc `auto` vaut exactement ce qu'il faut ;
+         · les deux vues restent en `display: flex`, donc les transitions
+           jouent DANS LES DEUX SENS (une transition ne démarre jamais sur un
+           élément qui était en `display: none` : la vue entrante arrivait
+           alors à pleine opacité, sans fondu) ;
+         · `visibility: hidden`, posé à la fin du fondu, la retire de l'ordre
+           de tabulation et de l'arbre d'accessibilité, sans retirer son texte
+           du HTML — c'est la raison d'être de cette page.
+
+       ⚠️ ET LE CADRE TIENT LA HAUTEUR, PAS SON CONTENU. À l'avertissement il
+       vaut `auto` : la mise en page de l'accueil est donc exactement celle
+       qu'elle serait sans bascule, au pixel près. À la présentation il vaut
+       une hauteur explicite, dans laquelle le texte défile. Entre les deux,
+       `auto ↔ longueur` S'INTERPOLE — c'est la seule paire qui le fasse, et
+       elle demande `interpolate-size: allow-keywords` sur :root. Le cadre
+       glisse ainsi d'une hauteur à l'autre en 420 ms, le titre et la pastille
+       avec lui, au lieu de sauter.
+
+       Cinq montages ont été essayés avant celui-ci, tous faux — ne pas y
+       revenir :
+         · les vues À LA SUITE, l'une en `display: none` : le navigateur
+           démasque l'entrante dès le clic sans attendre le retard de sa
+           transition, et les deux hauteurs s'additionnaient. Mesuré : le bloc
+           passait de 522 à 801 px À L'INSTANT DU CLIC, le titre bondissait de
+           147 px SOUS le texte encore en train de s'effacer ;
+         · `auto ↔ auto` avec `interpolate-size` : deux `auto` ont la même
+           valeur calculée, il n'y a rien à interpoler ;
+         · deux rangées échangeant leur fraction (`1fr 0fr` → `0fr 1fr`) :
+           dans un cadre contraint, la somme intermédiaire dépasse la place et
+           le flex la rabat aussitôt — le saut revient, déguisé ;
+         · les deux vues montées EN PERMANENCE, masquées par `visibility` : la
+           bascule devenait parfaitement immobile, mais le cadre valait alors
+           toujours la plus haute des deux et l'avertissement flottait au
+           milieu de deux vides de cent cinquante pixels ;
+         · une hauteur FIXE, la même pour les deux vues : impossible, mesuré.
+           Selon la fenêtre, l'avertissement demande de 26 à 60 % de la
+           hauteur d'écran et la place libre n'en offre que 47 à 71 % — aucune
+           valeur unique ne tient les deux bouts. */
+    .cs-swap {
+      position: relative;
+      display: grid;
+      width: 100%;
+      min-height: 0;
+      height: auto;
+      overflow: hidden;
+    }
+
+    /* La hauteur de la présentation. Elle se réduit d'elle-même si la fenêtre
+       ne l'offre pas (le cadre est un élément de flex, il rétrécit) : le texte
+       défile alors davantage, et rien ne déborde. */
+    .cs-toggle:checked ~ .cs-swap { height: min(62vh, 640px); }
+
+    /* ⚠️ `align-self: stretch` — la vue prend TOUTE la hauteur du cadre, elle
+       ne s'y pose pas. C'est ce qui donne à sa colonne une hauteur définie,
+       donc au corps du texte de quoi se réduire et défiler (§ « le corps »).
+       Sur `start`, la vue gardait sa hauteur naturelle, débordait du cadre et
+       s'y faisait rogner : à 1225 × 640, la flèche de retour était PUREMENT
+       ET SIMPLEMENT COUPÉE, et le texte s'arrêtait au milieu d'une phrase.
+       (À l'avertissement le cadre vaut `auto` : s'étirer sur une hauteur
+       indéfinie, c'est garder la sienne — rien ne change.) */
+    .cs-view {
+      grid-area: 1 / 1;
+      align-self: stretch;
+      position: static;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 0;
+      opacity: 1;
+    }
+
+    /* La présentation part du haut : question, texte, flèche. */
+    .cs-view--projet { justify-content: flex-start; }
+
+    .cs-toggle:checked       ~ .cs-swap .cs-view--accueil,
+    .cs-toggle:not(:checked) ~ .cs-swap .cs-view--projet {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* ── L'APPEL « À propos » ──────────────────────────────────────
+       Discret, et il doit le rester : une pastille de plus, juste au-dessus
+       de celle de l'état, lui volerait son évidence — or c'est la pastille
+       « Site en construction » qui est le point de la page. Donc un mot en
+       petites capitales espacées et un filet qui s'allonge au survol : le
+       geste du site (#start-screen:hover .ss-rule, qui passe de 40 à 80 px). */
+    .cs-open {
+      flex: none;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6em;
+      margin: clamp(0.5rem, 1.6vh, 1.1rem) 0 clamp(1rem, 2.6vh, 1.7rem);
+      /* 44 px de haut : la cible tactile recommandée, quelle que soit la
+         taille du mot. */
+      min-height: 44px;
+      padding: 4px 8px;
+      color: #8a8a86;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.58rem, min(0.72vw, 1.15vh), 0.68rem);
+      font-weight: 300;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      text-indent: 0.34em;
+      cursor: pointer;
+      transition: color 0.4s ease;
+    }
+
+    .cs-open__line {
+      width: 26px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.25);
+      transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.4s ease;
+    }
+
+    .cs-open:hover { color: #e8e7e0; }
+
+    .cs-open:hover .cs-open__line {
+      width: 56px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+
+    /* ── LA FLÈCHE DE RETOUR ───────────────────────────────────────
+       C'est la flèche des chapitres, refaite en CSS : mêmes cotes (viewBox
+       70, cercle r 32, chevron « M48 35 L22 35 M33 24 L22 35 L33 46 »), mêmes
+       épaisseurs, mêmes cadences — le cercle se trace en 1,4 s, le chevron
+       s'écrit ensuite en 0,7 s — et le même survol : le SVG grossit de 1,22
+       sur une courbe élastique, le trait passe à l'or avec sa double lueur
+       (applyGoldenHover, helpers.js). Voir src/ui/ArrowBase.js.
+       ⚠️ Le tracé rejoué : une vue masquée n'a AUCUNE animation en cours ;
+       en repassant de `display: none` à `display: flex`, elle les redémarre
+       toutes seules. La flèche se redessine donc à chaque ouverture, comme
+       elle le fait à chaque entrée de chapitre.
+       ⚠️ `stroke-dashoffset: 0` est l'état de BASE, et le tracé part des
+       @keyframes : sans réglage d'animation (mouvement réduit), la flèche est
+       simplement là, entière. */
+    .cs-back {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: clamp(1.2rem, 3.4vh, 2rem) 0 0;
+      /* Cible tactile de 44 px, même quand le dessin est plus petit. */
+      min-width: 44px;
+      min-height: 44px;
+      padding: 2px;
+      line-height: 0;
+      cursor: pointer;
+    }
+
+    .cs-back svg {
+      display: block;
+      width: clamp(34px, min(5.2vw, 7.4vh), 56px);
+      height: auto;
+      overflow: visible;
+      transform-origin: center;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .cs-back:hover svg { transform: scale(1.22); }
+
+    .cs-back__c,
+    .cs-back__p {
+      fill: none;
+      stroke-dashoffset: 0;
+      transition: stroke 0.3s ease, filter 0.3s ease;
+    }
+
+    .cs-back__c { stroke: rgba(255, 255, 255, 0.75); stroke-width: 1.2; stroke-dasharray: 201; }
+
+    .cs-back__p {
+      stroke: rgba(255, 255, 255, 0.80);
+      stroke-width: 1.4;
+      stroke-dasharray: 60;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .cs-back:hover .cs-back__c,
+    .cs-back:hover .cs-back__p {
+      stroke: rgba(255, 230, 130, 0.95);
+      filter: drop-shadow(0 0 7px rgba(255, 210, 80, 0.80))
+              drop-shadow(0 0 20px rgba(255, 170, 30, 0.50));
+    }
+
+    /* Le halo de focus se pose sur la commande VISIBLE : c'est la case qui a
+       le focus, mais c'est elle qu'on regarde. */
+    .cs-toggle:focus-visible ~ .cs-swap .cs-view .cs-open,
+    .cs-toggle:focus-visible ~ .cs-swap .cs-view .cs-back {
+      outline: 2px solid rgba(255, 210, 80, 0.95);
+      outline-offset: 4px;
+      border-radius: 3px;
+    }
+
+    /* Nom accessible d'une commande qui n'est qu'un dessin. */
+    .cs-sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       3 · LA VUE « À PROPOS »
+       ══════════════════════════════════════════════════════════════ */
+
+    /* ── LA QUESTION ───────────────────────────────────────────────
+       Reprise de config.js (DOCUMENTS.about → hook) avec sa typographie de
+       sens : l'or déposé sur les mots-clefs, l'italique pour la main et la
+       personne (Soliman al-Halabi), le romain gras pour le monument (le
+       général Kléber), la barre sous le passage le plus dur. Ce qui, sur le
+       site, s'écrit lettre à lettre est ici simplement POSÉ. */
+    .cs-hook {
+      flex: none;
+      width: min(660px, 100%);
+      margin: 0 0 clamp(1.3rem, 3.2vh, 2.2rem);
+      color: rgba(255, 255, 255, 0.95);
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(1rem, min(1.75vw, 2.7vh), 1.6rem);
+      font-weight: 400;
+      line-height: 1.42;
+      letter-spacing: -0.004em;
+      text-wrap: pretty;   /* pas d'orpheline en fin de question */
+    }
+
+    /* L'or déposé des mots-clefs (fin de @keyframes abToGold, style.css). */
+    .cs-kw {
+      color: rgba(224, 192, 116, 1);
+      font-style: italic;
+      font-weight: 700;
+    }
+
+    /* `engraved` en config : la pierre, l'institution. Même or, autre voix. */
+    .cs-kw--engraved { font-style: normal; }
+
+    /* ⚠️ `text-decoration` et non un pseudo-élément : la locution doit pouvoir
+       passer à la ligne (sur téléphone, elle se coupe), et un trait positionné
+       ne suivrait que le premier fragment. */
+    .cs-mark {
+      color: #fff;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 0.17em;
+      text-decoration-color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* ── LE CORPS ──────────────────────────────────────────────────
+       UNE SEULE COLONNE, CENTRÉE — et c'est un choix, pas un repli. La page
+       entière tient sur un axe : bandeau, filet, titre, question, pastille,
+       signature, tout est centré. Deux colonnes brisaient cet axe et, pire,
+       coupaient une phrase en son milieu : la colonne de droite s'ouvrait sur
+       « au rang de relique de héros national », qu'on ne comprend qu'après
+       avoir cherché son début en bas de l'autre colonne.
+
+       Le texte est donc posé en une colonne de lecture, et c'est LUI qui
+       défile — jamais la page. Il occupe la place qui reste, quelle qu'elle
+       soit : cadré par le flex, il grandit sur un grand écran et se resserre
+       sur un petit, la flèche et la pastille ne bougeant pas d'un pixel.
+
+       ⚠️ `min-height: 0` autorise sa réduction dans le flex (sans quoi il
+       pousserait la flèche hors de l'écran) ; `min-height: min(6em, 34vh)`
+       lui garde toujours de quoi montrer quelques lignes. */
+    .cs-prose {
+      flex: 0 1 auto;
+      /* 580 px : environ 72 signes par ligne, la longueur de lecture. Plus
+         large, l'oeil perd la ligne suivante en revenant a gauche. */
+      width: min(580px, 100%);
+      /* ⚠️ UN PLANCHER BAS, ET EN HAUTEUR D'ÉCRAN. Il garantit quelques
+         lignes lisibles, mais il ne doit JAMAIS empêcher le cadre de faire sa
+         place à la flèche de retour : à 28vh, sur les très petits écrans
+         (320 × 568, téléphone couché), le texte gardait sa hauteur et la
+         flèche se retrouvait rognée par le cadre — mesuré, purement invisible.
+         Un plancher en em serait pire encore : il ne se réduit pas du tout. */
+      min-height: min(15vh, 5.5em);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      /* La barre : fine, sombre, à peine là. On la devine, elle ne s'annonce
+         pas — ce sont les lisières, ci-dessous, qui disent qu'il reste du
+         texte. Le retrait à droite empêche le texte de la toucher. */
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+      /* Le meme retrait des DEUX cotes : la barre vit dans celui de droite,
+         et le texte reste centre sur l'axe de la page. Un retrait a droite
+         seul decalait le pave de six pixels vers la gauche — invisible en
+         soi, mais la page entiere est batie sur cet axe. */
+      padding: 0 0.9em;
+      text-align: left;
+    }
+
+    /* ── LES LISIÈRES ──────────────────────────────────────────────
+       Le texte NAÎT du noir en haut et s'y DISSOUT en bas. Ce n'est pas une
+       ombre posée par-dessus : c'est un masque, donc les lettres s'effacent
+       elles-mêmes, sans qu'aucun voile ne passe devant.
+
+       ⚠️ ET LES DEUX LISIÈRES SUIVENT LE DÉFILEMENT. En haut de course, seule
+       celle du bas existe (il reste du texte dessous) ; en bas de course,
+       seule celle du haut. C'est exactement ce que fait l'« À Propos » de
+       l'expérience (`.doc-ov-text`, --fade-top / --fade-bot pilotées en JS
+       par DocumentOverlay) — ici sans une ligne de script : une animation
+       liée au défilement de l'élément lui-même.
+
+       ⚠️ ET C'EST CE QUI RÈGLE LE CAS DÉLICAT : quand le texte tient
+       entièrement, l'élément ne défile pas, la timeline est INACTIVE, aucune
+       image-clef ne s'applique — donc aucune lisière, et la première ligne
+       n'est pas estompée pour rien. Un masque fixe, lui, aurait mangé la
+       première et la dernière ligne d'un texte qui tient.
+       ⚠️ `@property` est indispensable : sans type déclaré, une propriété
+       personnalisée s'interpole comme une CHAÎNE — donc pas du tout.
+       ⚠️ Le fondu n'est PAS sous « mouvement réduit » : ce n'est pas un
+       mouvement, c'est l'indication qu'il reste du texte. La retirer là où
+       elle sert le plus serait un contresens. */
+    /* ⚠️ En POURCENTAGE de la boîte, pas en em : sur une fenêtre basse, le
+       cadre ne fait plus que trois cents pixels et une lisière de 3,2 em en
+       mangeait un sixième. En pourcentage, elle reste proportionnée. */
+    @property --cs-haut { syntax: "<length-percentage>"; inherits: false; initial-value: 0%; }
+    @property --cs-bas  { syntax: "<length-percentage>"; inherits: false; initial-value: 0%; }
+
+    .cs-prose {
+      --cs-haut: 0%;
+      --cs-bas:  0%;
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 0, #000 var(--cs-haut),
+        #000 calc(100% - var(--cs-bas)), transparent 100%);
+              mask-image: linear-gradient(to bottom,
+        transparent 0, #000 var(--cs-haut),
+        #000 calc(100% - var(--cs-bas)), transparent 100%);
+    }
+
+    @supports (animation-timeline: scroll(self)) {
+      .cs-prose {
+        animation: csLisieres linear both;
+        animation-timeline: scroll(self);
+      }
+
+      @keyframes csLisieres {
+        from { --cs-haut: 0%;  --cs-bas: 11%; }
+        50%  { --cs-haut: 11%; --cs-bas: 11%; }
+        to   { --cs-haut: 11%; --cs-bas: 0%; }
+      }
+    }
+
+    .cs-prose p {
+      margin: 0 0 1em;
+      color: rgba(228, 226, 218, 0.78);
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.8rem, min(0.95vw, 1.6vh), 0.97rem);
+      font-weight: 300;
+      line-height: 1.75;
+      letter-spacing: 0.012em;
+      text-align: justify;
+      text-wrap: pretty;
+      -webkit-hyphens: auto;
+              hyphens: auto;
+      /* Sans cette limite, la cesure automatique coupe tout ce qu'elle peut :
+         « ba-gages », « ex-pedition », « His-toire ». On ne coupe donc qu'un
+         mot d'au moins 10 signes, en en laissant 5 avant et 4 apres. */
+      hyphenate-limit-chars: 10 5 4;
+    }
+
+    .cs-prose p:last-child { margin-bottom: 0; }
+
+    /* Passages en relief (*…* dans la config) : blanc chaud et halo doré,
+       comme .ab-em une fois le texte posé. */
+    .cs-em {
+      font-style: normal;
+      font-weight: 500;
+      color: rgba(255, 252, 244, 0.96);
+      text-shadow: 0 0 16px rgba(210, 175, 90, 0.30);
+    }
+
+    /* Un passage en relief QUI EST AUSSI UN LIEN — les partenaires, en fin de
+       texte, et le Muséum. Il garde son blanc chaud et prend un souligné
+       doré : on voit que c'est cliquable sans que la ligne change de couleur.
+       ⚠️ La règle vient APRÈS .cs-link, sans quoi la couleur du lien
+       l'emporterait sur celle du relief (même spécificité, dernier écrit
+       gagne). */
+    .cs-em.cs-link {
+      color: rgba(255, 252, 244, 0.96);
+      border-bottom-color: rgba(210, 175, 90, 0.5);
+    }
+
+    .cs-em.cs-link:hover,
+    .cs-em.cs-link:focus-visible {
+      color: rgba(255, 230, 160, 1);
+      border-bottom-color: rgba(231, 206, 142, 0.95);
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       4 · L'ÉTAT ET LA SIGNATURE
+       ══════════════════════════════════════════════════════════════ */
+
+    /* La pastille reprend la forme du bouton du site, mais elle est INERTE :
+       ni bouton, ni lien, ni survol, ni curseur main. C'est le point de la
+       page — on reconnaît l'entrée du site, et on voit du même coup qu'elle
+       ne s'ouvre pas encore. Elle reste sous les DEUX vues : l'avertissement
+       ne quitte jamais l'écran. */
     .cs-status {
+      flex: none;
       display: inline-flex;
       align-items: center;
       gap: 0.7em;
       color: rgba(255, 255, 255, 0.55);
       font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
+      font-size: clamp(0.6rem, min(0.75vw, 1.2vh), 0.7rem);
       font-weight: 300;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      padding: 12px 24px;
+      padding: clamp(9px, 1.4vh, 12px) clamp(18px, 2vw, 24px);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 50px;
-      /* Même compensation que .cs-eyebrow, au même titre. */
       text-indent: 0.3em;
     }
 
@@ -335,15 +883,15 @@
       50%      { opacity: 0.9; }
     }
 
-    /* ── Crédits ───────────────────────────────────────────────── */
     .cs-credits {
+      flex: none;
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-top: 2.4rem;
+      margin-top: clamp(1rem, 2.8vh, 2.4rem);
       color: #666;
       font-family: 'Inter', sans-serif;
-      font-size: 0.65rem;
+      font-size: clamp(0.56rem, min(0.7vw, 1.1vh), 0.65rem);
       letter-spacing: 0.2em;
       text-transform: uppercase;
     }
@@ -354,19 +902,158 @@
       background: rgba(255, 255, 255, 0.1);
     }
 
-    /* ── Téléphone ─────────────────────────────────────────────────
-       La grille se resserre et le texte respire un peu moins : sur un
-       écran étroit, 1,75 d'interligne étire la page sur deux hauteurs. */
-    @media (max-width: 600px) {
-      .cs-screen { padding: 8vh 5vw; }
-      .cs-body   { line-height: 1.65; }
-      .cs-status { letter-spacing: 0.2em; padding: 11px 18px; }
-      .cs-grid-accent { display: none; }
+    /* ══════════════════════════════════════════════════════════════
+       5 · LES APPARITIONS — un seul geste
+       ──────────────────────────────────────────────────────────────
+       Le texte monte de quelques pixels en se posant ; les filets s'ouvrent
+       depuis leur centre — c'est le geste des légendes du site
+       (.doc-ov-caption::after, qui se trace du centre vers ses deux bouts).
+       Le même geste sert au chargement (un retard, `--d`, écrit dans le HTML
+       pour qu'on lise la partition dans la page) et à la bascule.
+
+       ⚠️ AUCUNE RÈGLE DE BASE NE CACHE QUOI QUE CE SOIT : l'état de départ vit
+       dans les @keyframes, en `both`. Couper les animations (réglage système)
+       rend donc la page ENTIÈRE lisible ; jamais un texte suspendu.
+       ══════════════════════════════════════════════════════════════ */
+
+    @keyframes csRise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: none; }
     }
 
-    /* Respect du réglage système « animations réduites ». */
+    @keyframes csFilet {
+      from { opacity: 0; transform: scaleX(0); }
+      to   { opacity: 1; transform: scaleX(1); }
+    }
+
+    @keyframes csTraceCercle  { from { stroke-dashoffset: 201; } to { stroke-dashoffset: 0; } }
+    @keyframes csTraceChevron { from { stroke-dashoffset: 60; }  to { stroke-dashoffset: 0; } }
+
+    @keyframes csTitleFloat {
+      0%   { transform: translateY(0); }
+      50%  { transform: translateY(-5px); }
+      100% { transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+
+      /* ── Au chargement ──
+         ⚠️ LA CASCADE NE PORTE QUE SUR CE QUI EST HORS DES VUES (le bandeau,
+         les filets, le titre, la pastille, la signature). Le contenu des vues
+         en est EXCLU, et ce n'est pas un oubli : une animation repart à zéro
+         chaque fois que son élément reparaît, si bien qu'au retour de
+         « À propos » la cascade se rejouait — le second paragraphe mettait
+         1,1 s à revenir sur un écran vide. Le texte des vues paraît donc avec
+         le fondu de sa vue, au chargement comme à la bascule : un seul geste,
+         une seule durée. */
+      .cs-in {
+        animation: csRise 1100ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) both;
+      }
+
+      .cs-in--filet {
+        animation: csFilet 800ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) both;
+      }
+
+      /* Le titre monte, PUIS flotte. Les deux animations écrivent le même
+         transform : la seconde, plus tardive, gagne dès qu'elle démarre — et
+         elle démarre là où la première s'arrête (translateY(0)), sans à-coup.
+         ⚠️ Le flottement s'arrête dans la vue « À propos » : cinq pixels de
+         va-et-vient au-dessus d'un texte qu'on lit, c'est un texte qu'on ne
+         lit plus. */
+      .cs-title.cs-in {
+        animation:
+          csRise 1200ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) both,
+          csTitleFloat 6s ease-in-out var(--df, 1800ms) infinite;
+      }
+
+      .cs-toggle:checked ~ .cs-title.cs-in {
+        animation: csRise 1200ms cubic-bezier(0.22, 1, 0.36, 1) var(--d, 0ms) both;
+      }
+
+      /* ── Le tracé de la flèche, à chaque ouverture ──
+         ⚠️ Plus vif que sur le site (1,4 s + 0,7 s à 1,3 s) : là-bas la flèche
+         accompagne l'ouverture d'une scène, ici elle répond à un clic. Même
+         geste, même courbe, deux tiers du temps. */
+      .cs-back__c { animation: csTraceCercle  1000ms cubic-bezier(0.4, 0, 0.2, 1) 100ms both; }
+      .cs-back__p { animation: csTraceChevron  550ms cubic-bezier(0.4, 0, 0.2, 1) 850ms both; }
+
+      /* ── À la bascule ── (l'exposé complet est au § 2)
+         Le cadre glisse d'une hauteur à l'autre pendant que l'ancien texte
+         s'efface (200 ms) ; le nouveau se pose ensuite, sur une page qui
+         s'est immobilisée. `visibility` attend la fin du fondu de sortie —
+         posée plus tôt, le texte disparaîtrait au milieu de son propre
+         effacement. */
+      .cs-swap {
+        transition: height 420ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* ⚠️ ET LES DEUX VUES N'ÉCHANGENT LEUR PLACE DANS LE FLUX QU'À 200 ms,
+         pas au clic. C'est ce qui manquait pour que le cadre GRANDISSE en
+         glissant : `auto` se résout à chaque image contre le contenu du
+         moment ; l'entrante prenant le flux dès le clic, `auto` valait
+         d'emblée la nouvelle hauteur et la transition partait de son point
+         d'arrivée — elle se jouait, mais sans rien parcourir (mesuré : 556 px
+         dès la 40ᵉ milliseconde, transition bien enregistrée). En basculant
+         `position` par une transition discrète de 400 ms — qui change de
+         valeur à la moitié de sa course, donc à 200 ms — l'ancienne vue tient
+         le flux le temps de s'effacer, et le cadre part bien de sa hauteur. */
+      .cs-toggle:checked       ~ .cs-swap .cs-view--accueil,
+      .cs-toggle:not(:checked) ~ .cs-swap .cs-view--projet {
+        transition: opacity 200ms ease,
+                    visibility 0s linear 200ms,
+                    position 400ms allow-discrete;
+      }
+
+      .cs-toggle:not(:checked) ~ .cs-swap .cs-view--accueil,
+      .cs-toggle:checked       ~ .cs-swap .cs-view--projet {
+        transition: opacity 400ms cubic-bezier(0.22, 1, 0.36, 1) 260ms,
+                    visibility 0s linear 260ms,
+                    position 400ms allow-discrete;
+      }
+
+      /* Le titre change de taille pendant que l'ancien texte s'efface, et a
+         fini quand le nouveau se pose : un cadre qui se règle, puis un texte
+         qui s'y range. Les marges suivent, sinon la colonne se réorganiserait
+         d'un cran sec au milieu du fondu. */
+      .cs-title,
+      .cs-eyebrow,
+      .cs-inner > .cs-rule {
+        transition:
+          font-size     240ms cubic-bezier(0.22, 1, 0.36, 1),
+          margin-bottom 240ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+    }
+
+    /* ── Téléphone ───────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .cs-screen { padding: clamp(1.2rem, 4vh, 3rem) 7vw; }
+      .cs-body   { line-height: 1.62; }
+      .cs-status { letter-spacing: 0.2em; padding: 10px 16px; }
+      .cs-open    { letter-spacing: 0.26em; text-indent: 0.26em; }
+      .cs-grid-accent { display: none; }
+
+      /* Le pavé justifié ne tient pas dans une colonne étroite : les blancs
+         inter-mots s'y creusent en rivières. On revient au fer à gauche. */
+      .cs-prose p { text-align: left; line-height: 1.68; }
+    }
+
+    /* ⚠️ TÉLÉPHONE COUCHÉ — la flèche passe avant le texte. Sur 360 px de
+       haut, le cadre n'a plus de quoi loger la question, quelques lignes ET
+       la flèche : c'est le plancher du texte qui cède, jamais la commande de
+       retour. Sans cette règle, la flèche se retrouvait rognée par le bas du
+       cadre — invisible, donc plus de sortie. */
+    @media (max-height: 480px) {
+      .cs-prose { min-height: 0; }
+      .cs-back  { min-height: 38px; min-width: 38px; margin-top: clamp(0.4rem, 1.6vh, 0.9rem); }
+      .cs-back svg { width: clamp(28px, 8vh, 40px); }
+    }
+
+    /* ── Mouvement réduit ─────────────────────────────────────────
+       Le réglage système coupe tout : apparitions, bascule, battement,
+       flottement. Rien ne disparaît pour autant (cf. § 5). */
     @media (prefers-reduced-motion: reduce) {
       .cs-title, .cs-status__dot { animation: none; }
+      .cs-status__dot { opacity: 0.55; }
     }
   </style>
 </head>
@@ -385,52 +1072,154 @@
 
   <div class="cs-inner">
 
-    <div class="cs-eyebrow">Projet de recherche</div>
+    <!-- ⚠️ LA CASE DOIT RESTER LE PREMIER ENFANT : c'est un frère `~` qui
+         commande les deux vues ET la mise en page (taille du titre,
+         espacements). La déplacer romprait la bascule en silence. -->
+    <input class="cs-toggle" type="checkbox" id="cs-apropos">
 
-    <div class="cs-rule" aria-hidden="true"></div>
+    <div class="cs-eyebrow cs-in" style="--d:120ms">Projet de recherche</div>
 
-    <h1 class="cs-title">Soliman <span style="white-space:nowrap">al-Halabi</span></h1>
+    <div class="cs-rule cs-in--filet" style="--d:280ms" aria-hidden="true"></div>
 
-    <!-- ⚠️ Apostrophe TYPOGRAPHIQUE (’) et non droite ('), comme dans tous les
-         textes que le visiteur lit — cf. DOCUMENTS.about de config.js.
-         Les liens sortants portent rel="noopener" et s'ouvrent dans un nouvel
-         onglet : on ne fait pas quitter la page à qui cherchait le projet.
+    <h1 class="cs-title cs-in" style="--d:400ms">Soliman <span style="white-space:nowrap">al-Halabi</span></h1>
 
-         ⚠️ Abounaddara ne pointe PAS sur un site institutionnel, et c'est un
-         choix. Son domaine historique (abounaddara.com) répond encore, mais
-         sert une page en Flash — technologie morte depuis 2020 : le visiteur
-         n'y verrait qu'un écran blanc. Le lien mène donc à l'entretien que le
-         collectif a donné à Frédéric Keck dans « Gradhiva » n° 39 (2025),
-         consacré précisément à Soliman al-Halabi et au corps du « Syrien
-         fanatique » — une source vivante, en accès libre et savante, qui
-         renseigne mieux sur le collectif que ne le ferait sa vitrine. -->
-    <p class="cs-body">
-      Vous êtes bien sur la page du projet de recherche collaboratif consacré à
-      Soliman al-Halabi, conduit par
-      <a class="cs-link" href="https://journals.openedition.org/gradhiva/8933" target="_blank" rel="noopener">Abounaddara</a>
-      et le
-      <a class="cs-link" href="https://www.cnrs.fr/fr" target="_blank" rel="noopener">CNRS</a>
-      avec le soutien de l’<a class="cs-link" href="https://anr.fr/" target="_blank" rel="noopener">Agence
-      nationale de la recherche</a>.
-    </p>
+    <div class="cs-swap">
 
-    <p class="cs-body">
-      Le site est en cours de construction. Des négociations sont actuellement
-      engagées entre le
-      <a class="cs-link" href="https://koyre.ehess.fr/" target="_blank" rel="noopener">Centre
-      Alexandre Koyré</a> et le
-      <a class="cs-link" href="https://www.mnhn.fr/fr" target="_blank" rel="noopener">Muséum
-      national d’Histoire naturelle</a>.
-    </p>
+      <!-- ══ VUE 1 — l'avertissement ══
+           ⚠️ Apostrophe TYPOGRAPHIQUE (’) et non droite ('), comme dans tous
+           les textes que le visiteur lit — cf. DOCUMENTS.about de config.js.
+           ⚠️ AUCUN LIEN ICI, et c'est un choix : on ne fait pas sortir du site
+           quelqu'un venu vérifier que le site existe. Les institutions y sont
+           NOMMÉES (en gras, .cs-body strong) ; elles sont LIÉES une fois, et
+           une seule, dans la vue « À propos ». -->
+      <div class="cs-view cs-view--accueil">
 
-    <div class="cs-rule cs-rule--short" aria-hidden="true"></div>
+        <p class="cs-body">
+          Vous êtes bien sur la page du projet de recherche collaboratif
+          consacré à Soliman al-Halabi, conduit par <strong><a class="cs-link" href="https://journals.openedition.org/gradhiva/8933" target="_blank" rel="noopener">Abounaddara</a></strong>
+          et le <strong><a class="cs-link" href="https://www.cnrs.fr/fr" target="_blank" rel="noopener">CNRS</a></strong> avec le soutien de l’<strong><a class="cs-link" href="https://anr.fr/" target="_blank" rel="noopener">Agence
+          nationale de la recherche</a></strong>.
+        </p>
 
-    <div class="cs-status">
+        <label class="cs-open" for="cs-apropos">
+          <span>À propos</span>
+          <span class="cs-open__line" aria-hidden="true"></span>
+        </label>
+
+        <p class="cs-body">
+          Le site est en cours de construction. Des négociations sont
+          actuellement engagées entre le <strong><a class="cs-link" href="https://koyre.ehess.fr/" target="_blank" rel="noopener">Centre
+          Alexandre Koyré</a></strong>
+          et le <strong><a class="cs-link" href="https://www.mnhn.fr/fr" target="_blank" rel="noopener">Muséum
+          national d’Histoire naturelle</a></strong>.
+        </p>
+
+      </div>
+
+      <!-- ══ VUE 2 — « À propos » ══
+           ⚠️ CE TEXTE N'EST PAS ÉCRIT POUR CETTE PAGE : c'est l'« À Propos »
+           du site, celui de la scène phrénologie, repris MOT POUR MOT de
+           config.js (DOCUMENTS.about → hook et paragraphs), sans une coupe.
+           Toute retouche éditoriale se fait donc AUX DEUX ENDROITS, sans quoi
+           la page d'attente annoncerait un texte que le site ne dit plus.
+
+           La correspondance est exacte :
+             hook → <h2 class="cs-hook">   'gold'      → .cs-kw
+                                            + engraved → .cs-kw--engraved
+                                            underline  → .cs-mark
+             paragraphs → .cs-prose        *…*         → <em class="cs-em">
+
+           Un seul segment de l'accroche n'est pas repris : le raté. Sur le
+           site, « meurtrier » s'écrit d'abord, se fait raturer, puis
+           « assassin » se réécrit par-dessus (`draft`) — le texte se corrige
+           devant le lecteur. C'est un geste dans le TEMPS ; posé, il ne
+           resterait qu'un mot barré, qu'on lirait comme une coquille.
+
+           ⚠️ LES SEULS LIENS DE LA PAGE SONT ICI, sur les institutions que ce
+           texte nomme : le Muséum au premier paragraphe, les trois partenaires
+           au dernier. Une institution, une adresse, une fois. -->
+      <div class="cs-view cs-view--projet">
+
+        <h2 class="cs-hook">
+          Que faire du corps de <em class="cs-kw">Soliman <span style="white-space:nowrap">al-Halabi</span></em>,
+          assassin présumé du
+          <strong class="cs-kw cs-kw--engraved">général Kléber</strong>, qui
+          demeure sans sépulture depuis sa
+          <span class="cs-mark">condamnation à mort</span> par la justice
+          française en 1800 ?
+        </h2>
+
+        <div class="cs-prose">
+          <p>
+            Le corps de cet écrivain public originaire d’Alep a été ramené en
+            France dans les bagages de l’<em class="cs-em">expédition
+            d’Égypte</em> (1798-1801). Il a été remis au
+            <a class="cs-em cs-link" href="https://www.mnhn.fr/fr" target="_blank" rel="noopener">Muséum
+            national d’Histoire naturelle</a> qui l’a exposé dans ses vitrines
+            jusque dans les années 1980.
+          </p>
+
+          <p>
+            Entretemps, <em class="cs-em">le corps de Soliman al-Halabi</em> a
+            été érigé en représentant d’une nation ou une religion.
+          </p>
+
+          <p>
+            En France, il a intégré les collections publiques en tant que
+            spécimen de <em class="cs-em">«&nbsp;Syrien fanatique&nbsp;»</em>. De l’autre
+            côté de la Méditerranée, il a été élevé au rang de relique de
+            <em class="cs-em">héros national</em> ou <em class="cs-em">martyr
+            religieux</em>.
+          </p>
+
+          <!-- ⚠️ Abounaddara ne pointe PAS sur un site institutionnel, et c'est
+               un choix. Son domaine historique (abounaddara.com) répond encore,
+               mais sert une page en Flash — technologie morte depuis 2020 : le
+               visiteur n'y verrait qu'un écran blanc. Le lien mène donc à
+               l'entretien que le collectif a donné à Frédéric Keck dans
+               « Gradhiva » n° 39 (2025), consacré précisément à Soliman
+               al-Halabi et au corps du « Syrien fanatique » — une source
+               vivante, en accès libre et savante, qui renseigne mieux sur le
+               collectif que ne le ferait sa vitrine. -->
+          <p>
+            Que faire de ce corps à l’état de squelette qui se tient au travers
+            de la commune humanité ? Telle est la question soulevée par le
+            présent site qui est né d’une <em class="cs-em">recherche
+            collaborative</em> réunissant des chercheurs, lycéens et étudiants
+            français. Et cela à l’initiative du collectif syrien
+            <a class="cs-em cs-link" href="https://journals.openedition.org/gradhiva/8933" target="_blank" rel="noopener">Abounaddara</a>,
+            avec le soutien de l’<a class="cs-em cs-link" href="https://anr.fr/" target="_blank" rel="noopener">Agence
+            Nationale de la Recherche</a>, et
+            <a class="cs-em cs-link" href="https://fbf.berkeley.edu/" target="_blank" rel="noopener">France-Berkeley
+            Fund</a>.
+          </p>
+        </div>
+
+        <!-- La flèche de retour du site, à l'identique (cf. le § qui la
+             décrit dans la feuille). Le mot qui la nomme n'est là que pour le
+             clavier et les lecteurs d'écran : à l'écran, le dessin suffit. -->
+        <label class="cs-back" for="cs-apropos">
+          <span class="cs-sr">Retour à la page d’accueil</span>
+          <svg viewBox="0 0 70 70" aria-hidden="true">
+            <circle class="cs-back__c" cx="35" cy="35" r="32"/>
+            <path class="cs-back__p" d="M48 35 L22 35 M33 24 L22 35 L33 46"/>
+          </svg>
+        </label>
+
+      </div>
+
+    </div>
+
+    <div class="cs-rule cs-rule--short cs-in--filet" style="--d:900ms" aria-hidden="true"></div>
+
+    <!-- La pastille est INERTE (ni <a> ni <button>) : elle dit un état, elle
+         n'ouvre rien. Elle reste sous les deux vues. -->
+    <div class="cs-status cs-in" style="--d:1040ms">
       <span class="cs-status__dot" aria-hidden="true"></span>
       Site en construction
     </div>
 
-    <div class="cs-credits">
+    <div class="cs-credits cs-in" style="--d:1240ms">
       <span class="cs-credits__sep" aria-hidden="true"></span>
       <span>Abounaddara · CNRS · 2026</span>
     </div>
