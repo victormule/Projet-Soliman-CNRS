@@ -1,0 +1,155 @@
+# =============================================================================
+#  Soliman al-Halabi — Abounaddara / CNRS
+#  Configuration Netlify
+#  À placer à la RACINE du dépôt (à côté de index.html), puis commit + push.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+#  BUILD
+#  Le site est statique et ne se construit pas : on publie la racine telle quelle.
+#  `command = ""` empêche Netlify d'inventer une commande de build à partir du
+#  package.json. `NPM_FLAGS = "--omit=dev"` évite d'installer Playwright à chaque
+#  déploiement : c'est de l'outillage local, rien en production ne l'importe.
+# -----------------------------------------------------------------------------
+[build]
+  publish = "."
+  command = ""
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS    = "--omit=dev"
+
+# -----------------------------------------------------------------------------
+#  REDIRECTIONS DE DOMAINE
+#
+#  Objectif : soliman-al-halabi.org (et son www) renvoient vers le .fr.
+#
+#  Trois points à comprendre :
+#
+#  1. `force = true` est INDISPENSABLE. Sans lui, Netlify sert le fichier
+#     existant (index.html) au lieu de rediriger, et la règle n'a aucun effet.
+#
+#  2. `:splat` reprend le chemin complet : /org/chapitre2 -> /fr/chapitre2.
+#     Sans lui, tout le monde atterrirait sur la page d'accueil, ce qui casse
+#     les liens profonds déjà partagés.
+#
+#  3. L'ORDRE COMPTE. Netlify applique la première règle qui correspond.
+#     Ces redirections de domaine doivent rester en tête de fichier.
+#
+#  Le www.soliman-al-halabi.fr n'est PAS listé ici : Netlify le redirige déjà
+#  nativement vers le domaine principal (visible dans Production domains).
+#  Dupliquer la règle ne ferait qu'ajouter un point de divergence.
+# -----------------------------------------------------------------------------
+[[redirects]]
+  from   = "https://soliman-al-halabi.org/*"
+  to     = "https://soliman-al-halabi.fr/:splat"
+  status = 301
+  force  = true
+
+[[redirects]]
+  from   = "https://www.soliman-al-halabi.org/*"
+  to     = "https://soliman-al-halabi.fr/:splat"
+  status = 301
+  force  = true
+
+# -----------------------------------------------------------------------------
+#  MASQUAGE DE L'OUTILLAGE
+#  `publish = "."` expose TOUT le dépôt, y compris tools/, CLAUDE.md et
+#  audit-config.js. Rien de secret a priori, mais aucune raison de le servir.
+# -----------------------------------------------------------------------------
+[[redirects]]
+  from   = "/tools/*"
+  to     = "/index.html"
+  status = 404
+
+[[redirects]]
+  from   = "/CLAUDE.md"
+  to     = "/index.html"
+  status = 404
+
+[[redirects]]
+  from   = "/audit-config.js"
+  to     = "/index.html"
+  status = 404
+
+[[redirects]]
+  from   = "/package.json"
+  to     = "/index.html"
+  status = 404
+
+# -----------------------------------------------------------------------------
+#  EN-TÊTES DE SÉCURITÉ
+#  Volontairement conservateurs : pas de CSP ici. Une CSP sur un site aussi
+#  riche en médias et en JS inline se règle en observant les violations
+#  réelles, pas en devinant — l'ajouter à l'aveugle casserait des chapitres.
+#
+#  Le HSTS est COMMENTÉ à dessein. Ne l'active qu'une fois le certificat émis
+#  et les 4 domaines testés en HTTPS : un navigateur qui a reçu cet en-tête
+#  refusera toute connexion non chiffrée pendant un an, sans recours possible
+#  côté serveur.
+# -----------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options        = "DENY"
+    Referrer-Policy        = "strict-origin-when-cross-origin"
+    Permissions-Policy     = "geolocation=(), camera=(), microphone=(), interest-cohort=()"
+    # Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# -----------------------------------------------------------------------------
+#  CACHE
+#
+#  Le HTML et la config ne doivent JAMAIS être mis en cache longtemps : sans ça
+#  une correction de texte peut mettre des jours à atteindre les visiteurs.
+#  `must-revalidate` force le navigateur à vérifier auprès du CDN à chaque fois
+#  (réponse 304 si rien n'a changé : quasi gratuit).
+#
+#  Les médias, eux, sont lourds et stables. Une semaine de cache réduit
+#  nettement la consommation de bande passante.
+#
+#  ⚠ Compromis assumé : tes fichiers n'ont pas de hash dans leur nom
+#  (chapitre1-1.webp, pas chapitre1-1.a3f9c2.webp). Si tu remplaces une image
+#  en gardant le même nom, les visiteurs déjà venus verront l'ancienne version
+#  jusqu'à 7 jours. C'est pour ça que je n'ai pas mis `immutable` / 1 an.
+#  Si tu dois pousser un correctif visuel urgent : renomme le fichier.
+# -----------------------------------------------------------------------------
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/*.mp4"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/*.mp3"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "/Chapitre2/chp2-fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
