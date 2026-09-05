@@ -32,7 +32,25 @@
 
 import { chromium } from 'playwright';
 
-const BASE = process.env.BENCH_URL || 'http://127.0.0.1:8791/';
+/* ⚠️ On vise `beta-lock-experience.html`, PAS la racine — et c'est temporaire.
+   Pendant les travaux, `/` sert la page d'attente (« Site en construction ») :
+   une page sans le moindre script, où le banc ne trouverait ni #ss-start ni
+   aucune scène. Il échouerait partout à la fois, sans que rien ne dise
+   pourquoi. L'expérience, elle, n'a pas bougé : c'est beta-lock-experience.html.
+   ⇒ LE JOUR OÙ L'ON REMET LE SITE À LA RACINE (cf. l'en-tête d'index.html),
+     remettre cette valeur à 'http://127.0.0.1:8791/'.
+   BENCH_URL reste prioritaire pour viser une autre adresse à la volée. */
+const BASE = process.env.BENCH_URL || 'http://127.0.0.1:8791/beta-lock-experience.html';
+
+/* ⚠️ L'ORIGINE est distincte de la PAGE, et doit le rester.
+   Le tri « à nous / aux tiers » (estTiers, plus bas) compare le début de
+   chaque URL. Tant que BASE valait la racine, les deux se confondaient — mais
+   comparer à une PAGE (…/beta-lock-experience.html) classerait tous les assets
+   du site (…/style.css, …/images/…) comme TIERS, et les tiers sont signalés
+   sans faire échouer la campagne : un vrai 404 du site passerait donc en
+   silence, ce qui est exactement le mode de panne que ce banc existe pour
+   empêcher. */
+const ORIGINE = new URL(BASE).origin + '/';
 const SELF_TEST = process.argv.includes('--self-test');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -82,7 +100,7 @@ async function main() {
      une URL morte au navigateur du banc : c'est une fragilité réelle du recours
      à un CDN externe, mais ce n'est pas une régression du code. On la SIGNALE
      sans faire échouer la campagne. */
-  const estTiers = (url) => !url.startsWith(BASE);
+  const estTiers = (url) => !url.startsWith(ORIGINE);
   const erreurs = [], requetes = [], tiers = [];
   page.on('console', (m) => {
     if (m.type() !== 'error') return;

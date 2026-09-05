@@ -24,6 +24,67 @@ Dépôt : https://github.com/victormule/Projet-Soliman-CNRS
 
 ---
 
+## La page d'attente (état actuel du site en ligne)
+
+**⚠️ EN CE MOMENT, `index.html` N'EST PAS LE SITE.** Le temps des travaux, la
+racine sert une page d'attente statique — « Site en construction » — et
+l'expérience vit dans **`beta-lock-experience.html`**, qui est l'ancien
+`index.html` à l'identique. Ne pas chercher un bug dans `app.js` parce que
+`soliman-al-halabi.fr` ne démarre rien : c'est voulu.
+
+| Adresse | Ce qu'on y trouve |
+|---|---|
+| `soliman-al-halabi.fr/` | la page d'attente : aucun script, texte + liens + JSON-LD |
+| `soliman-al-halabi.fr/beta-lock-experience.html` | l'expérience complète, en `noindex`, partagée à la main |
+
+**REDONNER LE SITE AU PUBLIC — les trois gestes, dans cet ordre :**
+
+1. `index.html` → `construction.html` (le GARDER : il resservira, et il porte
+   tout le référencement du projet).
+2. `beta-lock-experience.html` → `index.html`, **puis retirer de son en-tête
+   le `<meta name="robots" content="noindex, nofollow">`**. L'oublier ouvrirait
+   le site au public en le laissant invisible des moteurs — panne muette.
+3. `tools/bench/regression.mjs` : remettre `BASE` à `http://127.0.0.1:8791/`.
+
+⚠️ **Le banc d'essai est le geste qu'on oublie.** Il charge `BASE`, qui vise
+aujourd'hui `beta-lock-experience.html`. Laissé tel quel après la bascule, il
+mesurerait une page qui n'existe plus ; visant la racine avant elle, il
+mesurerait la page d'attente et échouerait partout à la fois (ni `#ss-start`,
+ni scène). Dans les deux cas rien ne dirait pourquoi.
+
+⚠️ **`BASE` et `ORIGINE` sont deux choses, et doivent le rester.** Le banc trie
+les requêtes « à nous / aux tiers » en comparant le début de l'URL, et les
+tiers sont signalés SANS faire échouer la campagne. Comparer à une PAGE
+(`…/beta-lock-experience.html`) classerait `style.css` et les images comme
+tiers : un vrai 404 du site passerait en silence. D'où `ORIGINE`, dérivée de
+`BASE` par `new URL(BASE).origin`.
+
+⚠️ **Le référencement tient à cette page, pas au site.** L'expérience est une
+SPA : sans JavaScript elle ne montre RIEN, et une part des robots n'en exécute
+pas. La page d'attente est donc tout ce que les moteurs peuvent lire du projet
+aujourd'hui.
+
+Mais **son corps de texte est court À DESSEIN** — choix éditorial, pas oubli de
+référencement : deux phrases, quatre liens sortants (CNRS, ANR, Centre
+Alexandre Koyré, Muséum). Le détail vit donc là où c'est sa place, dans les
+métadonnées : le `meta description` (ce que le moteur affiche sous le titre) et
+le **JSON-LD**, qui NOMME les entités — projet, porteurs, financeur, personne —
+au lieu de laisser deviner depuis des mots. Ce ne sont pas des textes cachés,
+ce sont les métadonnées d'une page.
+**Jamais de bloc masqué bourré de mots-clefs** : Google sanctionne le procédé
+(« cloaking ») et le gain supposé se paierait en déclassement. Si le texte
+visible doit s'enrichir un jour, il s'enrichit À L'ÉCRAN.
+
+⚠️ **`robots.txt` ne nomme PAS la page de prévisualisation, et c'est le point.**
+Un `Disallow:` y publierait l'adresse qu'on cherche à ne pas diffuser — le
+fichier est public. C'est le `noindex` de son en-tête qui la protège : il n'est
+lu que par qui l'a déjà trouvée.
+
+⚠️ **Abounaddara n'est pas lié.** Son domaine historique (`abounaddara.com`)
+sert encore une page en Flash, technologie morte depuis 2020 : le visiteur n'y
+verrait qu'un écran blanc. Les quatre autres liens ont été vérifiés (réponse
+200). À relier dès qu'une adresse vivante existe.
+
 ## Carte du site
 
 ```

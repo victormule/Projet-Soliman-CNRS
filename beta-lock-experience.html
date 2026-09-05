@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soliman al-Halabi — Abounaddara · CNRS</title>
+
+  <!-- ══ PRÉVISUALISATION PENDANT LES TRAVAUX — ne pas indexer ══
+       Ce fichier EST le site (l'ancien index.html, à l'identique). Le temps
+       des travaux, la racine sert la page d'attente et c'est ELLE qui porte
+       le référencement ; cette adresse-ci se partage à la main.
+
+       Le `noindex` est ce qui la protège : robots.txt ne peut pas le faire
+       sans publier l'adresse (il est lui-même public), alors qu'une balise
+       n'est lue que par qui a déjà la page sous les yeux. `nofollow` évite
+       en prime que l'exploration reparte d'ici.
+
+       ⚠️ À RETIRER LE JOUR OÙ CE FICHIER REDEVIENT index.html — sans quoi le
+          site s'ouvrirait au public en restant invisible des moteurs, panne
+          silencieuse s'il en est. La marche à suivre complète est dans
+          CLAUDE.md, section « La page d'attente ». -->
+  <meta name="robots" content="noindex, nofollow" />
+
+  <!-- ══ Métadonnées de partage et d'indexation ══
+       Sans elles, le site apparaissait sous son nom de dossier, sans résumé ni
+       vignette, dans un courriel comme dans un résultat de recherche. -->
+  <meta name="description" content="Site-expérience autour de Soliman al-Halabi, exécuté en 1800 pour le meurtre du général Kléber, et du crâne conservé au Muséum. Un projet de recherche Abounaddara · CNRS." />
+  <meta name="author" content="Abounaddara · CNRS" />
+  <meta name="theme-color" content="#0b0b0b" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="fr_FR" />
+  <meta property="og:site_name" content="Abounaddara · CNRS" />
+  <meta property="og:title" content="Soliman al-Halabi" />
+  <meta property="og:description" content="Un site-expérience sur la trace d'un homme réduite à un objet de collection. Recherche Abounaddara · CNRS." />
+  <meta property="og:image" content="images/vitrineOrfila.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Favicon : le « s » calligraphié du projet (master : favicon.png à la
+       racine, 1240 px). Décliné en trois tailles — l'original pèse 900 Ko,
+       inutilisable tel quel dans un onglet. Le rognage de 18 % rend le glyphe
+       lisible à 32 px ; pour regénérer, voir tools/ (canvas Chromium). -->
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="images/favicon-48.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="images/favicon-180.png">
+  <!-- ══ Polices — HÉBERGÉES EN LOCAL, plus aucun appel à Google ══
+       Cinzel        → titres / sous-titres / navigation (config.js FONTS)
+       Playfair Display → titre de l'écran d'accueil (.ss-title)
+                          + accroche calligraphiée « À Propos » (ital 700 incluse)
+       Inter         → libellés UI de l'écran d'accueil (.ss-eyebrow, .ss-cta)
+       Cormorant Garamond → sous-titres SRT du chapitre 2
+       Old Standard TT / Roboto Condensed → « Peine démesurée » (chapitre 2)
+
+       Deux raisons de ne plus passer par fonts.googleapis.com : Google négocie
+       ses fichiers selon l'agent et servait une URL morte à certains
+       navigateurs (typographie qui tombe en fonte système sans prévenir), et
+       l'appel transmet l'IP du visiteur à un tiers hors UE — ce que plusieurs
+       décisions européennes ont sanctionné. Les licences (OFL, Apache 2.0)
+       autorisent l'hébergement local : voir fonts/LICENCES.txt.
+       fonts/fonts.css est GÉNÉRÉ — le regénérer par tools/fetch-fonts.mjs. -->
+  <link rel="preload" as="font" type="font/woff2" href="fonts/playfair-display-var-latin.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="fonts/inter-var-latin.woff2" crossorigin>
+  <link rel="stylesheet" href="fonts/fonts.css">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Curseur hors de #app — position:fixed relatif au vrai viewport -->
+<div id="cursor"></div>
+
+<noscript>
+  <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;
+              justify-content:center;padding:2rem;background:#0b0b0b;color:#e8e7e0;
+              font-family:Georgia,serif;font-size:1.1rem;line-height:1.6;text-align:center;">
+    Ce site est une expérience narrative interactive : il lui faut JavaScript
+    pour se dérouler. Merci de l'activer, puis de recharger la page.
+  </div>
+</noscript>
+
+<div id="app">
+
+<div class="bg-layer" id="bg-vitrine"></div>
+<div class="bg-layer" id="bg-phrenologie"></div>
+<div class="bg-layer" id="bg-collaboration"></div>
+<div class="bg-layer" id="bg-chapitre1"></div>
+<div id="veil"></div>
+<div id="chapter-quote" aria-hidden="true"></div>
+<canvas id="overlay-canvas"></canvas>
+
+<div id="site-title"></div>
+<div id="chapitre-subtitle"></div>
+<div id="chapitre-part-title"></div>
+
+<!-- ══ Overlays images chapitre 1 ══
+     URL en data-bg (pas en background-image) : ces 9 images ne sont
+     téléchargées qu'à l'entrée en phase interactive du chapitre 1
+     (Chapitre1Scene._buildHotspots), pas au chargement du site. -->
+<div id="hotspot-layer"></div>
+<div class="hotspot-img" id="himg-1" data-bg="Chapitre1/chp1-images/chapitre1-1.webp"></div>
+<div class="hotspot-img" id="himg-2" data-bg="Chapitre1/chp1-images/chapitre1-2.webp"></div>
+<div class="hotspot-img" id="himg-3" data-bg="Chapitre1/chp1-images/chapitre1-3.webp"></div>
+<div class="hotspot-img" id="himg-4" data-bg="Chapitre1/chp1-images/chapitre1-4.webp"></div>
+<div class="hotspot-img" id="himg-5" data-bg="Chapitre1/chp1-images/chapitre1-5.webp"></div>
+<div class="hotspot-img" id="himg-6" data-bg="Chapitre1/chp1-images/chapitre1-6.webp"></div>
+<div class="hotspot-img" id="himg-7" data-bg="Chapitre1/chp1-images/chapitre1-7.webp"></div>
+<div class="hotspot-img" id="himg-8" data-bg="Chapitre1/chp1-images/chapitre1-8.webp"></div>
+<div class="hotspot-img" id="himg-9" data-bg="Chapitre1/chp1-images/chapitre1-9.webp"></div>
+
+<!-- Flèche : SVG injecté dynamiquement à chaque showArrow() -->
+<div id="nav-arrow" class="pos-bottom"></div>
+
+<div id="doc-btns"></div>
+<div id="roman-circles"></div>
+<div id="hover-title"></div>
+<div id="nav-bar"></div>
+<div id="skip-btn"></div>
+<div id="media-player"></div>
+
+<div id="fs-btn" title="Plein écran">
+  <svg class="icon-expand" viewBox="0 0 24 24" fill="none"
+       stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+  </svg>
+  <svg class="icon-collapse" viewBox="0 0 24 24" fill="none"
+       stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
+    <line x1="10" y1="14" x2="3" y2="21"/><line x1="14" y1="10" x2="21" y2="3"/>
+  </svg>
+</div>
+
+<div id="start-screen">
+
+  <!-- Grille décorative Bauhaus -->
+  <div class="ss-grid" aria-hidden="true">
+    <div class="ss-grid-line ss-grid-line--h ss-grid-line--top"></div>
+    <div class="ss-grid-line ss-grid-line--h ss-grid-line--bottom"></div>
+    <div class="ss-grid-line ss-grid-line--v ss-grid-line--left"></div>
+    <div class="ss-grid-line ss-grid-line--v ss-grid-line--right"></div>
+    <div class="ss-grid-accent" aria-hidden="true"></div>
+  </div>
+
+  <div class="ss-inner">
+
+    <!-- Bloc supérieur : label projet -->
+    <div class="ss-eyebrow">Projet de recherche</div>
+
+    <!-- Séparateur horizontal -->
+    <div class="ss-rule" aria-hidden="true"></div>
+
+    <!-- Titre principal — SEUL <h1> du site : c'est lui qui nomme la page pour
+         un lecteur d'écran comme pour un moteur de recherche. La classe porte
+         déjà toute la mise en forme (voir style.css § ÉCRAN DE DÉMARRAGE). -->
+    <h1 class="ss-title">Soliman <span style="white-space:nowrap">al-Halabi</span></h1>
+
+    <!-- Corps -->
+    <div class="ss-body">
+ <!--Ce site propose une expérience sonore.<br>
+      L'usage d'un casque est recommandé.-->
+    </div>
+
+    <!-- Séparateur bas -->
+    <div class="ss-rule ss-rule--short" aria-hidden="true"></div>
+
+    <!-- Crédits -->
+    <div class="ss-credits">
+      <span class="ss-credits__sep" aria-hidden="true">—</span>
+      <span class="ss-credits__orgs">Abounaddara · CNRS · 2026</span>
+    </div>
+
+    <!-- CTA — VRAI bouton : c'est le point d'entrée de toute l'expérience, et
+         il était jusqu'ici un <div> qu'aucune tabulation n'atteignait. Le clic
+         sur l'écran entier reste actif (il remonte jusqu'à #start-screen). -->
+    <button type="button" class="ss-cta" id="ss-start" autofocus>Cliquez pour commencer</button>
+
+  </div>
+
+</div>
+
+</div><!-- /#app -->
+
+<!-- ══ Scripts ══
+     Ordre impératif : config.js en premier (script classique, définit
+     window.CONFIG), puis src/app.js (module ESM, racine de composition). -->
+<script src="config.js"></script>
+<script type="module" src="src/app.js"></script>
+
+</body>
+</html>

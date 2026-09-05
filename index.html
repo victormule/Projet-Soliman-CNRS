@@ -3,170 +3,424 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Soliman al-Halabi — Abounaddara · CNRS</title>
+  <title>Soliman al-Halabi — projet de recherche Abounaddara · CNRS</title>
 
-  <!-- ══ Métadonnées de partage et d'indexation ══
-       Sans elles, le site apparaissait sous son nom de dossier, sans résumé ni
-       vignette, dans un courriel comme dans un résultat de recherche. -->
-  <meta name="description" content="Site-expérience autour de Soliman al-Halabi, exécuté en 1800 pour le meurtre du général Kléber, et du crâne conservé au Muséum. Un projet de recherche Abounaddara · CNRS." />
+  <!-- ══════════════════════════════════════════════════════════════════
+       PAGE D'ATTENTE — le site est en construction.
+       ─────────────────────────────────────────────────────────────────
+       Cette page REMPLACE temporairement l'entrée du site. L'expérience
+       elle-même n'a pas bougé : elle vit dans `beta-lock-experience.html`,
+       qui est l'ancien index.html à l'identique (config.js + src/app.js).
+       Son nom n'est pas devinable : aucun lien public n'y mène, elle porte
+       un `noindex`, et on la partage à la main pendant les travaux.
+
+       ⇒ POUR RENDRE LE SITE AU PUBLIC, la marche à suivre complète est
+         dans CLAUDE.md, section « La page d'attente ». Trois gestes, dont
+         un qu'on oublie (le banc d'essai) — d'où la fiche.
+
+       ⚠️ AUCUN SCRIPT ICI, ET C'EST VOULU. La page ne charge ni config.js,
+       ni le graphe ESM, ni la moindre image du site : un visiteur qui
+       arrive pendant les travaux ne télécharge que ce fichier et deux
+       polices. Elle se lit aussi sans JavaScript — donc par TOUS les
+       robots d'indexation, y compris ceux qui n'exécutent pas de JS. Le
+       site, lui, ne peut par nature rien leur montrer : c'est cette page
+       qui porte le référencement du projet pendant les travaux.
+
+       Les styles sont INLINE plutôt que dans style.css : cette page doit
+       survivre seule, sans dépendre d'une feuille de 2 700 lignes écrite
+       pour l'expérience — et sans qu'une retouche de celle-ci puisse la
+       casser. Ils reprennent volontairement, à l'identique, le
+       vocabulaire de l'écran d'accueil (§ START SCREEN de style.css) :
+       même dégradé, même grain, même grille, même Playfair flottant. La
+       seule différence tient au bouton : la pastille est ici INERTE.
+       ══════════════════════════════════════════════════════════════════ -->
+
+  <!-- ══ Référencement ══
+       ⚠️ PAS DE TEXTE MASQUÉ. Aucun bloc invisible bourré de mots-clefs :
+       Google sanctionne le procédé (« cloaking ») et le gain supposé se
+       paierait en déclassement. Le corps de la page est court À DESSEIN —
+       c'est un choix éditorial, pas un oubli de référencement.
+
+       Ce qui porte le référencement, ce sont donc les deux emplacements
+       PRÉVUS pour cela : le résumé ci-dessous (que le moteur affiche sous le
+       titre, dans ses résultats) et le JSON-LD plus bas, qui NOMME les
+       entités dont la page traite — le projet, ses porteurs, son financeur,
+       la personne. Ni l'un ni l'autre n'est du texte caché : ce sont les
+       métadonnées d'une page, et elles disent la même chose qu'elle, en plus
+       précis. Le site lui-même ne peut rien dire aux moteurs (c'est une SPA :
+       sans JavaScript, elle ne montre rien), d'où leur importance ici. -->
+  <meta name="description" content="Projet de recherche collaboratif consacré à Soliman al-Halabi, écrivain public d'Alep exécuté en 1800 pour le meurtre du général Kléber, et au devenir de son corps conservé au Muséum national d'Histoire naturelle. Mené par Abounaddara et le CNRS, avec le soutien de l'ANR. Site en construction." />
   <meta name="author" content="Abounaddara · CNRS" />
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
   <meta name="theme-color" content="#0b0b0b" />
+  <link rel="canonical" href="https://soliman-al-halabi.fr/" />
+
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:site_name" content="Abounaddara · CNRS" />
-  <meta property="og:title" content="Soliman al-Halabi" />
-  <meta property="og:description" content="Un site-expérience sur la trace d'un homme réduite à un objet de collection. Recherche Abounaddara · CNRS." />
-  <meta property="og:image" content="images/vitrineOrfila.webp" />
+  <meta property="og:url" content="https://soliman-al-halabi.fr/" />
+  <meta property="og:title" content="Soliman al-Halabi — projet de recherche Abounaddara · CNRS" />
+  <meta property="og:description" content="Recherche collaborative sur Soliman al-Halabi et le devenir de son corps, conservé au Muséum. Abounaddara · CNRS, avec le soutien de l'ANR. Site en construction." />
+  <meta property="og:image" content="https://soliman-al-halabi.fr/images/vitrineOrfila.webp" />
+  <meta property="og:image:alt" content="Vitrine de collection anatomique du musée Orfila." />
   <meta name="twitter:card" content="summary_large_image" />
 
-  <!-- Favicon : le « s » calligraphié du projet (master : favicon.png à la
-       racine, 1240 px). Décliné en trois tailles — l'original pèse 900 Ko,
-       inutilisable tel quel dans un onglet. Le rognage de 18 % rend le glyphe
-       lisible à 32 px ; pour regénérer, voir tools/ (canvas Chromium). -->
   <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
   <link rel="icon" type="image/png" sizes="48x48" href="images/favicon-48.png">
   <link rel="apple-touch-icon" sizes="180x180" href="images/favicon-180.png">
-  <!-- ══ Polices — HÉBERGÉES EN LOCAL, plus aucun appel à Google ══
-       Cinzel        → titres / sous-titres / navigation (config.js FONTS)
-       Playfair Display → titre de l'écran d'accueil (.ss-title)
-                          + accroche calligraphiée « À Propos » (ital 700 incluse)
-       Inter         → libellés UI de l'écran d'accueil (.ss-eyebrow, .ss-cta)
-       Cormorant Garamond → sous-titres SRT du chapitre 2
-       Old Standard TT / Roboto Condensed → « Peine démesurée » (chapitre 2)
 
-       Deux raisons de ne plus passer par fonts.googleapis.com : Google négocie
-       ses fichiers selon l'agent et servait une URL morte à certains
-       navigateurs (typographie qui tombe en fonte système sans prévenir), et
-       l'appel transmet l'IP du visiteur à un tiers hors UE — ce que plusieurs
-       décisions européennes ont sanctionné. Les licences (OFL, Apache 2.0)
-       autorisent l'hébergement local : voir fonts/LICENCES.txt.
-       fonts/fonts.css est GÉNÉRÉ — le regénérer par tools/fetch-fonts.mjs. -->
+  <!-- Polices locales (aucun appel à Google — cf. l'index de l'expérience) :
+       Playfair Display pour le titre, Inter pour les libellés. -->
   <link rel="preload" as="font" type="font/woff2" href="fonts/playfair-display-var-latin.woff2" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="fonts/inter-var-latin.woff2" crossorigin>
   <link rel="stylesheet" href="fonts/fonts.css">
-  <link rel="stylesheet" href="style.css" />
+
+  <!-- ══ Données structurées (schema.org / JSON-LD) ══
+       Elles ne changent RIEN à l'écran : elles disent au robot, sans
+       ambiguïté de langue, ce que le texte visible raconte déjà — le projet,
+       ses porteurs, son financeur, la personne dont il traite. C'est ce qui
+       permet à un moteur de rattacher cette page aux entités « CNRS », « ANR »
+       ou « Muséum » plutôt que de deviner depuis des mots.
+       ⚠️ Tout fait ajouté ici doit être VRAI et présent dans la page. Un
+       balisage qui promet ce que la page ne montre pas est une cause connue
+       de perte du bénéfice (« structured data spam »). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://soliman-al-halabi.fr/#site",
+        "url": "https://soliman-al-halabi.fr/",
+        "name": "Soliman al-Halabi — Abounaddara · CNRS",
+        "description": "Site-expérience narratif issu d'une recherche collaborative sur Soliman al-Halabi et le devenir de son corps.",
+        "inLanguage": "fr-FR",
+        "about": { "@id": "https://soliman-al-halabi.fr/#soliman" },
+        "publisher": { "@id": "https://soliman-al-halabi.fr/#projet" }
+      },
+      {
+        "@type": "ResearchProject",
+        "@id": "https://soliman-al-halabi.fr/#projet",
+        "name": "Projet de recherche Soliman al-Halabi",
+        "url": "https://soliman-al-halabi.fr/",
+        "description": "Recherche collaborative réunissant chercheurs, étudiants et lycéens autour du corps de Soliman al-Halabi, écrivain public originaire d'Alep exécuté en 1800 pour le meurtre du général Kléber, ramené en France dans les bagages de l'expédition d'Égypte et conservé au Muséum national d'Histoire naturelle.",
+        "inLanguage": "fr-FR",
+        "member": [
+          { "@type": "Organization", "name": "Abounaddara" },
+          { "@type": "Organization", "name": "CNRS", "url": "https://www.cnrs.fr/fr" },
+          { "@type": "Organization", "name": "Centre Alexandre Koyré", "url": "https://koyre.ehess.fr/" }
+        ],
+        "funder": {
+          "@type": "Organization",
+          "name": "Agence nationale de la recherche",
+          "alternateName": "ANR",
+          "url": "https://anr.fr/"
+        },
+        "about": { "@id": "https://soliman-al-halabi.fr/#soliman" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://soliman-al-halabi.fr/#soliman",
+        "name": "Soliman al-Halabi",
+        "alternateName": "Soleyman El-Hhaleby",
+        "description": "Écrivain public originaire d'Alep, exécuté en 1800 pour le meurtre du général Kléber au Caire.",
+        "birthPlace": { "@type": "Place", "name": "Alep, Syrie" },
+        "deathDate": "1800"
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    /* ── Socle ─────────────────────────────────────────────────── */
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+    }
+
+    body {
+      background: #080808;
+      color: #e8e7e0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── L'écran, repris de #start-screen ──────────────────────── */
+    .cs-screen {
+      position: relative;
+      min-height: 100vh;
+      min-height: 100dvh;   /* barres d'adresse mobiles : évite le saut */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12vh 6vw;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #121212 0%, #080808 100%);
+    }
+
+    /* Grain — même data-URI que l'écran d'accueil. */
+    .cs-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.03;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* ── Grille architecturale ─────────────────────────────────── */
+    .cs-grid { position: absolute; inset: 0; pointer-events: none; }
+
+    .cs-grid-line { position: absolute; background: rgba(255, 255, 255, 0.05); }
+    .cs-grid-line--h { left: 4vw; right: 4vw; height: 1px; }
+    .cs-grid-line--v { top: 4vh; bottom: 4vh; width: 1px; }
+    .cs-grid-line--top    { top: 8vh; }
+    .cs-grid-line--bottom { bottom: 8vh; }
+    .cs-grid-line--left   { left: 8vw; }
+    .cs-grid-line--right  { right: 8vw; }
+
+    .cs-grid-accent {
+      position: absolute;
+      top: 8vh;
+      left: 8vw;
+      width: 40px;
+      height: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      border-left: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* ── Contenu ───────────────────────────────────────────────── */
+    .cs-inner {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: min(700px, 85vw);
+    }
+
+    .cs-eyebrow {
+      color: #888;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.6rem, 0.8vw, 0.75rem);
+      font-weight: 300;
+      letter-spacing: 0.5em;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      opacity: 0.8;
+      /* letter-spacing ajoute un blanc APRÈS la dernière lettre : on le
+         reprend à gauche pour que le mot reste optiquement centré. */
+      text-indent: 0.5em;
+    }
+
+    .cs-rule {
+      width: 40px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.2);
+      margin-bottom: 1.6rem;
+    }
+
+    .cs-rule--short { margin-bottom: 1.4rem; }
+
+    .cs-title {
+      margin: 0 0 1.6rem;
+      color: #fff;
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.5rem, 6vw, 5.5rem);
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      word-break: keep-all;
+      overflow-wrap: normal;
+      animation: csTitleFloat 6s ease-in-out infinite;
+    }
+
+    @keyframes csTitleFloat {
+      0%   { transform: translateY(0); }
+      50%  { transform: translateY(-5px); }
+      100% { transform: translateY(0); }
+    }
+
+    .cs-body {
+      max-width: 54ch;
+      color: #aaa;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(0.9rem, 1.1vw, 1.05rem);
+      font-weight: 300;
+      line-height: 1.75;
+      letter-spacing: 0.02em;
+      margin: 0 0 1.1rem;
+    }
+
+    .cs-body:last-of-type { margin-bottom: 1.8rem; }
+
+    /* Les noms d'institutions se détachent sans crier. */
+    .cs-body strong {
+      color: #d8d7d0;
+      font-weight: 400;
+    }
+
+    /* ── Liens vers les institutions ───────────────────────────────
+       Soulignés en creux (border-bottom plutôt que text-decoration) pour
+       que le trait reste à distance des jambages ; il s'allume au survol
+       et au focus clavier. */
+    .cs-link {
+      color: #d8d7d0;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+      padding-bottom: 1px;
+      transition: color 0.35s ease, border-color 0.35s ease;
+    }
+
+    .cs-link:hover,
+    .cs-link:focus-visible {
+      color: #fff;
+      border-bottom-color: rgba(255, 255, 255, 0.75);
+    }
+
+    /* Le halo doré du site — même langage que l'expérience. */
+    .cs-link:focus-visible {
+      outline: 2px solid rgba(212, 175, 55, 0.9);
+      outline-offset: 3px;
+      border-radius: 2px;
+    }
+
+    /* ── Pastille d'état ───────────────────────────────────────────
+       Elle reprend la forme du bouton « Cliquez pour commencer », mais
+       elle est INERTE : ni bouton, ni lien, ni survol, ni curseur main.
+       C'est le point de la page — on reconnaît l'entrée du site, et on
+       voit du même coup qu'elle ne s'ouvre pas encore. */
+    .cs-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.7em;
+      color: rgba(255, 255, 255, 0.55);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      padding: 12px 24px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50px;
+      /* Même compensation que .cs-eyebrow, au même titre. */
+      text-indent: 0.3em;
+    }
+
+    .cs-status__dot {
+      flex: none;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.5);
+      text-indent: 0;
+      animation: csPulse 3.2s ease-in-out infinite;
+    }
+
+    @keyframes csPulse {
+      0%, 100% { opacity: 0.25; }
+      50%      { opacity: 0.9; }
+    }
+
+    /* ── Crédits ───────────────────────────────────────────────── */
+    .cs-credits {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 2.4rem;
+      color: #666;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .cs-credits__sep {
+      width: 15px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* ── Téléphone ─────────────────────────────────────────────────
+       La grille se resserre et le texte respire un peu moins : sur un
+       écran étroit, 1,75 d'interligne étire la page sur deux hauteurs. */
+    @media (max-width: 600px) {
+      .cs-screen { padding: 8vh 5vw; }
+      .cs-body   { line-height: 1.65; }
+      .cs-status { letter-spacing: 0.2em; padding: 11px 18px; }
+      .cs-grid-accent { display: none; }
+    }
+
+    /* Respect du réglage système « animations réduites ». */
+    @media (prefers-reduced-motion: reduce) {
+      .cs-title, .cs-status__dot { animation: none; }
+    }
+  </style>
 </head>
 <body>
 
-<!-- Curseur hors de #app — position:fixed relatif au vrai viewport -->
-<div id="cursor"></div>
+<main class="cs-screen">
 
-<noscript>
-  <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;
-              justify-content:center;padding:2rem;background:#0b0b0b;color:#e8e7e0;
-              font-family:Georgia,serif;font-size:1.1rem;line-height:1.6;text-align:center;">
-    Ce site est une expérience narrative interactive : il lui faut JavaScript
-    pour se dérouler. Merci de l'activer, puis de recharger la page.
-  </div>
-</noscript>
-
-<div id="app">
-
-<div class="bg-layer" id="bg-vitrine"></div>
-<div class="bg-layer" id="bg-phrenologie"></div>
-<div class="bg-layer" id="bg-collaboration"></div>
-<div class="bg-layer" id="bg-chapitre1"></div>
-<div id="veil"></div>
-<div id="chapter-quote" aria-hidden="true"></div>
-<canvas id="overlay-canvas"></canvas>
-
-<div id="site-title"></div>
-<div id="chapitre-subtitle"></div>
-<div id="chapitre-part-title"></div>
-
-<!-- ══ Overlays images chapitre 1 ══
-     URL en data-bg (pas en background-image) : ces 9 images ne sont
-     téléchargées qu'à l'entrée en phase interactive du chapitre 1
-     (Chapitre1Scene._buildHotspots), pas au chargement du site. -->
-<div id="hotspot-layer"></div>
-<div class="hotspot-img" id="himg-1" data-bg="Chapitre1/chp1-images/chapitre1-1.webp"></div>
-<div class="hotspot-img" id="himg-2" data-bg="Chapitre1/chp1-images/chapitre1-2.webp"></div>
-<div class="hotspot-img" id="himg-3" data-bg="Chapitre1/chp1-images/chapitre1-3.webp"></div>
-<div class="hotspot-img" id="himg-4" data-bg="Chapitre1/chp1-images/chapitre1-4.webp"></div>
-<div class="hotspot-img" id="himg-5" data-bg="Chapitre1/chp1-images/chapitre1-5.webp"></div>
-<div class="hotspot-img" id="himg-6" data-bg="Chapitre1/chp1-images/chapitre1-6.webp"></div>
-<div class="hotspot-img" id="himg-7" data-bg="Chapitre1/chp1-images/chapitre1-7.webp"></div>
-<div class="hotspot-img" id="himg-8" data-bg="Chapitre1/chp1-images/chapitre1-8.webp"></div>
-<div class="hotspot-img" id="himg-9" data-bg="Chapitre1/chp1-images/chapitre1-9.webp"></div>
-
-<!-- Flèche : SVG injecté dynamiquement à chaque showArrow() -->
-<div id="nav-arrow" class="pos-bottom"></div>
-
-<div id="doc-btns"></div>
-<div id="roman-circles"></div>
-<div id="hover-title"></div>
-<div id="nav-bar"></div>
-<div id="skip-btn"></div>
-<div id="media-player"></div>
-
-<div id="fs-btn" title="Plein écran">
-  <svg class="icon-expand" viewBox="0 0 24 24" fill="none"
-       stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-  </svg>
-  <svg class="icon-collapse" viewBox="0 0 24 24" fill="none"
-       stroke="rgba(255,255,255,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
-    <line x1="10" y1="14" x2="3" y2="21"/><line x1="14" y1="10" x2="21" y2="3"/>
-  </svg>
-</div>
-
-<div id="start-screen">
-
-  <!-- Grille décorative Bauhaus -->
-  <div class="ss-grid" aria-hidden="true">
-    <div class="ss-grid-line ss-grid-line--h ss-grid-line--top"></div>
-    <div class="ss-grid-line ss-grid-line--h ss-grid-line--bottom"></div>
-    <div class="ss-grid-line ss-grid-line--v ss-grid-line--left"></div>
-    <div class="ss-grid-line ss-grid-line--v ss-grid-line--right"></div>
-    <div class="ss-grid-accent" aria-hidden="true"></div>
+  <!-- Grille décorative — purement graphique, masquée aux lecteurs d'écran. -->
+  <div class="cs-grid" aria-hidden="true">
+    <div class="cs-grid-line cs-grid-line--h cs-grid-line--top"></div>
+    <div class="cs-grid-line cs-grid-line--h cs-grid-line--bottom"></div>
+    <div class="cs-grid-line cs-grid-line--v cs-grid-line--left"></div>
+    <div class="cs-grid-line cs-grid-line--v cs-grid-line--right"></div>
+    <div class="cs-grid-accent"></div>
   </div>
 
-  <div class="ss-inner">
+  <div class="cs-inner">
 
-    <!-- Bloc supérieur : label projet -->
-    <div class="ss-eyebrow">Projet de recherche</div>
+    <div class="cs-eyebrow">Projet de recherche</div>
 
-    <!-- Séparateur horizontal -->
-    <div class="ss-rule" aria-hidden="true"></div>
+    <div class="cs-rule" aria-hidden="true"></div>
 
-    <!-- Titre principal — SEUL <h1> du site : c'est lui qui nomme la page pour
-         un lecteur d'écran comme pour un moteur de recherche. La classe porte
-         déjà toute la mise en forme (voir style.css § ÉCRAN DE DÉMARRAGE). -->
-    <h1 class="ss-title">Soliman <span style="white-space:nowrap">al-Halabi</span></h1>
+    <h1 class="cs-title">Soliman <span style="white-space:nowrap">al-Halabi</span></h1>
 
-    <!-- Corps -->
-    <div class="ss-body">
- <!--Ce site propose une expérience sonore.<br>
-      L'usage d'un casque est recommandé.-->
+    <!-- ⚠️ Apostrophe TYPOGRAPHIQUE (’) et non droite ('), comme dans tous les
+         textes que le visiteur lit — cf. DOCUMENTS.about de config.js.
+         Les liens sortants portent rel="noopener" (ils s'ouvrent dans un
+         nouvel onglet : on ne fait pas quitter la page à qui cherchait le
+         projet). Abounaddara n'est PAS lié : son domaine historique est un
+         site en Flash, mort depuis 2020 — y envoyer un visiteur, c'est lui
+         montrer une page blanche. À relier dès qu'une adresse vivante existe. -->
+    <p class="cs-body">
+      Vous êtes bien sur la page du projet de recherche collaboratif consacré à
+      Soliman al-Halabi, conduit par <strong>Abounaddara</strong> et le
+      <a class="cs-link" href="https://www.cnrs.fr/fr" target="_blank" rel="noopener">CNRS</a>
+      avec le soutien de l’<a class="cs-link" href="https://anr.fr/" target="_blank" rel="noopener">Agence
+      nationale de la recherche</a>.
+    </p>
+
+    <p class="cs-body">
+      Le site est en cours de construction. Des négociations sont actuellement
+      engagées entre le
+      <a class="cs-link" href="https://koyre.ehess.fr/" target="_blank" rel="noopener">Centre
+      Alexandre Koyré</a> et le
+      <a class="cs-link" href="https://www.mnhn.fr/fr" target="_blank" rel="noopener">Muséum
+      national d’Histoire naturelle</a>.
+    </p>
+
+    <div class="cs-rule cs-rule--short" aria-hidden="true"></div>
+
+    <div class="cs-status">
+      <span class="cs-status__dot" aria-hidden="true"></span>
+      Site en construction
     </div>
 
-    <!-- Séparateur bas -->
-    <div class="ss-rule ss-rule--short" aria-hidden="true"></div>
-
-    <!-- Crédits -->
-    <div class="ss-credits">
-      <span class="ss-credits__sep" aria-hidden="true">—</span>
-      <span class="ss-credits__orgs">Abounaddara · CNRS · 2026</span>
+    <div class="cs-credits">
+      <span class="cs-credits__sep" aria-hidden="true"></span>
+      <span>Abounaddara · CNRS · 2026</span>
     </div>
-
-    <!-- CTA — VRAI bouton : c'est le point d'entrée de toute l'expérience, et
-         il était jusqu'ici un <div> qu'aucune tabulation n'atteignait. Le clic
-         sur l'écran entier reste actif (il remonte jusqu'à #start-screen). -->
-    <button type="button" class="ss-cta" id="ss-start" autofocus>Cliquez pour commencer</button>
 
   </div>
 
-</div>
-
-</div><!-- /#app -->
-
-<!-- ══ Scripts ══
-     Ordre impératif : config.js en premier (script classique, définit
-     window.CONFIG), puis src/app.js (module ESM, racine de composition). -->
-<script src="config.js"></script>
-<script type="module" src="src/app.js"></script>
+</main>
 
 </body>
 </html>

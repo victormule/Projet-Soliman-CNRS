@@ -1,0 +1,19 @@
+# Soliman al-Halabi — Abounaddara / CNRS
+#
+# Pendant les travaux, la racine sert la page d’attente : c’est elle qui
+# porte le référencement du projet, et elle doit être explorée librement.
+#
+# ⚠️ La page de prévisualisation de l’expérience N’EST PAS LISTÉE ICI, et
+#    c’est délibéré : robots.txt est PUBLIC. Y écrire « Disallow: /beta-…»
+#    reviendrait à publier l’adresse qu’on cherche justement à ne pas
+#    diffuser — c’est l’erreur classique. Elle se protège autrement, par
+#    une balise <meta name="robots" content="noindex"> dans son en-tête,
+#    qui interdit l’indexation à qui la trouve sans l’annoncer à personne.
+#
+# L’outillage (tools/, package.json, CLAUDE.md) est déjà refusé par
+# netlify.toml, qui répond 404 : inutile de le répéter ici.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://soliman-al-halabi.fr/sitemap.xml

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Soliman al-Halabi — Abounaddara / CNRS
+
+  Pendant les travaux, le site n'a qu'UNE adresse publique : la page
+  d'attente. On ne liste donc qu'elle.
+
+  ⚠️ Ne PAS y ajouter beta-lock-experience.html : un sitemap est fait pour
+     être lu par les moteurs, l'y écrire reviendrait à publier l'adresse.
+
+  ⇒ LE JOUR OÙ LE SITE OUVRE : l'expérience est une application d'une seule
+    page (toute la navigation se fait en JavaScript, sans changement d'URL).
+    Il n'y a donc pas d'autres adresses à lister — ce fichier restera juste,
+    seul `lastmod` sera à rafraîchir.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://soliman-al-halabi.fr/</loc>
+    <lastmod>2026-09-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
