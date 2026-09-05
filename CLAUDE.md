@@ -80,10 +80,15 @@ Un `Disallow:` y publierait l'adresse qu'on cherche à ne pas diffuser — le
 fichier est public. C'est le `noindex` de son en-tête qui la protège : il n'est
 lu que par qui l'a déjà trouvée.
 
-⚠️ **Abounaddara n'est pas lié.** Son domaine historique (`abounaddara.com`)
-sert encore une page en Flash, technologie morte depuis 2020 : le visiteur n'y
-verrait qu'un écran blanc. Les quatre autres liens ont été vérifiés (réponse
-200). À relier dès qu'une adresse vivante existe.
+⚠️ **Abounaddara ne pointe pas sur un site institutionnel, et c'est voulu.**
+Son domaine historique (`abounaddara.com`) répond encore mais sert une page en
+**Flash**, technologie morte depuis 2020 : le visiteur n'y verrait qu'un écran
+blanc. Le lien mène donc à l'entretien du collectif avec Frédéric Keck dans
+*Gradhiva* n° 39 (2025), consacré à Soliman al-Halabi et au corps du « Syrien
+fanatique » — vivant, en accès libre, et plus renseignant que la vitrine.
+Dans le JSON-LD il figure en `citation` du projet, **jamais** en `url`
+d'Abounaddara : un article de revue n'est pas le site d'un collectif, et un
+balisage inexact perd son bénéfice. Les cinq liens ont été vérifiés (200).
 
 ## Carte du site
 
