@@ -32,24 +32,18 @@
 
 import { chromium } from 'playwright';
 
-/* ⚠️ On vise `beta-lock-experience.html`, PAS la racine — et c'est temporaire.
-   Pendant les travaux, `/` sert la page d'attente (« Site en construction ») :
-   une page sans le moindre script, où le banc ne trouverait ni #ss-start ni
-   aucune scène. Il échouerait partout à la fois, sans que rien ne dise
-   pourquoi. L'expérience, elle, n'a pas bougé : c'est beta-lock-experience.html.
-   ⇒ LE JOUR OÙ L'ON REMET LE SITE À LA RACINE (cf. l'en-tête d'index.html),
-     remettre cette valeur à 'http://127.0.0.1:8791/'.
+/* Le banc vise la RACINE : `index.html` est le site.
    BENCH_URL reste prioritaire pour viser une autre adresse à la volée. */
-const BASE = process.env.BENCH_URL || 'http://127.0.0.1:8791/beta-lock-experience.html';
+const BASE = process.env.BENCH_URL || 'http://127.0.0.1:8791/';
 
 /* ⚠️ L'ORIGINE est distincte de la PAGE, et doit le rester.
    Le tri « à nous / aux tiers » (estTiers, plus bas) compare le début de
-   chaque URL. Tant que BASE valait la racine, les deux se confondaient — mais
-   comparer à une PAGE (…/beta-lock-experience.html) classerait tous les assets
-   du site (…/style.css, …/images/…) comme TIERS, et les tiers sont signalés
-   sans faire échouer la campagne : un vrai 404 du site passerait donc en
-   silence, ce qui est exactement le mode de panne que ce banc existe pour
-   empêcher. */
+   chaque URL. Tant que BASE vaut la racine les deux se confondent — mais si
+   BENCH_URL désigne un jour une PAGE (…/quelquechose.html), comparer à elle
+   classerait tous les assets du site (…/style.css, …/images/…) comme TIERS,
+   et les tiers sont signalés SANS faire échouer la campagne : un vrai 404 du
+   site passerait donc en silence, ce qui est exactement le mode de panne que
+   ce banc existe pour empêcher. D'où l'origine, dérivée et non recopiée. */
 const ORIGINE = new URL(BASE).origin + '/';
 const SELF_TEST = process.argv.includes('--self-test');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

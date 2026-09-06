@@ -24,202 +24,36 @@ Dépôt : https://github.com/victormule/Projet-Soliman-CNRS
 
 ---
 
-## La page d'attente (état actuel du site en ligne)
+## La page d'attente vit dans un AUTRE dépôt
 
-**⚠️ EN CE MOMENT, `index.html` N'EST PAS LE SITE.** Le temps des travaux, la
-racine sert une page d'attente statique — « Site en construction » — et
-l'expérience vit dans **`beta-lock-experience.html`**, qui est l'ancien
-`index.html` à l'identique. Ne pas chercher un bug dans `app.js` parce que
-`soliman-al-halabi.fr` ne démarre rien : c'est voulu.
+**`index.html` EST le site.** Il n'y a plus ici de page « Site en
+construction » : elle a été extraite dans un dépôt séparé,
+**https://github.com/victormule/Projet-Soliman-CNRS-beta**, qui est branché
+sur `soliman-al-halabi.fr` le temps des travaux.
 
-| Adresse | Ce qu'on y trouve |
-|---|---|
-| `soliman-al-halabi.fr/` | la page d'attente : aucun script, deux écrans (l'affiche, puis « Le projet ») + liens + JSON-LD |
-| `soliman-al-halabi.fr/beta-lock-experience.html` | l'expérience complète, en `noindex`, partagée à la main |
+⚠️ **CE DÉPÔT-CI N'EST DONC PLUS DÉPLOYÉ**, et c'est la protection : tant que
+Netlify pointe sur le dépôt beta, rien du site n'est en ligne. Avant, `publish
+= "."` servait la racine entière derrière la page d'attente — les quatre
+chapitres et 375 Mo de vidéos étaient publiquement téléchargeables, et
+l'expérience n'était protégée que par un `noindex`. La séparation a fermé ça.
 
-**REDONNER LE SITE AU PUBLIC — les trois gestes, dans cet ordre :**
+**LE JOUR DE L'OUVERTURE — deux gestes, dans cet ordre :**
 
-1. `index.html` → `construction.html` (le GARDER : il resservira, et il porte
-   tout le référencement du projet).
-2. `beta-lock-experience.html` → `index.html`, **puis retirer de son en-tête
-   le `<meta name="robots" content="noindex, nofollow">`**. L'oublier ouvrirait
-   le site au public en le laissant invisible des moteurs — panne muette.
-3. `tools/bench/regression.mjs` : remettre `BASE` à `http://127.0.0.1:8791/`.
+1. Rebrancher le site Netlify du domaine sur CE dépôt.
+2. Écrire un `robots.txt` et un `sitemap.xml` : ils sont partis avec la page
+   d'attente, et sans eux le site s'ouvre sans rien dire aux moteurs.
+   ⚠️ Le référencement du projet vit aujourd'hui dans le dépôt beta (résumé,
+   JSON-LD, texte « À propos ») — c'est de là qu'il faut le reprendre, la SPA
+   ne montrant RIEN à un robot qui n'exécute pas de JavaScript.
 
-⚠️ **Le banc d'essai est le geste qu'on oublie.** Il charge `BASE`, qui vise
-aujourd'hui `beta-lock-experience.html`. Laissé tel quel après la bascule, il
-mesurerait une page qui n'existe plus ; visant la racine avant elle, il
-mesurerait la page d'attente et échouerait partout à la fois (ni `#ss-start`,
-ni scène). Dans les deux cas rien ne dirait pourquoi.
+`netlify.toml` est resté ici : il est la configuration de déploiement du
+SITE, il précède la page d'attente et resservira tel quel. ⚠️ Sa CSP est
+absente à dessein — celle du dépôt beta est stricte parce que cette page-là ne
+charge rien ; le site, lui, est riche en médias et en JS inline, et une CSP
+devinée y casserait des chapitres.
 
-⚠️ **`BASE` et `ORIGINE` sont deux choses, et doivent le rester.** Le banc trie
-les requêtes « à nous / aux tiers » en comparant le début de l'URL, et les
-tiers sont signalés SANS faire échouer la campagne. Comparer à une PAGE
-(`…/beta-lock-experience.html`) classerait `style.css` et les images comme
-tiers : un vrai 404 du site passerait en silence. D'où `ORIGINE`, dérivée de
-`BASE` par `new URL(BASE).origin`.
-
-⚠️ **Le référencement tient à cette page, pas au site.** L'expérience est une
-SPA : sans JavaScript elle ne montre RIEN, et une part des robots n'en exécute
-pas. La page d'attente est donc tout ce que les moteurs peuvent lire du projet
-aujourd'hui.
-
-Elle tient donc en **UN ÉCRAN ET DEUX VUES** :
-
-- **L'accueil** — le titre, deux phrases, la pastille inerte « Site en
-  construction ». Inchangé : c'est le vocabulaire de l'écran d'accueil du site
-  (§ START SCREEN de style.css), pastille comprise.
-- **« À propos »** — la question du site et sa présentation, c'est-à-dire le
-  texte de la scène phrénologie. C'est cette vue qui nomme Alep, l'expédition
-  d'Égypte, le Muséum, le « Syrien fanatique », le squelette : les mots par
-  lesquels on cherche ce sujet.
-
-Entre les deux paragraphes de l'accueil, un bouton « À propos » **change le
-contenu du bloc**, en fondu ; « Retour » ramène. Le titre, la pastille et la
-signature ne bougent pas : **l'avertissement ne quitte jamais l'écran**, ce qui
-était tout l'enjeu — la présentation ne doit pas prendre sa place.
-
-⚠️ **LA BASCULE EST EN CSS, PAS EN JAVASCRIPT** : une case à cocher masquée
-(mais focusable, donc pilotable à la barre d'espace) et deux règles `~`. Le
-texte des DEUX vues est dans le HTML, servi dès le premier octet.
-
-⚠️ **LA MÉCANIQUE DE LA BASCULE EST DÉLICATE, ET CINQ MONTAGES ONT ÉTÉ
-ESSAYÉS AVANT LE BON.** Ce qui tient aujourd'hui : les deux vues sont dans une
-grille d'une seule case, la MASQUÉE sort du flux (`position: absolute`) et
-disparaît par `opacity` puis `visibility`, et c'est LE CADRE qui porte la
-hauteur — `auto` pour l'avertissement (sa mise en page est donc exactement
-celle qu'elle serait sans bascule, au pixel près), une hauteur explicite pour
-la présentation, dans laquelle le texte défile. `auto ↔ longueur` s'interpole
-(`interpolate-size: allow-keywords`), donc le cadre GLISSE d'une hauteur à
-l'autre au lieu de sauter. Les quatre impasses, mesurées, sont listées dans le
-§ 2 de la feuille : ne pas les refaire.
-
-⚠️ **`align-self: stretch` sur les vues, et `min-height: 0` sur le texte.**
-C'est ce qui donne à la colonne une hauteur définie, donc au corps du texte de
-quoi se réduire et défiler. Sans, la vue gardait sa hauteur naturelle,
-débordait du cadre et s'y faisait rogner : à 1225 × 640 **la flèche de retour
-était purement et simplement coupée**. Et sur un téléphone COUCHÉ, c'est le
-plancher du texte qui cède (`min-height: 0` sous 480 px de haut), jamais la
-commande de retour : une sortie invisible n'est plus une sortie.
-
-⚠️ **CE TEXTE VIENT DE `config.js` (`DOCUMENTS.about`), MOT POUR MOT** —
-l'accroche et les quatre paragraphes, sans une coupe. Toute retouche
-éditoriale se fait donc AUX DEUX ENDROITS, sans quoi la page d'attente
-annoncerait un texte que le site ne dit plus. Correspondance : `hook` → le
-`<h2>` (`'gold'` → `.cs-kw`, `engraved` → `.cs-kw--engraved`, `underline` →
-`.cs-mark`), `paragraphs` → `.cs-prose` (`*…*` → `<em class="cs-em">`).
-**Un seul segment n'est pas repris** : le raté (`draft`), où « meurtrier »
-s'écrit puis se fait raturer par « assassin » — un geste dans le TEMPS, qui
-posé ne serait qu'un mot barré, lu comme une coquille.
-
-⚠️ **LES INSTITUTIONS SONT LIÉES DANS LES DEUX VUES.** À l'avertissement, les
-cinq noms en gras sont cliquables ; dans « À propos », les quatre que le texte
-nomme le sont aussi (le Muséum au premier paragraphe, Abounaddara, l'ANR et
-France-Berkeley Fund au dernier). Ce n'est pas un doublon à l'écran — jamais
-les deux vues ensemble — et un moteur ne compte pas deux fois une même
-adresse. En revanche, une institution nommée SANS lien dans une vue et AVEC
-dans l'autre, ça, ça se remarque.
-
-⚠️ **TOUT TIENT DANS LA FENÊTRE, ET C'EST UN PARTI PRIS.** Aucune barre de
-défilement sur le côté, dans l'une ou l'autre vue. Deux mécanismes, dans cet
-ordre : (1) la typographie est fluide EN HAUTEUR autant qu'en largeur — les
-`clamp()` sont bornés par `min(…vw, …vh)`, sinon la présentation sortirait de
-l'écran sur un portable 16/9 ; (2) `.cs-prose` est le SEUL élément qui puisse
-défiler, dans son propre cadre. Mesuré sur seize formats, de 1920×1080 à
-280×653 et au téléphone couché : aucune barre de page nulle part, la flèche de
-retour visible partout, l'air haut et bas toujours symétrique.
-⚠️ **UNE SEULE COLONNE, ET C'EST LE TEXTE QUI DÉFILE.** Le passage par deux
-colonnes a été essayé et RETIRÉ : il brisait l'axe central sur lequel la page
-entière est bâtie, et coupait une phrase en son milieu — la colonne de droite
-s'ouvrait sur « au rang de relique de héros national », qu'on ne comprend
-qu'après avoir cherché son début en bas de l'autre colonne. Le corps tient donc
-en une colonne de lecture de 580 px (~72 signes) qui occupe la place du cadre
-et défile dedans.
-
-⚠️ **LES LISIÈRES SUIVENT LE DÉFILEMENT, ET S'EFFACENT QUAND IL N'Y EN A PAS.**
-Le texte naît du noir en haut et s'y dissout en bas — un `mask-image`, donc les
-lettres s'effacent elles-mêmes, aucun voile ne passe devant. Les deux lisières
-sont pilotées par `animation-timeline: scroll(self)` sur deux propriétés
-déclarées en `@property` (sans type déclaré, une propriété personnalisée
-s'interpole comme une chaîne — donc pas du tout). C'est ce que fait déjà
-l'« À Propos » de l'expérience (`.doc-ov-text`, `--fade-top`/`--fade-bot`
-pilotées en JS par `DocumentOverlay`), ici sans une ligne de script.
-Et c'est ce qui règle le cas délicat : **quand le texte tient entièrement,
-l'élément ne défile pas, la timeline est INACTIVE, aucune image-clef ne
-s'applique** — donc aucune lisière, et la première ligne n'est pas estompée
-pour rien. Un masque fixe, lui, aurait mangé la première et la dernière ligne
-d'un texte qui tient. Mesuré : lisières à 0 dès 1280×800, actives à 1366×768.
-⚠️ Le fondu n'est PAS sous `prefers-reduced-motion` : ce n'est pas un
-mouvement, c'est l'indication qu'il reste du texte.
-
-⚠️ **LA CASCADE D'OUVERTURE NE DOIT JAMAIS PORTER SUR LE CONTENU DES VUES.**
-Une vue masquée n'a aucune animation en cours : en réapparaissant, elle les
-REJOUE toutes. Avec la cascade dessus, revenir de « À propos » laissait un
-écran vide pendant 1,1 s, le temps que le second paragraphe reprenne son
-retard. Le contenu des vues paraît donc avec le fondu de son conteneur ; la
-cascade ne porte que sur ce qui n'est jamais masqué (bandeau, filets, titre,
-pastille, signature). C'est le même mécanisme qui, lui, est EXPLOITÉ pour la
-flèche de retour : elle se retrace à chaque ouverture, comme à chaque entrée
-de chapitre.
-
-⚠️ **LA FLÈCHE DE RETOUR EST CELLE DU SITE, REFAITE EN CSS** : mêmes cotes
-(viewBox 70, cercle r 32, chevron `M48 35 L22 35 M33 24 L22 35 L33 46`), même
-tracé en deux temps, même survol (SVG à 1,22 sur une courbe élastique, trait
-doré et double lueur — `applyGoldenHover`). Deux tiers du temps du site
-cependant (1 s + 0,55 s au lieu de 1,4 s + 0,7 s) : là-bas elle accompagne
-l'ouverture d'une scène, ici elle répond à un clic. ⚠️ Et son
-`stroke-dashoffset: 0` est l'état de BASE, le tracé venant des `@keyframes` :
-sans animation, la flèche est simplement là, entière.
-
-⚠️ **L'APPEL « À PROPOS » N'EST PAS UNE PASTILLE, ET NE DOIT PAS LE DEVENIR.**
-Une seconde pastille, juste au-dessus de celle de l'état, lui volerait son
-évidence — or « Site en construction » est le point de la page. C'est donc un
-mot en petites capitales et un filet qui s'allonge au survol (le geste de
-`#start-screen:hover .ss-rule`).
-
-Le reste du référencement vit là où c'est sa place, dans les métadonnées : le
-`meta description` (ce que le moteur affiche sous le titre) et le **JSON-LD**,
-qui NOMME les entités — projet, porteurs, financeurs, personne — au lieu de
-laisser deviner depuis des mots. Ce ne sont pas des textes cachés, ce sont les
-métadonnées d'une page. ⚠️ **Et elles ne doivent jamais promettre plus que la
-page** : c'est parce que le Muséum et France-Berkeley Fund sont nommés à
-l'écran qu'ils ont pu entrer dans le JSON-LD (`mentions`, second `funder`).
-**Jamais de bloc masqué bourré de mots-clefs** : Google sanctionne le procédé
-(« cloaking ») et le gain supposé se paierait en déclassement. Le texte visible
-s'enrichit À L'ÉCRAN — c'est ce qu'a fait la vue « À propos ».
-
-⚠️ **LES APPARITIONS AUSSI SONT EN CSS.** Un seul geste sur toute la page — le
-texte monte de 14 px en se posant, les filets s'ouvrent depuis leur centre
-(celui des légendes du site, `.doc-ov-caption::after`) — et deux déclencheurs :
-un retard au chargement (`--d`, écrit dans le HTML pour qu'on lise la partition
-dans la page) et la transition de bascule. **Aucune règle de base ne cache quoi
-que ce soit** : l'état de départ vit dans les `@keyframes`, en `both`. C'est ce
-qui permet de tout couper d'un coup (réglage système « animations réduites »)
-sans laisser un seul texte suspendu. Vérifié : zéro élément sous une opacité
-de 1, bascule instantanée, page entière lisible.
-
-⚠️ **`min-height: 100svh` et non `dvh`.** La vue « À propos » fait DÉFILER la
-page : avec `dvh`, l'écran se redimensionnerait à chaque escamotage de la barre
-d'adresse et le titre sauterait pendant qu'on descend.
-
-⚠️ **`robots.txt` ne nomme PAS la page de prévisualisation, et c'est le point.**
-Un `Disallow:` y publierait l'adresse qu'on cherche à ne pas diffuser — le
-fichier est public. C'est le `noindex` de son en-tête qui la protège : il n'est
-lu que par qui l'a déjà trouvée.
-
-⚠️ **Abounaddara ne pointe pas sur un site institutionnel, et c'est voulu.**
-Son domaine historique (`abounaddara.com`) répond encore mais sert une page en
-**Flash**, technologie morte depuis 2020 : le visiteur n'y verrait qu'un écran
-blanc. Le lien mène donc à l'entretien du collectif avec Frédéric Keck dans
-*Gradhiva* n° 39 (2025), consacré à Soliman al-Halabi et au corps du « Syrien
-fanatique » — vivant, en accès libre, et plus renseignant que la vitrine.
-Dans le JSON-LD il figure en `citation` du projet, **jamais** en `url`
-d'Abounaddara : un article de revue n'est pas le site d'un collectif, et un
-balisage inexact perd son bénéfice. Les six liens sortants ont été vérifiés
-(200) : Gradhiva, CNRS, ANR, Centre Alexandre Koyré, Muséum, France-Berkeley
-Fund. ⚠️ Le Muséum n'est pas listé avec les porteurs et les financeurs : il
-n'est pas partenaire du projet. Il est nommé et lié là où c'est juste — le
-second paragraphe de l'accueil, qui parle des négociations en cours.
+⚠️ **Le banc d'essai vise la racine** (`tools/bench/regression.mjs`, `BASE`).
+C'est le geste qu'on oubliait quand la racine servait la page d'attente.
 
 ## Carte du site
 
