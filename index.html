@@ -201,10 +201,9 @@
 
   <style>
     /* ══════════════════════════════════════════════════════════════
-       1 · SOCLE — la page ne défile pas
+       1 · SOCLE — écran fixe sur ordinateur, page naturelle sur téléphone
        ──────────────────────────────────────────────────────────────
-       ⚠️ TOUT TIENT DANS LA FENÊTRE, ET C'EST UN PARTI PRIS DE MISE EN PAGE.
-       L'écran fait exactement une hauteur de fenêtre : aucune barre de
+       Sur un écran d'ordinateur, tout tient dans la fenêtre : aucune barre de
        défilement ne paraît sur le côté, dans l'une ou l'autre vue. Deux
        mécanismes s'en chargent, dans cet ordre :
          1. LA TYPOGRAPHIE EST FLUIDE EN HAUTEUR AUTANT QU'EN LARGEUR. Les
@@ -212,10 +211,10 @@
             une fenêtre basse, le texte se resserre au lieu de déborder.
             C'est ce qui fait tenir la présentation complète sur un portable
             16/9, où une taille réglée à la seule largeur la ferait sortir.
-         2. LE CORPS DU TEXTE EST LE SEUL À DÉFILER, à l'intérieur de son
-            propre cadre (`.cs-prose`), et seulement quand la fenêtre est
-            vraiment trop basse — un téléphone à l'horizontale. La question,
-            le bouton, la pastille et la signature restent en place.
+         2. LE CORPS DU TEXTE EST LE SEUL À DÉFILER sur les écrans fixes
+            vraiment trop bas. Sur téléphone, portrait comme paysage, la
+            media query dédiée en fin de feuille rend au contraire sa hauteur
+            naturelle à toute la page : un seul défilement, celui du navigateur.
        ⚠️ NE PAS remplacer `100svh` par `100dvh` : sur mobile, `dvh` change à
        chaque escamotage de la barre d'adresse et la mise en page sauterait à
        chaque geste. `svh` prend la hauteur barres DÉPLOYÉES, donc la plus
@@ -247,7 +246,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: clamp(1.4rem, 5.5vh, 6rem) 6vw;
+      padding-block: clamp(1.4rem, 5.5vh, 6rem);
+      /* Les montants du cadre sont à 8vw. Ce retrait ajoute toujours une
+         petite zone de sécurité entre eux et le contenu, y compris lorsque
+         la fenêtre devient étroite. */
+      padding-inline: calc(8vw + clamp(0.75rem, 1.25vw, 1.5rem));
       overflow: hidden;
       background: radial-gradient(circle at center, #121212 0%, #080808 100%);
     }
@@ -284,9 +287,9 @@
     }
 
     /* ── Le bloc ───────────────────────────────────────────────────
-       Il est large pour la présentation ; à l'accueil, ce sont les
-       paragraphes eux-mêmes qui se limitent (54 signes de large), donc rien
-       ne change à l'œil.
+       Il est large pour la présentation et pour sa marge de navigation ; à
+       l'accueil, ce sont les paragraphes eux-mêmes qui se limitent (54 signes
+       de large), donc rien ne change à l'œil.
        ⚠️ `min-height: 0` : sans lui, un enfant de flex refuse de se réduire
        en dessous de son contenu, et le corps du texte ne pourrait jamais
        défiler dans son cadre — il pousserait le bouton hors de l'écran. */
@@ -298,7 +301,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      width: min(900px, 100%);
+      width: min(1040px, 100%);
       max-height: 100%;
       min-height: 0;
     }
@@ -517,8 +520,22 @@
       opacity: 1;
     }
 
-    /* La présentation part du haut : question, texte, flèche. */
-    .cs-view--projet { justify-content: flex-start; }
+    /* La présentation part du haut. Sur un écran assez large, la marge est
+       partagée en deux réserves identiques : celle de gauche reçoit la flèche
+       et celle de droite, laissée vide, maintient le texte exactement sur
+       l'axe de la page. La flèche ne consomme ainsi plus une ligne sous le
+       texte et le corps profite de toute la hauteur disponible. */
+    .cs-view--projet {
+      display: grid;
+      grid-template-columns:
+        minmax(48px, 1fr)
+        minmax(0, 720px)
+        minmax(48px, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      column-gap: clamp(0.75rem, 2vw, 2rem);
+      align-items: stretch;
+      justify-content: stretch;
+    }
 
     .cs-toggle:checked       ~ .cs-swap .cs-view--accueil,
     .cs-toggle:not(:checked) ~ .cs-swap .cs-view--projet {
@@ -588,10 +605,22 @@
        simplement là, entière. */
     .cs-back {
       flex: none;
+      position: fixed;
+      top: 50%;
+      /* Le bord droit de la commande reste séparé de la colonne de 720 px par
+         le même intervalle que la grille. Contrairement à l'alignement dans
+         la rangée de texte, `top: 50%` vise exactement le centre du viewport. */
+      right: calc(50vw + 360px + clamp(0.75rem, 2vw, 2rem));
+      z-index: 2;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      margin: clamp(1.2rem, 3.4vh, 2rem) 0 0;
+      grid-column: 1;
+      grid-row: 2;
+      align-self: center;
+      justify-self: end;
+      margin: 0;
+      transform: translateY(-50%);
       /* Cible tactile de 44 px, même quand le dessin est plus petit. */
       min-width: 44px;
       min-height: 44px;
@@ -669,7 +698,10 @@
        site, s'écrit lettre à lettre est ici simplement POSÉ. */
     .cs-hook {
       flex: none;
-      width: min(660px, 100%);
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: center;
+      width: min(720px, 100%);
       margin: 0 0 clamp(1.3rem, 3.2vh, 2.2rem);
       color: rgba(255, 255, 255, 0.95);
       font-family: 'Playfair Display', Georgia, serif;
@@ -704,24 +736,27 @@
     /* ── LE CORPS ──────────────────────────────────────────────────
        UNE SEULE COLONNE, CENTRÉE — et c'est un choix, pas un repli. La page
        entière tient sur un axe : bandeau, filet, titre, question, pastille,
-       signature, tout est centré. Deux colonnes brisaient cet axe et, pire,
-       coupaient une phrase en son milieu : la colonne de droite s'ouvrait sur
-       « au rang de relique de héros national », qu'on ne comprend qu'après
-       avoir cherché son début en bas de l'autre colonne.
+       signature, tout est centré. La flèche vit dans la réserve latérale mais
+       une réserve jumelle à droite conserve cet axe. Le texte reste en une
+       seule colonne : deux colonnes coupaient les phrases et la lecture.
 
-       Le texte est donc posé en une colonne de lecture, et c'est LUI qui
-       défile — jamais la page. Il occupe la place qui reste, quelle qu'elle
-       soit : cadré par le flex, il grandit sur un grand écran et se resserre
-       sur un petit, la flèche et la pastille ne bougeant pas d'un pixel.
+       Le texte est donc posé en une colonne de lecture. Sur un écran fixe,
+       c'est lui qui défile si la hauteur manque ; sur téléphone, la règle
+       dédiée en fin de feuille laisse défiler la page entière. Il occupe la
+       place disponible sans jamais pousser une commande hors de portée.
 
        ⚠️ `min-height: 0` autorise sa réduction dans le flex (sans quoi il
        pousserait la flèche hors de l'écran) ; `min-height: min(6em, 34vh)`
        lui garde toujours de quoi montrer quelques lignes. */
     .cs-prose {
       flex: 0 1 auto;
-      /* 580 px : environ 72 signes par ligne, la longueur de lecture. Plus
-         large, l'oeil perd la ligne suivante en revenant a gauche. */
-      width: min(580px, 100%);
+      grid-column: 2;
+      grid-row: 2;
+      align-self: stretch;
+      justify-self: center;
+      /* Même largeur que la question : les deux blocs partagent une colonne
+         nette, plus ample qu'auparavant, sans perdre leur axe commun. */
+      width: min(720px, 100%);
       /* ⚠️ UN PLANCHER BAS, ET EN HAUTEUR D'ÉCRAN. Il garantit quelques
          lignes lisibles, mais il ne doit JAMAIS empêcher le cadre de faire sa
          place à la flèche de retour : à 28vh, sur les très petits écrans
@@ -849,8 +884,8 @@
     /* La pastille reprend la forme du bouton du site, mais elle est INERTE :
        ni bouton, ni lien, ni survol, ni curseur main. C'est le point de la
        page — on reconnaît l'entrée du site, et on voit du même coup qu'elle
-       ne s'ouvre pas encore. Elle reste sous les DEUX vues : l'avertissement
-       ne quitte jamais l'écran. */
+       ne s'ouvre pas encore. Elle reste sous les DEUX vues : fixe dans la
+       composition desktop, et naturellement placée après le texte mobile. */
     .cs-status {
       flex: none;
       display: inline-flex;
@@ -1024,9 +1059,35 @@
       }
     }
 
+    /* Quand les réserves latérales commenceraient à comprimer le texte, la
+       flèche reprend sa place sous la colonne. Les téléphones basculent plus
+       loin vers une page de hauteur naturelle, où cette ligne supplémentaire
+       ne prive plus le corps de son espace de lecture. */
+    @media (max-width: 1120px) and (min-height: 481px), (max-width: 480px) {
+      .cs-view--projet {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .cs-prose { align-self: center; }
+
+      .cs-back {
+        position: static;
+        top: auto;
+        right: auto;
+        align-self: center;
+        margin: clamp(1rem, 2.8vh, 1.6rem) 0 0;
+        transform: none;
+      }
+    }
+
     /* ── Téléphone ───────────────────────────────────────────────── */
     @media (max-width: 600px) {
-      .cs-screen { padding: clamp(1.2rem, 4vh, 3rem) 7vw; }
+      /* Le retrait horizontal général reste intact : il matérialise la marge
+         de sécurité intérieure du cadre. */
+      .cs-screen { padding-block: clamp(1.2rem, 4vh, 3rem); }
       .cs-body   { line-height: 1.62; }
       .cs-status { letter-spacing: 0.2em; padding: 10px 16px; }
       .cs-open    { letter-spacing: 0.26em; text-indent: 0.26em; }
@@ -1037,15 +1098,111 @@
       .cs-prose p { text-align: left; line-height: 1.68; }
     }
 
-    /* ⚠️ TÉLÉPHONE COUCHÉ — la flèche passe avant le texte. Sur 360 px de
-       haut, le cadre n'a plus de quoi loger la question, quelques lignes ET
-       la flèche : c'est le plancher du texte qui cède, jamais la commande de
-       retour. Sans cette règle, la flèche se retrouvait rognée par le bas du
-       cadre — invisible, donc plus de sortie. */
+    /* Écran très bas : le plancher du texte cède et la commande se compacte.
+       Sur ordinateur large, la grille latérale économise la hauteur ; sur
+       téléphone, la règle suivante rend toute sa hauteur naturelle à la page. */
     @media (max-height: 480px) {
       .cs-prose { min-height: 0; }
-      .cs-back  { min-height: 38px; min-width: 38px; margin-top: clamp(0.4rem, 1.6vh, 0.9rem); }
+      .cs-back  { min-height: 38px; min-width: 38px; }
       .cs-back svg { width: clamp(28px, 8vh, 40px); }
+    }
+
+    @media (max-width: 480px) and (max-height: 480px) {
+      .cs-back { margin-top: clamp(0.4rem, 1.6vh, 0.9rem); }
+    }
+
+    /* ── Téléphones : une vraie page, pas un défilement imbriqué ───────────
+       Sur un écran étroit ou bas, enfermer le texte dans quelques lignes
+       défilables rend la lecture et la découverte du geste difficiles. La
+       page reprend donc sa hauteur naturelle : le fond, le grain et la grille
+       grandissent avec elle, et le défilement reste celui du navigateur. */
+    @media (max-width: 600px),
+           (max-width: 960px) and (max-height: 480px) {
+      html,
+      body {
+        height: auto;
+        min-height: 100%;
+      }
+
+      body { overflow-y: auto; }
+
+      .cs-screen {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100svh;
+        padding-top: clamp(1.25rem, 6svh, 3rem);
+        padding-bottom: clamp(2rem, 8svh, 4rem);
+        overflow: visible;
+      }
+
+      .cs-inner { max-height: none; }
+
+      /* ⚠️ L'AVERTISSEMENT NE DÉFILE PAS, MÊME SUR UN TÉLÉPHONE COUCHÉ.
+         La hauteur naturelle ci-dessus est faite pour la PRÉSENTATION, qui est
+         longue. L'accueil, lui, tient dans un écran et doit y rester : la
+         pastille « Site en construction » est le point de la page, et la
+         reléguer sous la ligne de flottaison, c'est la faire manquer par qui
+         ne défile pas. Fermée, la page reprend donc la composition CONTENUE —
+         celle d'avant la refonte mobile, à l'identique.
+         Mesuré à l'horizontale, vue d'accueil : sans cette règle la pastille
+         tombait 9 px sous le bord à 844×390, 23 px à 667×375 et 36 px à
+         740×360 ; avec elle, elle revient dans la fenêtre aux trois formats.
+         ⚠️ Ne porte QUE sur la vue fermée : `:checked` garde à « À propos »
+         le défilement de page qui est tout l'objet du bloc.
+         ⚠️ `:has()` est nécessaire — la case à cocher est un ENFANT de
+         `.cs-inner`, jamais un frère de `.cs-screen`, donc aucun combinateur
+         `~` ne remonte jusqu'ici. Il est mieux répandu que l'`interpolate-size`
+         et l'`animation-timeline` dont la page dépend déjà, et s'il venait à
+         manquer la règle est simplement ignorée : on retombe sur la page qui
+         défile, pas sur un écran cassé. */
+      .cs-screen:has(.cs-toggle:not(:checked)) {
+        height: 100svh;
+        overflow: hidden;
+      }
+
+      .cs-screen:has(.cs-toggle:not(:checked)) .cs-inner { max-height: 100%; }
+
+      /* Fermée, la zone masque strictement la longue vue « À propos » placée
+         hors flux : sans ce clipping, son contenu invisible continuait à
+         agrandir le document et laissait un écran noir sous l'avertissement.
+         Ouverte, elle retrouve au contraire un débordement visible afin que
+         toute la présentation participe au défilement naturel de la page. */
+      .cs-swap {
+        height: auto;
+        overflow: hidden;
+      }
+
+      .cs-toggle:checked ~ .cs-swap {
+        height: auto;
+        overflow: visible;
+      }
+
+      .cs-view--projet {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .cs-prose {
+        flex: none;
+        align-self: center;
+        min-height: 0;
+        overflow: visible;
+        overscroll-behavior: auto;
+        -webkit-mask-image: none;
+                mask-image: none;
+        animation: none;
+      }
+
+      .cs-back {
+        position: static;
+        top: auto;
+        right: auto;
+        align-self: center;
+        margin: clamp(1.1rem, 4svh, 1.8rem) 0 0;
+        transform: none;
+      }
     }
 
     /* ── Mouvement réduit ─────────────────────────────────────────
