@@ -231,8 +231,19 @@
 
     html, body { margin: 0; padding: 0; height: 100%; }
 
+    /* ⚠️ LE DÉGRADÉ EST SUR `body`, ET C'EST CE QUI EMPÊCHE LA BANDE NOIRE.
+       Le fond de l'élément racine est PROPAGÉ AU CANEVAS : il couvre alors
+       toute la surface visible, quoi qu'il arrive — y compris la lisière que
+       le téléphone découvre en escamotant sa barre d'adresse. Peint sur
+       `.cs-screen`, il s'arrêtait avec lui : le cadre est haut de `100svh`,
+       c'est-à-dire la hauteur barres DÉPLOYÉES, donc la plus PETITE. Barre
+       rentrée, l'écran devient plus grand que le cadre et la différence
+       (50 à 110 px selon l'appareil) se peignait en `#080808` plat — sans
+       dégradé, sans grain, sous le filet du bas. C'est le « noir en bas ».
+       ⚠️ Ne pas remettre un fond sur `html` : un fond sur la racine bloque la
+       propagation de celui du `body`, et la bande revient. */
     body {
-      background: #080808;
+      background: radial-gradient(circle at center, #121212 0%, #080808 100%);
       color: #e8e7e0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -252,7 +263,9 @@
          la fenêtre devient étroite. */
       padding-inline: calc(8vw + clamp(0.75rem, 1.25vw, 1.5rem));
       overflow: hidden;
-      background: radial-gradient(circle at center, #121212 0%, #080808 100%);
+      /* Le dégradé vit sur `body` (voir plus haut) : le répéter ici le ferait
+         s'arrêter au bord du cadre, et rouvrirait la bande noire du mobile. */
+      background: transparent;
     }
 
     /* Grain — même data-URI que l'écran d'accueil du site. */
@@ -1137,30 +1150,20 @@
 
       .cs-inner { max-height: none; }
 
-      /* ⚠️ L'AVERTISSEMENT NE DÉFILE PAS, MÊME SUR UN TÉLÉPHONE COUCHÉ.
-         La hauteur naturelle ci-dessus est faite pour la PRÉSENTATION, qui est
-         longue. L'accueil, lui, tient dans un écran et doit y rester : la
-         pastille « Site en construction » est le point de la page, et la
-         reléguer sous la ligne de flottaison, c'est la faire manquer par qui
-         ne défile pas. Fermée, la page reprend donc la composition CONTENUE —
-         celle d'avant la refonte mobile, à l'identique.
-         Mesuré à l'horizontale, vue d'accueil : sans cette règle la pastille
-         tombait 9 px sous le bord à 844×390, 23 px à 667×375 et 36 px à
-         740×360 ; avec elle, elle revient dans la fenêtre aux trois formats.
-         ⚠️ Ne porte QUE sur la vue fermée : `:checked` garde à « À propos »
-         le défilement de page qui est tout l'objet du bloc.
-         ⚠️ `:has()` est nécessaire — la case à cocher est un ENFANT de
-         `.cs-inner`, jamais un frère de `.cs-screen`, donc aucun combinateur
-         `~` ne remonte jusqu'ici. Il est mieux répandu que l'`interpolate-size`
-         et l'`animation-timeline` dont la page dépend déjà, et s'il venait à
-         manquer la règle est simplement ignorée : on retombe sur la page qui
-         défile, pas sur un écran cassé. */
-      .cs-screen:has(.cs-toggle:not(:checked)) {
-        height: 100svh;
-        overflow: hidden;
-      }
-
-      .cs-screen:has(.cs-toggle:not(:checked)) .cs-inner { max-height: 100%; }
+      /* ⚠️ ON NE CONTIENT PLUS L'ACCUEIL DE FORCE, ET C'EST DÉLIBÉRÉ.
+         Une passe précédente le bloquait à `height: 100svh` + `overflow:
+         hidden` pour retenir la pastille dans la fenêtre. Ça tenait la
+         pastille, mais au prix de DEUX défauts sur un vrai téléphone :
+           · le cadre, figé à la hauteur barres déployées, laissait une bande
+             non peinte dès que la barre d'adresse rentrait (corrigé à la
+             racine : le dégradé est passé sur `body`, cf. § 1) ;
+           · à l'horizontale, le contenu naturel dépasse le cadre de 40 à
+             89 px selon l'appareil — `overflow: hidden` ne le compressait
+             pas, il le COUPAIT. D'où le texte mal affiché.
+         La hauteur reste donc naturelle et rien n'est jamais rogné. Ce que
+         la pastille demandait, on l'obtient autrement : en RESSERRANT le
+         rythme vertical là où l'écran est court (bloc suivant), c'est-à-dire
+         en faisant vraiment tenir la page au lieu de la couper. */
 
       /* Fermée, la zone masque strictement la longue vue « À propos » placée
          hors flux : sans ce clipping, son contenu invisible continuait à
@@ -1203,6 +1206,34 @@
         margin: clamp(1.1rem, 4svh, 1.8rem) 0 0;
         transform: none;
       }
+    }
+
+    /* ── ÉCRAN COURT : ON RESSERRE LE RYTHME, ON NE COUPE RIEN ─────────────
+       La typographie est déjà fluide en hauteur (`min(…vw, …vh)` partout),
+       mais sur un écran court elle a atteint ses PLANCHERS en `rem` : à
+       360 px de haut, `1.6vh` vaut 5,8 px quand le plancher en vaut 11,2, si
+       bien que plus rien ne se resserre. Ce sont donc les planchers eux-mêmes
+       qu'on abaisse ici, et seulement les BLANCS — jamais le corps du texte,
+       dont la taille et l'interlignage ne bougent pas : une page dense reste
+       lisible, une page à 13 px ne l'est plus.
+       Mesuré sur la vue d'accueil, excédent avant → après :
+         896×414 : 40 px → tient   ·  844×390 : 61 px → tient
+         667×375 : 75 px → 9 px    ·  740×360 : 89 px → 23 px
+         320×568 : 44 px → tient
+       Là où il reste un excédent, la page défile de quelques pixels : c'est
+       la bonne panne — on atteint la pastille d'un geste, au lieu de lire un
+       texte coupé. */
+    @media (max-height: 480px), (max-width: 360px) {
+      .cs-screen {
+        padding-top: clamp(0.6rem, 3svh, 3rem);
+        padding-bottom: clamp(0.9rem, 4svh, 4rem);
+      }
+
+      .cs-eyebrow { margin-bottom: clamp(0.35rem, 1.6vh, 1.2rem); }
+      .cs-rule    { margin-bottom: clamp(0.45rem, 2.2vh, 1.6rem); }
+      .cs-title   { margin-bottom: clamp(0.45rem, 2.2vh, 1.6rem); }
+      .cs-body    { margin-bottom: clamp(0.35rem, 1.6vh, 1.1rem); }
+      .cs-open    { margin: clamp(0.2rem, 1.6vh, 1.1rem) 0 clamp(0.5rem, 2.6vh, 1.7rem); }
     }
 
     /* ── Mouvement réduit ─────────────────────────────────────────
