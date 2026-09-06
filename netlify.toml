@@ -91,6 +91,25 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    # ⚠️⚠️ EN CHANTIER — À RETIRER LE JOUR DE L'OUVERTURE ⚠️⚠️
+    #
+    # Ce dépôt est déployé sur une adresse de travail (…​.netlify.app) pour
+    # qu'on puisse se relire sur un vrai appareil. Cette adresse est PUBLIQUE :
+    # Netlify ne protège rien par défaut, et sans cet en-tête le site entier —
+    # les quatre chapitres, les 375 Mo de vidéos — serait exploré et INDEXÉ.
+    # Le site sortirait alors dans les moteurs avant d'être ouvert, et une
+    # page indexée ne se retire pas d'un claquement de doigts.
+    #
+    # On choisit l'EN-TÊTE plutôt qu'un `robots.txt` : il porte sur CHAQUE
+    # réponse, médias compris, et c'est lui qui interdit l'INDEXATION.
+    # `Disallow:` n'interdit que l'exploration — une URL connue par ailleurs
+    # peut être indexée quand même, sans son contenu. Un seul verrou, à un
+    # seul endroit, plutôt que deux à moitié.
+    #
+    # ⇒ LE JOUR DE L'OUVERTURE : SUPPRIMER CES DEUX LIGNES. Les oublier, c'est
+    #   ouvrir le site en le laissant invisible des moteurs — la panne la plus
+    #   silencieuse qui soit. (cf. CLAUDE.md, « La page d'attente ».)
+    X-Robots-Tag           = "noindex, nofollow"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options        = "DENY"
     Referrer-Policy        = "strict-origin-when-cross-origin"

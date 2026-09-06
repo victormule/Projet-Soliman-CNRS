@@ -37,10 +37,21 @@ Netlify pointe sur le dépôt beta, rien du site n'est en ligne. Avant, `publish
 chapitres et 375 Mo de vidéos étaient publiquement téléchargeables, et
 l'expérience n'était protégée que par un `noindex`. La séparation a fermé ça.
 
-**LE JOUR DE L'OUVERTURE — deux gestes, dans cet ordre :**
+⚠️ **CE DÉPÔT EST DÉPLOYÉ SUR UNE ADRESSE DE TRAVAIL** —
+`soliman-al-halabi-beta.netlify.app` — pour qu'on puisse se relire sur un vrai
+appareil. Elle est PUBLIQUE : Netlify ne protège rien par défaut. Ce qui la
+tient hors des moteurs est un seul en-tête, `X-Robots-Tag: noindex, nofollow`
+sur `/*` dans `netlify.toml`. **Il n'empêche pas d'y accéder, seulement d'y
+être indexé** : pour la rendre vraiment privée il faut la protection par mot
+de passe de Netlify (offre payante), à activer au tableau de bord.
+
+**LE JOUR DE L'OUVERTURE — trois gestes, dans cet ordre :**
 
 1. Rebrancher le site Netlify du domaine sur CE dépôt.
-2. Écrire un `robots.txt` et un `sitemap.xml` : ils sont partis avec la page
+2. **Retirer le `X-Robots-Tag` de `netlify.toml`.** L'oublier, c'est ouvrir le
+   site en le laissant invisible des moteurs — la panne la plus silencieuse
+   qui soit, et elle ne se voit sur aucun écran.
+3. Écrire un `robots.txt` et un `sitemap.xml` : ils sont partis avec la page
    d'attente, et sans eux le site s'ouvre sans rien dire aux moteurs.
    ⚠️ Le référencement du projet vit aujourd'hui dans le dépôt beta (résumé,
    JSON-LD, texte « À propos ») — c'est de là qu'il faut le reprendre, la SPA
