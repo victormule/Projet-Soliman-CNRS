@@ -3,7 +3,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * TROIS NIVEAUX, UN SEUL PROPRIÉTAIRE.
  *
- *   #site-title          « Abounaddara — CNRS — 2026 »  ou  « Espace collaboratif »
+ *   #site-title          « Abounaddara — CNRS — 2026 », « Espace collaboratif »
+ *                        ou « Carnet de recherche »
  *   #chapitre-subtitle   le sous-titre du chapitre          (tier 2)
  *   #chapitre-part-title le titre de la sous-partie         (tier 3)
  *
@@ -38,14 +39,49 @@ export class Title {
     this.subEl   = document.getElementById('chapitre-subtitle');
     this.partEl  = document.getElementById('chapitre-part-title');
 
-    /** Titre de niveau 1 actuellement posé ('site' | 'collab' | null). */
+    /** Titre de niveau 1 actuellement posé ('site' | 'collab' | 'carnet' | null). */
     this._pose = null;
 
     /** La colonne est-elle éclipsée (carte du parcours dépliée) ? */
     this._eclipsee = false;
     /** Jeton d'éclipse — voir eclipse(). */
     this._jetonEclipse = 0;
+
+    /** Les minuteries des gestes CARACTÈRE PAR CARACTÈRE (écriture, éclipse,
+        retour) — voir _geste(). */
+    this._minuteries = new Set();
+
+    /** Un départ par la carte est engagé : ce qui doit, ou non, revenir quand
+        elle se replie. Voir partir(). */
+    this._partance = null;
   }
+
+  /* ═══════════════════════════════ Les gestes caractère par caractère ══ */
+
+  /**
+   * UN SEUL GESTE À LA FOIS SUR LES CARACTÈRES DU TITRE.
+   *
+   * L'écriture, l'éclipse et le retour posent chacun une minuterie PAR
+   * caractère. Ils se succèdent vite (on ouvre la carte pendant que le titre
+   * s'écrit, on la referme, on part), et deux gestes qui se recouvrent se
+   * battent lettre à lettre : l'écriture rallumait des caractères sur la carte
+   * dépliée, et un retour coupé par la frontière laissait un titre À MOITIÉ
+   * ÉCRIT — pour toute la scène suivante, puisque set() trouvait le même
+   * titre déjà « posé » et ne faisait rien. Chaque geste commence donc par
+   * défaire le précédent, et set() COMPLÈTE un titre resté incomplet.
+   */
+  _geste() {
+    this._minuteries.forEach(clearTimeout);
+    this._minuteries.clear();
+  }
+
+  _plusTard(fn, ms) {
+    const id = setTimeout(() => { this._minuteries.delete(id); fn(); }, ms);
+    this._minuteries.add(id);
+  }
+
+  /** L'état final d'un caractère écrit (les tirets vivent en retrait). */
+  _ecritOpacite(s) { return s.classList.contains('sep') ? '0.6' : '1'; }
 
   /* ═══════════════════════════════════════════════ NIVEAU 1 — le site ══ */
 
@@ -54,11 +90,19 @@ export class Title {
    * ne rejoue pas son écriture (sans quoi le titre se retaperait à chaque
    * passage d'une scène du musée à une autre).
    *
-   * @param {'site'|'collab'} genre
+   * @param {'site'|'collab'|'carnet'} genre
    */
   set(genre) {
     if (!this.el) return;
-    if (this._pose === genre) return;
+    if (this._pose === genre) {
+      /* ⚠️ « DÉJÀ POSÉ » NE VEUT PAS DIRE « ENTIER À L'ÉCRAN ». Un retour de
+         carte coupé par la frontière (resetEclipse annule ses minuteries), ou
+         un départ par la carte qui a gardé le titre éclipsé, laissent des
+         caractères effacés : on ÉCRIT ceux-là, et seulement eux. Ceux qui sont
+         déjà là ne bougent pas — un titre entier ne se retape pas. */
+      if (!this._eclipsee) this._ecrire(0);
+      return;
+    }
 
     // La toute PREMIÈRE apparition prend son souffle (TIMING.title_start) :
     // c'est l'ouverture du site. Les bascules suivantes se font dans le noir,
@@ -80,9 +124,13 @@ export class Title {
 
   /** Le balisage du titre : des <span> par caractère, des <span.sep> par tiret. */
   _html(genre) {
-    const mots = genre === 'collab'
-      ? [this.config.TITLE.collab]
-      : this.config.TITLE.texte;
+    // 'site' est la signature mot à mot ; tout autre genre ('collab',
+    // 'carnet') est un intitulé d'un seul tenant, lu dans TITLE sous son nom.
+    const intitule = genre === 'site' ? null : this.config.TITLE[genre];
+    if (genre !== 'site' && !intitule) {
+      console.warn(`[Title] TITLE.${genre} absent de config.js : titre du site à la place.`);
+    }
+    const mots = intitule ? [intitule] : this.config.TITLE.texte;
 
     let html = '', i = 0;
     mots.forEach(part => {
@@ -95,17 +143,29 @@ export class Title {
     return html;
   }
 
-  /** L'écriture caractère par caractère, cadencée par TIMING. */
+  /**
+   * L'écriture caractère par caractère, cadencée par TIMING. Seuls les
+   * caractères QUI NE SONT PAS ENCORE ÉCRITS s'écrivent, dans l'ordre : sur
+   * un titre neuf, c'est tout le titre ; sur un titre interrompu, c'est ce qui
+   * lui manque (voir set()).
+   */
   _ecrire(depart) {
+    this._geste();
     const T = this.config.TIMING;
-    this.el.querySelectorAll('.char').forEach((s, i) => {
-      setTimeout(() => {
+    const manque = (s) => s.style.opacity !== this._ecritOpacite(s);
+    [...this.el.querySelectorAll('.char')].filter(manque).forEach((s, i) => {
+      // La transition d'une éclipse a pu rester en ligne : c'est la feuille
+      // (.char) qui dit comment un caractère s'écrit.
+      s.style.transition = '';
+      this._plusTard(() => {
         s.style.opacity   = '1';
         s.style.transform = 'translateY(0)';
       }, depart + i * T.title_char_delay + Math.random() * 20);
     });
-    this.el.querySelectorAll('.sep').forEach((s, i) => {
-      setTimeout(() => { s.style.opacity = '0.6'; }, depart + (i + 1) * 340);
+    [...this.el.querySelectorAll('.sep')].filter(manque).forEach((s, i) => {
+      s.style.transition = '';
+      this._plusTard(() => { s.style.opacity = '0.6'; s.style.transform = 'translateY(0)'; },
+                     depart + (i + 1) * 340);
     });
   }
 
@@ -195,9 +255,21 @@ export class Title {
    *   CompassMap._fold() : celui qui joue un geste dit combien il lui faut.
    */
   eclipse(masquee) {
-    this._eclipsee = !!masquee;
+    this._geste();
     const jeton = ++this._jetonEclipse;
     const T = this.config.TIMING;
+
+    /* ⚠️ UN DÉPART PAR LA CARTE NE REND QUE CE QUI RESTE (voir partir()). La
+       carte se replie AVANT que la scène s'en aille : rendre ici le titre et le
+       sous-titre du lieu qu'on quitte, c'était les réécrire en hâte pour les
+       effacer une seconde plus tard, à la frontière, sous le titre de la
+       destination. Seul revient le titre du site s'il est AUSSI celui de la
+       destination ; le reste attend, éclipsé, la frontière — où la scène qui
+       arrive écrit les siens. */
+    const p = masquee ? null : this._partance;
+    const rendreTitre = !p || p.titre === this._pose;
+    const rendreSous  = !p;
+    this._eclipsee = !!masquee || !rendreTitre;
 
     if (masquee) {
       /* LA CARTE CHASSE LE TITRE. Les caractères s'en vont un à un, du DERNIER
@@ -214,8 +286,7 @@ export class Title {
       this._chars().reverse().forEach((s, i) => {
         s.style.transition = `opacity ${T.titre_eclipse_ms}ms ease, ` +
                              `transform ${T.titre_eclipse_ms}ms cubic-bezier(0.55,0,0.45,1)`;
-        setTimeout(() => {
-          if (jeton !== this._jetonEclipse) return;
+        this._plusTard(() => {
           s.style.opacity   = '0';
           s.style.transform = 'translateY(-8px)';
         }, i * T.titre_eclipse_pas);
@@ -228,17 +299,19 @@ export class Title {
     /* LE TITRE REVIENT COMME IL S'ÉCRIT — du premier caractère au dernier :
        c'est la même main qui repose ce qu'elle avait retiré. Les sous-titres
        suivent, une fois le titre lancé. */
-    this._chars().forEach((s, i) => {
-      const sep = s.classList.contains('sep');
+    if (!rendreTitre && !rendreSous) return 0;
+
+    if (rendreTitre) this._chars().forEach((s, i) => {
       s.style.transition = `opacity ${T.titre_retour_ms}ms ease, ` +
                            `transform ${T.titre_retour_ms}ms cubic-bezier(0.16,1,0.3,1)`;
-      setTimeout(() => {
-        if (jeton !== this._jetonEclipse) return;
+      this._plusTard(() => {
         // Les tirets ne montent pas à 1 : ils vivent en retrait (cf. _ecrire).
-        s.style.opacity   = sep ? '0.6' : '1';
+        s.style.opacity   = this._ecritOpacite(s);
         s.style.transform = 'translateY(0)';
       }, i * T.titre_retour_pas);
     });
+
+    if (!rendreSous) return this._duree(T.titre_retour_ms, T.titre_retour_pas);
 
     setTimeout(() => {
       if (jeton !== this._jetonEclipse) return;
@@ -266,6 +339,24 @@ export class Title {
     return total;
   }
 
+  /**
+   * UN DÉPART PAR LA CARTE S'ENGAGE — appelé par app.js au moment du saut
+   * vers une AUTRE scène, avant que la carte ne finisse de se replier.
+   *
+   * La carte dépliée a éclipsé la colonne ; en se repliant, elle la rendrait.
+   * Mais on s'en va : le sous-titre (et l'intitulé) du lieu qu'on quitte ne
+   * doivent pas se réécrire pour s'effacer aussitôt, et le titre du site non
+   * plus s'il va changer. Ils restent éclipsés jusqu'à la frontière, où
+   * resetEclipse() lève la consigne et où la scène qui arrive écrit les siens.
+   *
+   * @param {'site'|'collab'|'carnet'} titre  le titre de niveau 1 de la DESTINATION
+   *   (sa ligne dans la table LIEUX) : s'il est déjà celui qu'on voit, il
+   *   revient avec le repli — il n'y a aucune raison de le retirer.
+   */
+  partir(titre) {
+    this._partance = { titre };
+  }
+
   /** Durée d'un geste échelonné : le dernier caractère part au bout de (n-1) pas. */
   _duree(ms, pas) {
     return ms + Math.max(0, this._chars().length - 1) * pas;
@@ -283,7 +374,9 @@ export class Title {
    */
   resetEclipse() {
     this._eclipsee = false;
-    this._jetonEclipse++;                     // périme tout geste en vol
+    this._partance = null;
+    this._geste();                            // périme tout geste en vol…
+    this._jetonEclipse++;                     // …et ceux des niveaux 2 et 3
     [this.el, this.subEl, this.partEl].forEach(el => {
       if (el) el.style.transition = '';
     });

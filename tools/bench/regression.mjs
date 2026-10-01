@@ -55,6 +55,7 @@ const MARK = {
   chapitre2:     "!!document.getElementById('chapitre2-root')",
   chapitre3:     "!!document.getElementById('chapitre3-root')",
   chapitre4:     "!!document.getElementById('chapitre4-root')",
+  chapitre5:     "!!document.getElementById('chapitre5-root')",
 };
 
 /* Seuils. Généreux à dessein : on traque les régressions FRANCHES, pas le
@@ -79,7 +80,7 @@ async function main() {
   // la lenteur du banc d'essai, pas celle du site.
   const browser = await chromium.launch({
     headless: true,
-    channel: 'chromium',
+    channel: process.env.BENCH_CHANNEL || 'chromium',
     args: ['--autoplay-policy=no-user-gesture-required', '--ignore-gpu-blocklist',
            '--enable-gpu-rasterization'],
   });
@@ -206,7 +207,9 @@ async function main() {
      s'accumule SANS PLAFOND — c'était le cas du chapitre 2 avant correction :
      +1 arbre (~900 nœuds) à chaque visite, indéfiniment. */
   console.log('\n── Fuites mémoire (3 aller-retours par chapitre) ──');
-  for (const chap of ['chapitre2', 'chapitre3', 'chapitre4']) {
+  const chapitres = process.argv.includes('--chapter5-only')
+    ? ['chapitre5'] : ['chapitre2', 'chapitre3', 'chapitre4', 'chapitre5'];
+  for (const chap of chapitres) {
     let apresPremiere = null;
     let atteint = true;
     for (let v = 0; v < 3; v++) {

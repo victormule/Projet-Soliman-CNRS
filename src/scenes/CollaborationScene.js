@@ -98,7 +98,8 @@ export class CollaborationScene extends Scene {
     /** @type {boolean} Retour depuis un chapitre (1 à 4) : les cercles
      * reparaissent plus vite, on ne refait pas attendre le visiteur. */
     const fromChap1 = params.from === 'chapitre1' || params.from === 'chapitre2'
-                   || params.from === 'chapitre3' || params.from === 'chapitre4';
+                   || params.from === 'chapitre3' || params.from === 'chapitre4'
+                   || params.from === 'chapitre5';
 
     // À chaque entrée, on verrouille les interactions jusqu'à la fin de l'intro.
     this._navigationActive = false;

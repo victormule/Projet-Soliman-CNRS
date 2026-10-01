@@ -2,7 +2,7 @@
  * app.js — racine de composition du site.
  *
  * Construit les systèmes partagés (audio, torche, fonds, transitions),
- * les composants UI, enregistre les six scènes auprès du SceneManager,
+ * les composants UI, enregistre les scènes auprès du SceneManager,
  * câble le bus d'événements (navigation, player) et les entrées globales
  * (scroll, resize, écran de démarrage). Voir CLAUDE.md pour la carte
  * complète de l'architecture.
@@ -27,9 +27,11 @@ import * as Journey           from './systems/Journey.js';
 import { VitrineScene }       from './scenes/VitrineScene.js';
 import { PhrenologieScene }   from './scenes/PhrenologieScene.js';
 import { CollaborationScene } from './scenes/CollaborationScene.js';
+import { CarnetScene }        from './scenes/CarnetScene.js';
 import { Chapitre2Scene }   from './scenes/Chapitre2Scene.js';
 import { Chapitre3Scene }   from './scenes/Chapitre3Scene.js';
 import { Chapitre4Scene }   from './scenes/Chapitre4Scene.js';
+import { Chapitre5Scene }   from './scenes/Chapitre5Scene.js';
 import { Chapitre1Scene }    from './scenes/Chapitre1Scene.js';
 import { announce }          from './utils/a11y.js';
 
@@ -157,12 +159,19 @@ if (compass) {
     const scene = manager.currentScene;
     if (!scene) return;
     if (scene.name === to) { scene.jumpWithin({ part: part ?? null }); return; }
+    /* ⚠️ ON PART : LA COLONNE NE SE RÉÉCRIT PAS POUR S'EFFACER. La carte se
+       replie pendant que la scène commence sa sortie, et son repli rendait les
+       titres du lieu QU'ON QUITTE — réécrits en hâte, puis remplacés à la
+       frontière. Title ne rend que ce que la destination garde : le titre du
+       site s'il ne change pas (sa ligne dans LIEUX), jamais le sous-titre.
+       ⚠️ SEULEMENT SI LE DÉPART A LIEU : une scène peut le refuser (la
+       phrénologie tant que sa navigation n'est pas ouverte) — les titres
+       resteraient alors éclipsés jusqu'à une frontière qui ne vient pas. Le
+       retour des titres est une minuterie de la carte (la fin de son
+       dé-tracé) : il est encore à venir quand on pose la consigne. */
     scene.leaveTo(to, part ? { part } : {});
+    if (scene.leaving) title.partir(LIEUX[to]?.titre ?? 'site');
   });
-
-  /* Un lieu SUPERPOSÉ (une sous-partie du chapitre 2) : la scène ne change pas,
-     mais le point courant de la carte, si. */
-  bus.on('journey:place', ({ id }) => compass.setCurrent(id));
 
   /* Un média passe au premier plan : la boussole s'éclipse avec la flèche, et
      revient avec elle. Émis par les scènes qui superposent un lecteur à leur
@@ -186,6 +195,17 @@ if (compass) {
      elle paraît. Ici un simple signal suffit : personne n'attend de réponse. */
   bus.on('carte:presence', ({ presente }) => title.decaler(!!presente));
 }
+
+/* Un lieu SUPERPOSÉ (une sous-partie du chapitre 2, un sous-chapitre du 5) :
+   la scène ne change pas, mais le point courant de la carte, si — et le lieu
+   entre dans la mémoire du parcours. Hors du bloc de la carte : le parcours se
+   retient même quand elle est désactivée, comme les scènes (`scene:entered`).
+   Les sous-parties du chapitre 2 ont leur propre mémoire : Journey.visit()
+   les refuse (voir « deux mémoires » dans Journey.js). */
+bus.on('journey:place', ({ id }) => {
+  Journey.visit(id);
+  compass?.setCurrent(id);
+});
 
 /* ── 5ter. LES DEUX PLACES DES TITRES ────────────────────────────────────────
    Les trois niveaux de titre ont DEUX bords gauches, et glissent de l'un à
@@ -246,10 +266,12 @@ const manager = new SceneManager();
 manager.register(new VitrineScene(systems));
 manager.register(new PhrenologieScene(systems));
 manager.register(new CollaborationScene(systems));
+manager.register(new CarnetScene(systems));
 manager.register(new Chapitre1Scene(systems));
 manager.register(new Chapitre2Scene(systems));
 manager.register(new Chapitre3Scene(systems));
 manager.register(new Chapitre4Scene(systems));
+manager.register(new Chapitre5Scene(systems));
 
 /* ── 8. Navigation ─────────────────────────────────────────────
    ⚠️ LES PARAMÈTRES SONT TRANSMIS. Cette ligne ne passait que `to` : tout ce
@@ -288,18 +310,21 @@ bus.on('navigate', ({ to, ...params }) => {
 
    sons  : noms des pistes d'AudioManager.tracks à laisser vivre. Les chapitres
            gèrent leurs propres <audio>/<video> ; le registre les couvre aussi.
-   titre : niveau 1 de la colonne de titres — 'site' ou 'collab' (voir Title).
+   titre : niveau 1 de la colonne de titres — 'site', 'collab' ou 'carnet'
+           (voir Title ; le texte est dans config.js → TITLE).
            Les chapitres sont chez l'espace collaboratif : ils en gardent le
            titre et posent leur propre sous-titre par-dessous. */
 const LIEUX = {
   vitrine:       { sons: ['musee'],            titre: 'site'   },
   phrenologie:   { sons: ['musee'],            titre: 'site'   },
   collaboration: { sons: ['musee', 'collab'],  titre: 'collab' },
+  carnet:        { sons: ['musee'],            titre: 'carnet' },
   // 'phreno' puis 'silence' — démarrées APRÈS la frontière
   chapitre1:     { sons: [],                   titre: 'collab' },
   chapitre2:     { sons: [],                   titre: 'collab' },  // 'chp2' — idem
   chapitre3:     { sons: [],                   titre: 'collab' },  // ambiance interne
   chapitre4:     { sons: [],                   titre: 'collab' },  // seulement les bulles
+  chapitre5:     { sons: [],                   titre: 'collab' },  // ambiances + témoignages internes
 };
 
 manager.onBoundary = ({ to }) => {
@@ -328,10 +353,12 @@ const SCENE_NAMES = {
   vitrine:       'La vitrine',
   phrenologie:   'La phrénologie',
   collaboration: 'Espace collaboratif',
+  carnet:        'Carnet de recherche',
   chapitre1:     'Chapitre I — Le crâne',
   chapitre2:     "Chapitre II — L'héritage colonial du musée",
   chapitre3:     'Chapitre III — La Galerie des Batailles',
   chapitre4:     'Chapitre IV — Une histoire complexe',
+  chapitre5:     'Chapitre V — Le devenir du corps de Soliman al-Halabi',
 };
 const BASE_TITLE = document.title;
 bus.on('scene:entered', ({ name }) => {

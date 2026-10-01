@@ -71,13 +71,30 @@ C'est le geste qu'on oubliait quand la racine servait la page d'attente.
 ```
 Écran d'accueil (clic → plein écran + déblocage audio)
   └─ vitrine ─(scroll)─ phrenologie ─(scroll)─ collaboration
-                                                 │  (5 cercles romains, IV ouverts)
+                            │
+                            └─(barre « Carnet de Recherche »)─ carnet
+                               (fond noir, le carnet hypotheses.org dans
+                                un grand rectangle tracé ; ← phrénologie)
+                                                 │  (5 cercles romains, I–V ouverts)
               ┌────────────────────┬─────────────┴──────┬────────────────────┐
          chapitre1            chapitre2           chapitre3           chapitre4
          (crâne interactif,   (travelling crânes  (Galerie des        (page blanche,
           9 hotspots médias)   + 3 sous-parties)   Batailles, Kléber)  fissure + 5 bulles)
 ```
-Le cercle V n'a pas encore de chapitre (`COLLABORATION.circles.actions` → `null`).
+Le cercle V ouvre le chapitre 5 : « Le devenir du corps de Soliman al-Halabi »
+(photographie animée, deux témoignages, trois sous-chapitres). Les trois sont
+ouverts, et chacun a son geste : le **« 1 »** fait RECULER — la salle s'éloigne,
+les deux battants se referment sur du blanc, la caméra pousse sur le panneau
+« Anthropologie biologique » ; le **« 2 »** ÉTEINT LA LUMIÈRE et la rallume
+ailleurs — une torche fixe ouvre sur la boîte où le crâne attend, et deux
+boîtes d'archive s'écrivent de part et d'autre, qui s'ouvrent sur les pièces
+qu'elles contiennent ; chaque pièce consultée efface un peu plus le crâne ; le
+**« 3 »** rejoue l'entrée du CHAPITRE 1 — noir, torche fixe sur une vitrine de
+crânes, une voix et « Passer », sans flèche ni boussole, puis la photographie
+bascule sur la vitrine au buste et l'interface revient ; dans l'ombre, une
+rangée s'écrit devant le buste — quatre tombes et, au milieu, un drapeau.
+Chaque tombe ouvre sa pièce ; le drapeau efface la rangée et fait monter,
+plein écran, la planche « L'inhumation symbolique » avec une seconde voix.
 
 Toutes les navigations passent par `bus.emit('navigate', { to })` →
 `SceneManager.go()` : `exit()` de la scène courante (noir garanti) puis
@@ -100,7 +117,8 @@ src/
                           DocumentOverlay/Loupe, AboutReveal (mise en scène
                           « À Propos »), NavigationBar, Title,
                           CompassMap (boussole + carte du parcours)…
-  scenes/                 Une classe par scène (contrat Scene : enter/exit)
+  scenes/                 Une classe par scène (contrat Scene : enter/exit) —
+                          dont CarnetScene (le carnet de recherche)
   utils/                  helpers.js (SVG, libellés, releaseMediaElements),
                           a11y.js (clavier + annonces), media.js (variantes
                           mobiles), cursor, viewport…
@@ -110,6 +128,8 @@ package.json              OUTILLAGE SEUL (le site n'a aucune dépendance)
 tools/
   bench/serve.mjs         Serveur statique (gère les Range → mp4)
   bench/regression.mjs    Non-régression : fluidité, fuites, clavier, console
+  bench/chapter5.mjs      Recette du chapitre 5 (bench:chapter5)
+  bench/fixtures/         Ce que la recette substitue aux vrais fichiers
   compress-videos.mjs     Fabrique les variantes mobiles (→ */mobile/)
   fetch-fonts.mjs         Rapatrie les polices Google en local
 Chapitre1/
@@ -134,6 +154,21 @@ Chapitre4/
                           + registre Motion) · chp4-bubbles.js (bulles, écoute)
                           chp4-portal.js (pop-up carte)
   chp4-style/ chp4-images/ chp4-medias/
+Chapitre5/
+  chp5-src/               chp5-config.js · chp5-opening.js (moteur : caméra,
+                          mise au point, traits d'appel, PORTE du sous-chapitre 1,
+                          INHUMATION du 3)
+                          chp5-dom.js (template DOM — il FABRIQUE les cinq
+                          cartels depuis la config ; leurs ancres, titres et
+                          lieux sont dans chp5-config.js → `cartels`)
+                          chp5-boites.js (l'inventaire de la VITRINE : les deux
+                          grandes boîtes qui s'écrivent et éclatent en petites
+                          — et, même geste, la rangée de tombes du 3)
+                          chp5-visionneuse.js (la FENÊTRE : ce qu'une petite
+                          boîte ouvre — vidéo, prise de son ou texte)
+                          chp5-ambiance.js (les BANDES-SON : une par lieu,
+                          fondus et boucle sans couture)
+  chp5-style/ chp5-images/ chp5-medias/
 images/ sons/             Assets du tronc commun (vitrine, phrénologie,
                           collaboration, documents)
 ```
@@ -159,6 +194,22 @@ dans `stop()`/`destroy()`. Jamais au niveau module.
 Le chapitre 1 fait exception : pas de module pont, `Chapitre1Scene` EST le
 moteur (elle respecte le contrat `Scene`, dont le nettoyage automatique des
 timers/listeners posés via `this.on`/`this.addTimer`).
+
+Le chapitre 5 suit ce contrat avec `startChapitre5({ root, onReady,
+onIntroComplete, onListen, onPart })` et `stopChapitre5()`. Ses callbacks
+relient le moteur à la scène sans écouteurs window supplémentaires. `exit()`
+attend `leaveChapitre5()` pour le fondu au noir, quelle que soit la
+destination ; `closeChapitre5Part()` referme le sous-chapitre ouvert et rend la
+photographie — c'est la SCÈNE qui le demande, parce que la flèche lui appartient
+et qu'elle seule sait si l'on remonte d'un cran ou si l'on s'en va.
+Les chargements CSS/image/module sont interrompables ; les minuteries,
+animations et deux pistes audio sont libérées à chaque sortie. Le brouillon
+a été rangé comme les autres chapitres (`Chapitre5/chp5-src`, `chp5-style`,
+`chp5-images`, `chp5-medias`) et l'entrée est le cercle V du site : il n'y a
+plus de page HTML autonome de chapitre.
+Les masques SVG des traits sont bornés à leurs courbes pendant l'introduction,
+puis retirés à sa fin : les garder sur cinq chemins mobiles faisait tomber
+le chapitre à ~19 i/s. Le dessin et le mouvement restent identiques.
 
 ## Où se règle quoi (sans toucher au code)
 
@@ -187,15 +238,25 @@ Toujours chercher par NOM DE CLÉ, jamais par chemin.
 | Quoi | Fichier |
 |---|---|
 | Transversal : polices, flèches, player, volumes, torche, écrans du tronc | `config.js` |
+| **Carnet de recherche** : l'adresse, le libellé du lien de secours, la place du cadre (`largeur`, `haut`, `bas_marge`), les cadences du tracé et de la flèche ; le titre de niveau 1 est `TITLE.carnet` | `config.js` → `CARNET` |
 | Fondu de disparition des flèches (toutes, chapitres compris) | `config.js` → `ARROW.hide_duration` |
 | Taille des libellés de boutons : les documents s'unifient sur leur libellé le plus long (`FONTS.doc_btns`) et se coupent en 2 lignes ; « À Propos » se calibre SEUL, TOUJOURS sur 1 ligne (`DOCS.about_size_max`) ; la largeur du bouton (`DOCS.width_max`) reste le vrai plafond | `config.js` |
 | Torche de la phrénologie : `PHRENOLOGIE.torch.mode` = `'follow'` (suit le curseur, `size`) ou `'fixed'` (fixe au centre, large, `size_fixed`) | `config.js` |
 | Voile derrière un document ouvert : `DOCS.overlay.veil_opacity` (0 = image nue, 1 = noir) et `veil_hides_torch` (la torche s'efface pour qu'on voie l'image ailleurs que dans son halo) | `config.js` |
-| **Carte du parcours** : l'interrupteur `MAP.active`, la réserve à l'ordinateur, les libellés des points, les cadences | `config.js` → `MAP` |
+| **Carte du parcours** : l'interrupteur `MAP.active`, la réserve à l'ordinateur, les libellés des points (sous-chapitres du 5 compris : `chp5-porte`…), les cadences | `config.js` → `MAP` |
+| Chapitre 5 — **par la carte, d'un lieu à l'autre** : le noir qui tombe sur la porte quand on la quitte pour un autre sous-chapitre, et celui qui se lève sur elle quand on y arrive | `chp5-config.js` → `porte.noirMs` / `porte.leveMs` |
 | Chapitre 1 : sous-titre, lumière, timings, **hotspots (zones+médias)** | `Chapitre1/chp1-config.js` |
 | Chapitre 2 : sous-titre, bougies, ambiance invisibilisation, **torche du journal (« Peine démesurée »)** | `Chapitre2/chp2-src/chp2-config.js` |
 | Chapitre 3 : **sous-titre**, textes, travelling, cercles, **rayons/bokeh**, tableau, quiz | `Chapitre3/chp3-src/chp3-config.js` |
 | Chapitre 4 : sous-titre, mise en page (photo/dessin), palette, **chronologie du dessin**, vie du dessin, **libellés + sons des bulles**, carte | `Chapitre4/chp4-src/chp4-config.js` |
+| Chapitre 5 — **tout le chapitre**, en onze sections numérotées ① à ⑪ dans l'ordre où on le vit (le plan est en tête du fichier) : dossiers, sous-titre et **textes de l'interface** (`textes`), photographie (dont **le mur**, `image.murX`), **intensités de la caméra et de la mise au point** (`camera`, `miseAuPoint`), chronologie de l'intro, **cartels**, porte, vitrine, inhumation, geste des dessins, fenêtre des pièces, ambiance sonore | `Chapitre5/chp5-src/chp5-config.js` |
+| **Les bandes-son du chapitre 5** : un fichier et un gain par lieu (`pistes`, clés = noms des lieux + `ouverture`), le long silence de l'entrée, les fondus, le chevauchement de la boucle | `chp5-config.js` → `ambiance` |
+| **Les cartels** : titre, crédit et durée des témoignages ; titre des sous-chapitres et **le lieu que chacun ouvre** (sans `lieu` = « À venir ») ; leurs **ancres sur le squelette**, profondeur et phase ; ce que la main leur fait | `chp5-config.js` → `cartels` |
+| **L'inventaire de la vitrine** : quels dessins, combien par rang, la place et le moment de l'arrivée | `chp5-config.js` → `restitution.boites` (la COMPOSITION est dans `cotes`) |
+| **Les pièces** : quelle boîte ouvre quoi, leur code (D1…C2) et leur titre — un rang de boîtes = un dossier | `chp5-config.js` → `restitution.boites.cotes[].rangs` |
+| **La rangée de l'inhumation** (quatre tombes et le drapeau) : pièces A–D et voix d'Alicia, titres, places, taille, et ce que le drapeau a de propre (`salut`, `planche`, `credit`) | `chp5-config.js` → `inhumation.tombes` |
+| **Le geste des dessins** (écrire, s'ouvrir, s'envoler, s'effacer) — COMMUN à la vitrine et à l'inhumation | `chp5-config.js` → `geste` |
+| **La fenêtre** des pièces : dossier des médias, voile, taille du cadre par genre, cadences — COMMUNE aux deux lieux | `chp5-config.js` → `fenetre` |
 
 Aucun chapitre n'a plus de réglage dans `config.js` (la section `CHAPITRE3`,
 qui ne portait que le sous-titre, l'a rejoint chez lui). Chaque scène de
@@ -204,6 +265,40 @@ sans effet de bord : c'est ce qui la rend lisible AVANT l'`import()` du moteur,
 au moment où le sous-titre paraît. Seul le MOTEUR est en import dynamique.
 Il n'y a plus de registre `window.CONFIG.CHAPITRE1` : ses seuls lecteurs étaient
 les alias torche supprimés.
+
+## Le carnet de recherche (octobre 2026)
+
+Scène `carnet` (`src/scenes/CarnetScene.js`), ouverte par le bouton « Carnet de
+Recherche » de la barre de la phrénologie et par le point `carnet` de la carte.
+Fond noir (la torche du site, à rayon nul) ; un grand rectangle blanc se TRACE
+et le carnet (`CARNET.url`, hypotheses.org) paraît dedans aux sept dixièmes du
+trait — le geste des documents de la phrénologie, en pleine largeur. Titre de
+niveau 1 « Carnet de recherche » (ligne `carnet` de `LIEUX`, `TITLE.carnet`),
+musée gardé comme dans le tronc commun, flèche bas-gauche vers la phrénologie
+(`ArrowCarnet` — son PROPRE élément : partager `#arrow-collaboration` ferait
+s'effacer les deux scènes l'une l'autre). Sortie : le site s'efface, le cadre
+se dé-trace, puis le DOM est démonté (iframe vidée d'abord).
+
+⚠️ **POURQUOI PAS `DocumentOverlay`.** Ses deux colonnes (légende, boutons)
+mangeraient la largeur qu'on vient chercher, et son clic-n'importe-où REFERME —
+or ici le carnet EST la scène. On reprend l'idiome (`.doc-ov-rect`, tracé en
+pixels réels), pas l'objet.
+
+⚠️ **`sandbox` SANS `allow-top-navigation`** : un lien du carnet en
+`target="_top"` ferait quitter l'expérience entière (plein écran, son,
+parcours). Il est bloqué ; les liens ordinaires naviguent dans le cadre.
+
+⚠️ **OPENEDITION FILTRE LES ROBOTS (Anubis).** Le banc d'essai headless reçoit
+« Votre accès a été refusé » DANS le cadre — c'est le banc qui est refusé, pas
+l'incrustation : en navigateur visible le carnet s'affiche, sandbox compris
+(vérifié). Ne pas « corriger » la scène pour ça. Le site ne pose aujourd'hui
+ni `X-Frame-Options` ni `frame-ancestors` ; si le cadre devient un jour vide,
+c'est chez lui que ça se décide, et le lien « Ouvrir le carnet dans un nouvel
+onglet » (bande du bas, entre flèche et plein écran) reste le filet.
+
+Sur la carte, le carnet part de la PHRÉNOLOGIE, devenue un carrefour (le
+cercle le plus grand du dessin) : carnet à gauche, espace collaboratif à
+droite, chacun par son propre trait.
 
 ## Où se modifient les TEXTES éditoriaux
 
@@ -302,7 +397,11 @@ pixels : seule la fraction survit à un redimensionnement.
 
 **Un chapitre qui veut la même lumière prend le même système, pas un autre.**
 `new TorchSystem(config, canvas)` accepte un canvas au choix, et l'instance se
-défait par `destroy()`. C'est ce que fait « Une peine démesurée » (chapitre 2) :
+défait par `destroy()`. DEUX installations l'empruntent aujourd'hui : la
+vitrine du chapitre 5 (torche fixe et centrale, `restitution.torche`, créée à
+l'entrée du lieu et DÉTRUITE au retour — la laisser vivre repeindrait un
+canevas plein écran pour toute la visite du chapitre), et « Une peine
+démesurée » (chapitre 2) :
 torche FIXE au centre, grande, la page bien éclairée et seuls les bords plus
 sombres — réglée dans `chp2-config.js` → `peine.torch`.
 ⚠️ Ce qu'on ne pouvait PAS réutiliser, c'est le canvas : `#overlay-canvas` vit
@@ -366,6 +465,30 @@ Le retour des titres passe par une minuterie, et une minuterie peut être annul�
 (changement de scène pendant un repli, boussole démontée) : sans cette remise à
 plat, un titre resterait éclipsé pour toute la scène suivante — panne
 silencieuse et durable. Dans le noir, on ne joue rien, on rend l'état neuf.
+
+⚠️ **`set()` COMPLÈTE UN TITRE INCOMPLET** (octobre 2026). Il était idempotent
+au sens strict : « déjà posé » le faisait sortir sans rien faire. Or un retour
+de carte coupé par la frontière (resetEclipse annule ses minuteries) laissait
+des caractères à `opacity: 0`, et le titre de la scène suivante restait **à
+moitié écrit** — le défaut « le titre ne s'écrit pas entièrement ». Même titre :
+`set()` écrit désormais les seuls caractères qui manquent ; un titre entier ne
+bouge pas. Et TOUS les gestes caractère par caractère (écriture, éclipse,
+retour) passent par une minuterie suivie (`_geste()` / `_plusTard`) : chacun
+défait le précédent — l'écriture en cours ne rallume plus de lettres sous une
+carte qu'on vient de déplier.
+
+⚠️ **UN DÉPART PAR LA CARTE NE RÉÉCRIT PAS CE QU'ON QUITTE** (`Title.partir`).
+La carte se replie pendant que la scène commence sa sortie ; son repli rendait
+les titres du lieu QU'ON QUITTE — réécrits en hâte, puis remplacés à la
+frontière. `app.js` dit donc à Title, au saut, quel titre de niveau 1 la
+destination déclare (sa ligne dans `LIEUX`) : il ne revient que s'il est le
+même ; le sous-titre et l'intitulé ne reviennent JAMAIS — la scène qui arrive
+écrit les siens. La consigne est levée par `resetEclipse()` à la frontière.
+Elle n'est posée que si le départ a lieu (`scene.leaving`) : une scène peut le
+refuser (la phrénologie avant l'ouverture de sa navigation), et les titres
+resteraient éclipsés sans frontière pour les rendre. Le saut est appelé AVANT
+le repli (`_onJump` puis `_fold`) : c'est le départ lui-même qui replie la
+carte, en effaçant la flèche.
 
 Une éclipse plutôt qu'un effacement parce qu'on peut entrer dans une scène carte
 ouverte : le sous-titre s'écrit alors normalement dessous et paraît à la
@@ -436,11 +559,18 @@ SCÈNES (`soliman.journey.v1`) ; les trois sous-parties du chapitre 2 restent
 gouvernées par `chp2-progress.js`, que Journey **lit**. Corollaire : la carte ne
 peut pas ouvrir une porte que le chapitre garde fermée — `computeUnlocked`
 renvoie un préfixe, donc « visité » est toujours inclus dans « déverrouillé ».
+Les trois sous-chapitres du chapitre 5 (`chp5-porte`, `chp5-vitrine`,
+`chp5-inhumation`) n'ont, eux, pas d'autre mémoire : Journey les retient, sur le
+signal `journey:place` que la scène émet à l'ARRIVÉE dans un lieu (`app.js` :
+`Journey.visit` + point courant). `visit()` REFUSE les identifiants du
+chapitre 2 — le signal les transporte aussi, et les écrire ici serait la
+seconde vérité qu'on s'interdit.
 Remise à zéro : `window.__solimanResetJourney()`.
 
 ⚠️ **La géométrie n'est pas un réglage.** Les coordonnées des points et le tracé
 des routes vivent dans `CompassMap.js`, transcrits de `images/carte-source.svg`
-(viewBox 287) ; la rose des vents vient de `images/boussole-source.svg`
+(viewBox **287 × 294,99** — ⚠️ le dessin n'est pas carré : le panneau, son cadre et la légende lisent largeur
+et hauteur séparément) ; la rose des vents vient de `images/boussole-source.svg`
 (viewBox 99,58). `config.js` ne porte que ce qu'un éditeur veut changer.
 **Après tout ré-export, relancer la transcription** : les routes de l'export
 sont écrites dans les deux sens et portent un `translate` en attribut ; ici
@@ -466,8 +596,9 @@ canvas-masques (ci-dessous) : on ne rouvre pas cette porte pour une boussole.
 
 **Le saut passe par `Scene.leaveTo(to, params)`** — voir ci-dessous — SAUF quand
 la destination est un autre lieu de la scène courante : là, c'est
-`Scene.jumpWithin({ part })`. Le chapitre 2 est la seule scène à plusieurs lieux
-(son ouverture et ses trois installations) et il les montre comme quatre points.
+`Scene.jumpWithin({ part })`. Deux scènes ont plusieurs lieux : le chapitre 2
+(son ouverture et ses trois installations) et le chapitre 5 (la photographie et
+ses trois sous-chapitres) — chacune les montre comme quatre points.
 Sans ce second chemin la carte était **muette à l'intérieur du chapitre 2** :
 `app.js` refuse `leaveTo` quand la destination est la scène courante, si bien
 qu'aller de « Taire le passé » à l'ouverture — le premier clic qu'on essaie — ne
@@ -736,6 +867,17 @@ du chapitre 2 — sans allumer les bougies pour les souffler deux secondes plus
 tard (12–15 s économisées ; mesuré à 3,8 s au lieu de ~15). Voir
 `startChapitre2({ part })` et `openPart()`.
 
+⚠️ **UNE SCÈNE SIGNE SON DÉPART — `Scene.leaveTo` ne le fait pas pour elle.**
+`CollaborationScene` lit `params.from` pour savoir qu'on REVIENT d'un chapitre
+et refaire paraître ses cercles en 1,5 s au lieu de 5,4. Les chapitres 1 à 4
+joignent `from: 'chapitreN'` à leur `navigate` ; le chapitre 5, qui s'en
+remettait au `leaveTo` de base, ne joignait rien — la branche l'attendait sans
+personne pour l'écrire, et l'on rentrait de ce chapitre-là, et de lui seul, en
+patientant quatre secondes de plus, sans un mot en console. Il redéfinit
+maintenant `leaveTo` pour signer (un `from` passé explicitement garde la main).
+**Toute scène nouvelle doit le faire aussi** : le défaut ne se voit pas, il
+s'attend.
+
 ## Les transitions : trois invariants (audit de septembre 2026)
 
 Le site avait DEUX notions de « lieu » et une seule sous contrat. Les scènes ont
@@ -880,7 +1022,9 @@ Chapitre2/chp2-medias/mobile/Voyeur.mp4     ← la variante (npm run videos)
 ```
 
 **Les 17 variantes EXISTENT** (passe d'août 2026, ffmpeg 9.0) : 281 → 74 Mo,
-−74 %. Vérifié au navigateur : ordinateur → master 1920×1080, téléphone →
+−74 %. Six de plus depuis septembre 2026 : les films des pièces de la vitrine
+et le film de la tombe D (chapitre 5), que la fenêtre charge par `setVideoSrc` — jamais par
+`video.src` direct, sans quoi un téléphone recevrait le master 1080p. Vérifié au navigateur : ordinateur → master 1920×1080, téléphone →
 `mobile/…` en 206, aucun repli déclenché.
 
 ⚠️ **Le repli reste indispensable** — il couvre toute vidéo AJOUTÉE plus tard
@@ -904,7 +1048,7 @@ blocking. Deux taux à ne pas mal lire : `ame-noire.mp4` tombe à −93 % parce 
 son contenu est peu complexe (43,6 dB), `a_la_une.mp4` résiste à −38 % parce
 qu'il est très détaillé — dans les deux cas le CRF a fait son travail.
 
-⚠️ **Seul le .mp4 est décliné.** Les .mp3 pèsent 28 Mo à eux tous et une voix
+⚠️ **Seul le .mp4 est décliné.** Les .mp3 pèsent 32 Mo à eux tous et une voix
 comprimée deux fois s'entend.
 
 ⚠️ **Comparer au chemin RÉELLEMENT posé.** Le chapitre 3 réutilise le même
@@ -1021,6 +1165,745 @@ trois branches à la fois — une plume qui suivrait son contour fermé descendr
 une branche pour remonter par l'autre côté (cf. `propagate()` dans
 `chp4-draw.js`).
 
+## Le chapitre 5 : la composition suit l'IMAGE, pas la fenêtre
+
+Le chapitre 5 est une photographie animée (caméra qui respire, mise au point
+qui cherche) sur laquelle cinq cartels sont posés : deux témoignages à droite,
+trois sous-chapitres numérotés à gauche. Chaque cartel est relié à un point du
+SQUELETTE par un trait d'appel en pointillés. Toute la subtilité tient là : les
+cartels sont placés dans la FENÊTRE, les ancres dans l'IMAGE — et
+`object-fit: cover` fait glisser l'une par rapport à l'autre.
+
+**1. LES ANCRES SONT DES POINTS DE L'IMAGE, ET DOIVENT TOMBER SUR UN OS.**
+`cartels.*.ancre` (chp5-config.js, posées par le gabarit en `data-anchor-x/y`) sont des coordonnées de `chp5-opening.jpg`
+(1800 × 962), projetées à chaque image par `sourcePointToViewport()`. Elles
+tiennent donc au corps quel que soit le cadrage. ⚠️ Mais une ancre posée à
+QUELQUES PIXELS du bord d'un os tombe dans le vide : le second témoignage
+partait de (1170, 327) — vingt pixels à droite des côtes — et son trait
+semblait naître de la fenêtre, pas du squelette. Il part maintenant de la main
+droite (1136, 484). **Après tout recadrage ou remplacement de la
+photographie, revérifier les cinq ancres à l'œil, en zoomant.**
+
+**2. LE MUR — pourquoi les cercles ne se placent PAS en pourcentage.**
+Les trois cartels de gauche portent un texte clair, qui doit s'arrêter avant le
+jour de la fenêtre. Or le bord gauche du dormant ne tombe pas à une place fixe
+de l'écran : elle suit le RAPPORT de la fenêtre, pas sa largeur —
+**48,6 % en 16/9, 43,5 % en 3/2, 36,7 % en 4/3, 25 % en carré**. Aucune série
+de `left: …%` ne peut dire ça : calée sur le 4/3, elle tenait les trois cercles
+très loin du corps sur TOUS les autres écrans (c'était le défaut visible) ;
+calée sur le 16/9, elle jetait le libellé en plein jour sur un 4/3.
+
+Le moteur projette donc ce bord (`CONFIG.image.murX`, en x d'image) une fois
+par redimensionnement et le publie en **`--chp5-mur`** ; la feuille y accroche
+le bord DROIT des trois cartels (`.nav-callout { right: calc(100% -
+var(--chp5-mur) + retrait) }`). Il ne reste alors qu'un réglage par cartel, sa
+`width` — c'est elle, et elle seule, qui décale les trois cercles les uns par
+rapport aux autres, comme le voulait déjà la composition d'origine (ses trois
+boîtes finissaient toutes à 37 %).
+
+⚠️ **Publié depuis `resize()`, avec la caméra de BASE.** C'est une valeur de
+MISE EN PAGE : la republier à chaque image ferait relayouter à 60 i/s, et la
+dérive au repos ferait respirer les cartels ; l'approche de l'intro les
+déplacerait pendant qu'ils se dessinent. La dérive (±6 px) est absorbée par le
+retrait de la feuille. Sous « mouvement réduit » la caméra est l'identité — la
+projection du mur doit l'être aussi, sinon il ment.
+
+⚠️ **En PORTRAIT le mur ne veut plus rien dire** : la fenêtre déborde du cadre
+(12,5 % de l'écran en 0,69, hors champ sur un téléphone), il n'y a plus de pan
+de mur où poser un texte. Les deux media queries basses reprennent donc la main
+en `left` — et remettent `right: auto`, sans quoi les deux se contrediraient.
+
+**3. LE CHIFFRE DEVIENT UNE FLÈCHE AU SURVOL**, et le curseur dit la vérité.
+Un sous-chapitre À VENIR porte `aria-disabled="true"` et `cursor: default` ;
+le geste de survol, lui, se joue en entier — le chiffre s'efface, la flèche
+vers la droite prend sa place. C'est la CONFIG qui en décide : un
+sous-chapitre qui déclare un `lieu` (`cartels.sousChapitres[].lieu`) reçoit
+un `data-part` — cliquable, `cursor: pointer` ; sans `lieu`, le gabarit
+lui met `aria-disabled` et ajoute « À venir » à son surtitre. Les trois
+ont un lieu depuis septembre 2026. Un lieu que le moteur ne sait pas jouer est
+dénoncé en console au montage.
+
+⚠️ **L'ORDRE DES CARTELS SUIT LE SQUELETTE.** Le gabarit les trie par
+`ancre.y`, témoignages et sous-chapitres mêlés : c'est l'ordre de tabulation
+ET le rang qui décale la dérive de chacun dans le moteur. Il reproduit l'ordre
+qui était écrit à la main (a1, n1, n2, a2, n3) — déplacer une ancre peut donc
+changer l'ordre de tabulation, et c'est voulu.
+
+⚠️ **`animation-fill-mode: backwards`, et non `both`, sur l'apparition des
+symboles.** Une animation qui remplit vers l'AVANT garde la main sur `opacity`
+et `transform` pour toujours — elles battent toute déclaration ordinaire. Avec
+`both`, le chiffre ne pouvait donc ni rapetisser ni pivoter en cédant la place
+(seul `visibility`, que les keyframes ne touchent pas, passait encore) : la
+moitié du geste manquait, sans une erreur nulle part. `backwards` rend
+l'élément à ses règles de base en finissant — lesquelles décrivent exactement
+son état d'arrivée, donc rien ne bouge au repos.
+
+**4. Pas d'événement window : des CALLBACKS.** Le chapitre 5 ne parle pas à sa
+scène par `CustomEvent` mais par les quatre fonctions que `startChapitre5()`
+reçoit (`onReady`, `onIntroComplete`, `onListen`, `onPart`) — c'est pourquoi il
+n'apparaît pas dans la table des événements window plus haut. `onListen` est le
+déclencheur « média au premier plan » du chapitre : un témoignage qu'on écoute
+— ou un sous-chapitre en train de s'ouvrir — éclipse la flèche, et la boussole
+avec elle.
+
+⚠️ **`onPart(index, etat)` PARLE DEUX FOIS, ET C'EST NÉCESSAIRE.** `'depart'`
+dit où l'on VA, dès le clic : c'est là que le sous-titre cède sa place, parce
+que c'est en le lisant qu'on comprend où l'on est emmené. `'arrivee'` dit qu'on
+y EST : c'est là seulement que la flèche revient. Un signal unique aurait forcé
+l'un des deux à mentir — un sous-titre qui n'arrive qu'au bout de cinq
+secondes, ou une flèche qui reparaît au milieu du passage.
+
+**5. Les masques SVG ne servent qu'à l'introduction.** Ils sont bornés à
+l'enveloppe de leur courbe pendant le tracé, puis RETIRÉS à la fin : les garder
+sur cinq chemins mobiles faisait tomber le chapitre à ~19 i/s. Le dessin et le
+mouvement sont identiques sans eux.
+
+**6. LA PORTE — le sous-chapitre 1 est un LIEU SUPERPOSÉ, pas une scène.**
+Cliquer le « 1 » ne navigue pas : on RECULE. La photographie s'éloigne
+(`porte.recul`) et se trouble, les deux battants entrent par les côtés et se
+rejoignent, le noir prend la salle, puis — une seconde plus tard — la caméra
+pousse sur le panneau « Anthropologie biologique ». La flèche ramène alors à la
+photographie ; il faut un SECOND retour pour quitter le chapitre.
+
+⚠️ **LES DEUX BATTANTS SONT LES DEUX MORCEAUX D'UNE MÊME PHOTOGRAPHIE**
+(2208 × 2968), coupée sur `porte.joint` : le gauche est x 0…860, le droit
+861…2207. Chacun est posé dans SA part du cadre (39 % / 61 %, écrites par
+`renderPorte`), et les deux refont l'image au pixel près — c'est ce qui permet
+de ne les animer qu'en TRANSLATION, sans jamais accorder deux cadrages.
+`joint` dit donc deux choses : où ils se rejoignent, et de combien chacun doit
+s'effacer pour quitter l'écran.
+
+⚠️ **CE SONT DES JPEG DEPUIS QU'ILS SONT RECADRÉS.** C'étaient deux PNG du
+canevas ENTIER à transparence complémentaire, superposés dans la même boîte :
+6,5 Mo à eux deux pour une photographie de porte. Recadrés, ils n'ont plus
+besoin de transparence — donc plus de PNG : **0,38 Mo, 48 dB de PSNR**, et un
+décodage qui passe de 318 ms à 29 et 39 ms. Les masters restent à côté (.png),
+et les commandes ffmpeg qui refabriquent les JPEG sont écrites dans
+`chp5-config.js`. ⚠️ En **4:4:4**, pas en 4:2:0 : le panneau porte du texte
+ROUGE sur fond clair, que le sous-échantillonnage de chrominance baverait — et
+on le regarde en gros plan, à sa résolution native.
+
+⚠️ **LE FOND EST CLAIR (`porte.fond`), ET C'EST LUI QU'ON VOIT DE PART ET
+D'AUTRE.** La salle ne s'éteint pas en se refermant : elle BLANCHIT, à la
+vitesse exacte des battants, et la porte se pose sur du blanc. Trois choses en
+dépendent, qu'il faut regarder ensemble avant de changer cette couleur :
+ · les TITRES la traversent (haut-gauche) — dorés, ils tiennent sur le blanc
+   comme de l'or sur une carte, mais tout juste ; un fond plus clair encore,
+   ou des titres plus pâles, et la colonne devient illisible ;
+ · la FLÈCHE et la BOUSSOLE, blanches, ne paraissent QU'À LA FIN du gros plan,
+   c'est-à-dire sur le gris sombre de la porte — jamais sur le blanc. C'est ce
+   qui permet de ne rien changer à leur couleur ; avancer leur retour les
+   ferait disparaître ;
+ · le bouton PLEIN ÉCRAN (bas-droite) est blanc lui aussi et tombe, lui, dans
+   la bande claire pendant la fermeture : il s'y devine à peine. C'est le seul
+   endroit du geste où l'interface paie le fond clair.
+
+⚠️ **QUATRE AVANCEMENTS, ET RIEN D'AUTRE** (`reculP`, `fermeP`, `voileP`,
+`zoomP`) : tout l'écran s'en déduit dans `renderPorte()`, appelé par la boucle.
+Ce ne sont pas des animations posées une fois, et c'est voulu — une bascule
+plein écran ou une rotation en cours de geste doit pouvoir REDESSINER l'instant
+présent sans le rejouer ni le figer (`refreshLayout` le fait).
+
+⚠️ **LE GROS PLAN EST UNE ANCRE QUI GLISSE, PAS UN `transform-origin`.** Le
+panneau doit arriver AU CENTRE : il faut grossir et recadrer en même temps. Le
+point du cadre tenu au centre passe du milieu de la porte au milieu du panneau
+pendant que l'échelle monte, et une seule formule — `T = centre − ancre ×
+échelle` — écrit les deux gestes. Un `transform-origin` posé sur le panneau
+l'aurait fait grossir SUR PLACE, donc déborder d'un seul côté.
+
+⚠️ **`porte.panneauHauteur` N'EST PAS UN CHIFFRE LIBRE : la colonne de titres
+passe devant.** Le panneau est presque blanc, les titres sont dorés. Le panneau
+étant centré, sa hauteur décide de son bord supérieur : mesuré, le bloc
+haut-gauche (titre, sous-titre, intitulé du sous-chapitre, boussole) descend
+jusqu'à 12 % de la fenêtre, d'où **70 %** — le panneau s'arrête dessous, sur le
+gris sombre de la porte. Monter ce chiffre, c'est jeter les titres en plein sur
+le panneau, aux trois formats. Bénéfice second : à 70 % le panneau est affiché
+à peu près à sa résolution native (863 px) et reste NET ; à 90 % il était
+agrandi d'un tiers et visiblement mou.
+
+⚠️ **LE NIVEAU 3 DOIT ÊTRE REMONTÉ EN z 600** (`body.chp5-active
+#chapitre-part-title`, style.css). Sans cela `Title.showPart()` pose bien son
+texte et sa classe, l'élément a bien une boîte — et il reste ENTERRÉ sous
+`#chapitre5-root` (z 500). Le défaut ne se voit nulle part ailleurs qu'à
+l'écran : ni console, ni mesure de classe. Toute scène qui se met à écrire le
+niveau 3 doit s'ajouter à cette liste.
+
+⚠️ **LES BATTANTS NE SE CHARGENT QU'À LA FIN DE L'INTRODUCTION**
+(`chargerPorte`, appelé depuis `finishIntro`) : posés dans le gabarit, ils
+téléchargeraient EN MÊME TEMPS que la photographie d'ouverture — que la scène
+attend pour lever son rideau noir. Le « 1 » n'est de toute façon pas cliquable
+avant. Ce préchargement coûtait une image entière du temps des PNG (67 ms,
+mesuré) ; en JPEG recadré il tient dans 68 ms de décodage pour les DEUX.
+
+⚠️ **AU DOIGT, LE PREMIER APPUI NE FAIT QUE RÉVÉLER L'INTITULÉ.** Il n'y a pas
+de survol sur un écran tactile : entrer dès le premier appui, ce serait faire
+entrer dans un sous-chapitre qu'on n'a pas pu lire. C'est le second qui ouvre.
+
+⚠️ **UN SEUL CALCUL DE PREMIER PLAN.** `onListen` dit « quelque chose passe
+devant » — un témoignage qu'on écoute OU la porte en mouvement — et le moteur
+n'en fait qu'UNE réponse (`occupe()`). Deux sources indépendantes donneraient à
+la flèche deux ordres contraires. `onPart(index|null)` dit ensuite OÙ l'on est ;
+il est émis AVANT la libération du premier plan, sinon la flèche reviendrait en
+annonçant encore la sortie du chapitre.
+
+⚠️ **LA FLÈCHE A DEUX DESTINATIONS, ET UN SEUL CÂBLAGE.** `ArrowBase.show()`
+reconstruit le tracé et rejoue son dessin de 1,4 s : rebrancher son `onclick` à
+chaque changement de lieu la ferait re-dessiner au milieu du chapitre, sans
+raison visible. Elle appelle toujours `_onArrow()`, qui lit l'endroit où l'on
+se trouve ; seul son nom accessible change. En revanche, au RETOUR elle est
+re-`show()`ée et non simplement dé-éclipsée : c'est elle qu'on vient de
+cliquer, et l'effet de clic a dissous son tracé (`_rippleClick` laisse le SVG à
+opacité nulle) — une éclipse seule rendrait un cadre vide et cliquable.
+
+⚠️ **LA SALLE CESSE DE VIVRE DÈS QU'ON NE LA VOIT PLUS** (`salleCachee`).
+Derrière un voile opaque — le fond de la porte, le noir de l'extinction, ou la
+vitrine montée — plus rien n'est visible : continuer d'écrire un flou plein
+écran (qui se REPEINT, lui) et de remesurer cinq cartels invisibles ne serait
+que du travail perdu, précisément sur les images où le visiteur regarde
+ailleurs.
+
+**7. LA VITRINE — le sous-chapitre 2 éteint la lumière et la rallume ailleurs.**
+Cliquer le « 2 » ne fait pas reculer, il fait NOIR : le voile `#chp5-nuit`
+monte, les deux prises se chargent derrière lui, le décor se monte, le noir se
+retire — sans que rien change à l'écran, car le canevas de la torche a pris le
+relais — puis la torche s'ouvre sur la boîte. Le retour rejoue l'inverse.
+
+⚠️ **CE N'EST PAS UNE CHRONOLOGIE, CE SONT DES ÉTAPES QUI S'ATTENDENT.** La
+porte se déduit du temps écoulé (quatre avancements) ; la vitrine, non — elle
+attend un DÉCODAGE, et sur une liaison lente un TÉLÉCHARGEMENT. La mise en
+scène paie l'attente d'elle-même : le noir est déjà là, il ne se lève que
+lorsque les deux prises sont prêtes. C'est pourquoi elles ne sont pas
+préchargées à la fin de l'intro, à la différence des battants : on ne met pas
+la photographie des réserves à genoux pour un lieu où l'on n'ira peut-être
+jamais.
+
+⚠️ **JPEG, RAMENÉES À 3200 px.** Les masters font 5500 × 3864 : **27 Mo** à eux
+deux, ~1 s de décodage chacune et 85 Mo de texture pièce, pour une image
+qu'aucun écran ne montre à plus de 4000 px. Réduites : **0,55 Mo**, 46,6 et
+48,0 dB de PSNR (Y), 70 et 87 ms de décodage. Les masters restent à côté
+(.png) et les commandes ffmpeg sont dans `chp5-config.js`.
+
+⚠️ **`contain`, PAS `cover`.** La photographie est en 1,42 et la fenêtre
+presque toujours plus large : la rogner verticalement mangeait le haut de la
+boîte et le sol. On la montre ENTIÈRE, et le noir tombe à gauche et à droite
+(sur un écran plus étroit qu'elle, il tomberait en haut et en bas). C'est aussi
+ce qui garde le crâne au centre de la fenêtre, là où la torche est fixée.
+
+⚠️ **LE CRÂNE S'EFFACE À MESURE QU'ON CONSULTE LES PIÈCES** (`poserPresence`).
+La prise PLEINE est AU-DESSUS de la vide ; son opacité vaut `1 − vues / total`
+— 100 % tant qu'on n'a rien ouvert, 0 % quand toutes les pièces de
+l'inventaire ont été vues (le total se lit de la composition : une pièce
+ajoutée compte aussitôt). Seules les PETITES boîtes comptent : ouvrir une
+grande ne fait que déplier l'inventaire.
+ · **Le pas se joue à la FERMETURE de la pièce**, en fondu
+   (`restitution.effacementMs`) : sous le voile de la fenêtre on ne l'aurait
+   pas vu. On rend la vitrine, et le crâne recule d'un pas.
+ · **À l'arrivée il est POSÉ, pas joué** : on revient dans un lieu où l'on a
+   déjà lu, le crâne y est déjà à demi parti — il ne doit pas s'effacer de
+   nouveau sous la torche qui s'ouvre.
+ · **Ce qu'on a lu ne s'oublie pas en sortant** : le registre `vues` du module
+   des boîtes survit à la sortie du lieu (quand `ouverts` est vidé), le temps
+   de la visite du chapitre. On retrouve les deux grandes boîtes fermées ET un
+   crâne à demi parti, et les boîtes déjà lues gardent leur teinte.
+ · ⚠️ **Ce jeu a REMPLACÉ celui de la main** (le crâne disparaissait sous le
+   curseur, `proche`/`loin`/`suivi`, supprimés avec leur code). Les deux
+   ensemble se contrediraient : la main aurait vidé une boîte qu'aucune pièce
+   n'avait encore effacée.
+
+⚠️ **LA PRISE PLEINE NE DESCEND JAMAIS TOUT À FAIT À ZÉRO** (`PLANCHER_PLEIN`,
+deux millièmes). À opacité nulle, le compositeur abandonne sa texture et doit
+la reconstruire au moindre changement : mesuré du temps des masters
+(21 mégapixels, ~85 Mo de texture), des images de 50 et 166 ms, disparues avec
+ce plancher. Deux millièmes de la DIFFÉRENCE entre les deux prises, c'est moins
+d'un niveau sur 255 — rien à l'œil : le crâne est parti.
+
+⚠️ **LES DEUX PRISES DOIVENT ÊTRE RIGOUREUSEMENT SUPERPOSABLES.** Le fondu ne
+vaut que par leur cadrage commun : c'est la même photographie, prise deux fois,
+l'une pleine et l'autre vide. Après tout remplacement, vérifier que la boîte ne
+bouge pas d'un pixel entre les deux.
+
+⚠️ **LA TORCHE EST CELLE DU SITE, ET ELLE MEURT AVEC LE LIEU.** `TorchSystem`
+sur un canevas à nous (celui du tronc commun est enterré sous le root, z 500),
+fixe et centrale comme à la phrénologie. Créée à l'entrée, DÉTRUITE au retour :
+laissée en vie, elle repeindrait un canevas plein écran soixante fois par
+seconde pour toute la visite du chapitre, y compris devant la photographie.
+Son `resize()` est appelé depuis `refreshLayout` — un canevas-masque qu'on
+redimensionne sans le repeindre dans le même tour laisse la page à nu.
+
+**LA CONFIG DU CHAPITRE — onze sections, dans l'ordre du chapitre** (refonte
+de septembre 2026). ① dossiers · ② le chapitre (sous-titre, sortie, TOUS les
+textes de l'interface) · ③ la photographie (image, mur, intensités de la
+caméra et de la mise au point) · ④ l'introduction · ⑤ les cartels · ⑥ la
+porte · ⑦ la vitrine · ⑧ l'inhumation · ⑨ le geste des dessins · ⑩ la
+fenêtre des pièces · ⑪ l'ambiance sonore (octobre 2026). Ce qui est COMMUN à deux lieux (⑨, ⑩) a sa propre
+section : le geste et la fenêtre vivaient dans `restitution.boites`, et
+l'inhumation les y empruntait. ⚠️ **Ce qui n'y est PAS, à dessein** : les
+FRÉQUENCES des mouvements (les sinus du moteur — la signature du geste ; seules
+leurs intensités sont réglables), les couleurs et la typographie (dans la
+feuille, partagées avec le site), la géométrie des dessins (dans les SVG).
+La refonte a été vérifiée valeur par valeur contre l'ancienne config : aucun
+chiffre n'a changé, rien ne bouge à l'écran.
+
+**7 bis. L'INVENTAIRE — deux boîtes d'archive qui s'ouvrent sur ce qu'elles
+contiennent.** De part et d'autre du crâne, deux grandes boîtes dessinées à
+l'encre s'écrivent à l'arrivée dans la vitrine. Au survol elles passent à l'or
+et grossissent ; au clic, la boîte se dé-écrit et se referme sur elle-même,
+une onde dorée part de son centre, et les petites boîtes qu'elle contenait
+s'élancent vers leur place en s'écrivant en chemin — sept à gauche (2 · 1 · 4),
+deux à droite. Moteur : `Chapitre5/chp5-src/chp5-boites.js`. (La ligne D1 en
+compte TROIS depuis l'ajout de la carte mentale : 3 · 1 · 4 à gauche.)
+
+⚠️ **ON N'EN REVIENT PAS — MAIS LA SORTIE REFERME TOUT.** Dans le lieu, une
+boîte ouverte ne se referme pas : aucun second clic ne la reconstitue, et son
+bouton se retire (`disabled`, `aria-expanded="true"`). En REVANCHE, quitter le
+sous-chapitre éteint la vitrine, et l'on y revient devant les deux grandes
+boîtes intactes (`ouverts.clear()` dans `demonter`). Les deux règles ne se
+contredisent pas : la première dit qu'on ne défait pas un geste, la seconde
+qu'on ne rallume pas un lieu sur des boîtes déjà éventrées — sans quoi la mise
+en scène de l'arrivée ne se jouerait qu'une fois dans toute la visite.
+
+⚠️ **LA SORTIE EST UN GESTE, PAS UNE COUPURE** (`boites.sortir()`, appelé par
+`fermerVitrine` AVANT `torche.fadeOut`). Les boîtes se dé-écrivent, des plus
+LOINTAINES du centre aux plus proches, et la lumière ne tombe qu'ensuite.
+L'ordre n'est pas négociable : elles vivent AU-DESSUS du canevas de la torche.
+Éteindre d'abord, c'était les laisser blanches et pleines sur une photographie
+déjà noire, jusqu'à ce que le voile d'extinction les avale d'un bloc — on
+emportait le décor au lieu de quitter le lieu.
+
+**CHAQUE PETITE BOÎTE OUVRE UNE PIÈCE.** Au survol (et au focus clavier), son
+titre s'écrit en bas de l'écran ; au clic, un RECTANGLE BLANC se trace au
+milieu, et la pièce n'apparaît que DEDANS, aux sept dixièmes du trait — le
+geste des documents de la phrénologie (`DocumentOverlay`) et du lecteur du
+chapitre 1 : d'abord le cadre, ensuite ce qu'il contient. Moteur :
+`chp5-visionneuse.js`.
+
+⚠️ **LE CODE DU DOSSIER (D1, C2…) NE S'AFFICHE NULLE PART** — ni sous la pièce,
+ni en bas de l'écran, ni dans le nom accessible des boîtes. C'est un repère de
+rangement, pas un titre ; il reste en `data-dossier`, que le banc d'essai lit
+pour vérifier qu'un rang de boîtes porte bien son dossier.
+
+⚠️ **LE RECTANGLE SE TRACE EN PIXELS RÉELS**, viewBox égal à la taille du cadre
+et tirets égaux à son périmètre — JAMAIS `pathLength` avec
+`non-scaling-stroke` (l'avertissement de `DocumentOverlay`, qui s'appliquait
+à la première version). Et **un tracé en cours ne se repose pas** : une vidéo
+en cache annonce son format quelques millisecondes après le clic, et la reposer
+« net » coupait le trait au départ — le rectangle paraissait d'un bloc, sans
+qu'aucun test ne le voie. Seul le film image par image l'a montré.
+
+⚠️ **UN RANG DE BOÎTES = UN DOSSIER, ET LA COMPOSITION EN DÉPEND.** À gauche,
+le rang de TROIS porte les deux pièces de D1 et la carte mentale, celui d'UNE la pièce de D2, celui
+de QUATRE les quatre de D3 ; à droite, les deux prises C1 et C2. Ce n'est pas
+une coïncidence : le dessin des rangs a été fait pour ces dossiers-là. Ajouter
+une pièce à un dossier demande donc d'ajouter une boîte à SON rang — sinon la
+pièce n'a nulle part où se ranger, et rien ne le dira.
+
+⚠️ **LE TYPE D'UNE PIÈCE SE LIT DE SON EXTENSION** (`.mp4` → on regarde, `.mp3`
+→ on écoute, `.pdf` → on lit). Une clé `type` dans la config serait un second
+endroit à tenir d'accord avec le fichier, et c'est toujours le second qui ment.
+
+⚠️ **POURQUOI PAS `MediaPlayer` ?** Parce qu'il écrit dans `#media-player`, qui
+vit dans `#app` : vu de `#chapitre5-root` (contexte d'empilement à z 500), il
+est ENTERRÉ. C'est mot pour mot ce qui a valu à la torche de la vitrine son
+propre canevas et au titre de survol sa `.legende`. On ne réutilise pas un DOM
+qu'on ne peut pas voir ; on reprend l'idiome, pas l'élément.
+
+⚠️ **UNE VIDÉO GARDE LA BARRE DU NAVIGATEUR** — ce sont des entretiens d'une à
+trois minutes, on doit pouvoir s'y déplacer — **et ne démarre pas d'office** :
+on voit son affiche, puis on la lance.
+
+⚠️ **UNE PRISE DE SON SE JOUE COMME AU CHAPITRE 1** : un cercle tracé avec son
+triangle, la SINUSOÏDE vivante lue sur un `AnalyserNode`, mêmes couleurs et
+même trait (`CONFIG.PLAYER`, la source unique du lecteur du site), et elle se
+lance d'elle-même quand la plaque paraît. Seul ajout : une ligne d'avancement à
+peine visible, cliquable — deux minutes de parole demandent qu'on puisse y
+revenir. Le graphe est bâti sur le contexte de L'`AudioManager` du site —
+jamais un second —, que `Chapitre5Scene` transmet désormais au moteur
+(`startChapitre5({ audio })`). S'il manque, le son se joue quand même, sans
+courbe. ⚠️ À la fermeture, source ET analyseur sont `disconnect()`és :
+`analyser = null` ne suffit pas (cf. `MediaPlayer`), un nœud resté branché
+sur le contexte du site y survit avec son élément.
+
+⚠️ **LES DEUX TEXTES PASSENT PAR LE LECTEUR PDF DU NAVIGATEUR** (`<iframe>`,
+`#toolbar=0&navpanes=0&view=FitH` — sans quoi Chrome ouvrait son panneau de
+vignettes sur un tiers du cadre et affichait le nom de fichier Word).
+Aucun rastériseur n'était disponible pour en faire des images, et on ne le
+VOUDRAIT pas : une loi et une recommandation se lisent, se cherchent et se
+zooment. Un lien « ouvrir dans un nouvel onglet » sous le cadre couvre les
+navigateurs qui refuseraient de l'afficher en ligne. ⚠️ Le serveur d'essai a dû
+apprendre le type `application/pdf` (`tools/bench/serve.mjs`) : sans lui le
+navigateur TÉLÉCHARGE le fichier et le cadre reste vide, sans une erreur nulle
+part.
+
+⚠️ **LA PIÈCE EST VIDÉE À CHAQUE FERMETURE**, pas rangée : source retirée,
+`load()` rappelé, nœud jeté. Un `<video>`/`<audio>` dont la sélection de
+ressource a commencé retient son arbre entier (règle d'août 2026) — une visite
+qui ouvre les neuf pièces laisserait autrement neuf médias vivants derrière
+elle.
+
+⚠️ **UNE VIDÉO OU UNE PRISE DE SON QUI S'ACHÈVE REFERME SA FENÊTRE** — il n'y a
+plus rien à voir, et c'est en rendant la vitrine que le crâne recule d'un pas.
+
+⚠️ **LA CARTE MENTALE EST UNE PIÈCE COMME LES AUTRES**, portée par la clé
+`carte` (une URL, cadrée sur `section:b_restit`) au lieu de `piece`. C'est le
+cadre intégré du chapitre 4 (mêmes attributs que `chp4-portal.js`), et son
+droit d'encadrement se règle dans l'AUTRE dépôt (`frame-ancestors` de
+soliman-map-v3, qui liste déjà `*.netlify.app`, `localhost` et
+`127.0.0.1`). ⚠️ La carte écrit en console un avertissement qui lui appartient
+(`upgrade-insecure-requests` dans une CSP « report-only », que le navigateur
+ignore) : le banc d'essai le SIGNALE sans échouer. À corriger là-bas.
+
+⚠️ **TROIS SORTIES, ET LE FOCUS REVIENT À LA BOÎTE.** La croix (haut-droite),
+le clic hors du cadre, la touche Échap. En fermant au clavier, le focus retourne
+sur la boîte qu'on a cliquée : sans cela il tombe sur `body` et la tabulation
+suivante repart du haut du document — on perd sa place dans l'inventaire.
+(⚠️ Le moteur doit transmettre la boîte à la fenêtre : `ouvrirPiece: (item,
+depuis) => …`. Un `item => …` seul la perdait en route, sans erreur ni test
+pour le voir — c'est arrivé.)
+
+⚠️ **UNE PIÈCE OUVERTE EST UN MÉDIA AU PREMIER PLAN.** `occupe()` le dit en
+interrogeant la fenêtre elle-même, et non ses `<video>` une à une : la flèche et
+la boussole s'effacent comme devant un témoignage. C'est le calcul UNIQUE du
+chapitre — deux sources donneraient à la flèche deux ordres contraires.
+
+⚠️ **CHAQUE GENRE A SA BOÎTE.** Une vidéo garde SON format, bornée par
+`fenetre.largeur` / `hauteur` (la plus serrée décide). Un texte se LIT : il
+prend la largeur (`largeurTexte`) — borné au format A4 il ne faisait que
+440 px en 16/9, et la loi ne se lisait pas. Une prise de son est un bandeau
+(`largeurSon`, `rapportSon`). ⚠️ `hauteurTexte` n'est pas libre : le cadre
+étant centré, le monter le fait passer sous la colonne de titres (dorés,
+illisibles sur une page blanche) — même règle que `porte.panneauHauteur`.
+
+⚠️ **LE TITRE DE SURVOL NE S'ÉTEINT PAS ENTRE DEUX BOÎTES.** Les boîtes sont
+séparées par un jour : aller de l'une à l'autre, c'est sortir de la première
+avant d'entrer dans la seconde, et le titre repartait en fondu pour revenir
+aussitôt — un battement à chaque déplacement. Le retrait est donc différé d'un
+souffle (`CONGE_LEGENDE`), que l'entrée suivante annule. Même filet qu'au
+chapitre 1.
+
+⚠️ **LES DESSINS SONT INLINÉS, PAS POSÉS EN `<img>`.** Une image est opaque :
+on n'atteint ni ses tracés ni leur `stroke`. Or c'est TOUT ce que ce lieu
+demande. D'où un `fetch` + inlining, une fois par visite, **derrière
+l'extinction** — avec le décodage des deux photographies, là où l'attente est
+déjà payée par la mise en scène.
+
+⚠️ **UN TRACÉ CLASSÉ EST UN TRAIT, UN TRACÉ SANS CLASSE EST UN APLAT.** C'est
+la seule chose qui distingue les deux dans les neuf exports (`cls-1` ou `st0`
+selon la version d'Illustrator). ⚠️ Les tombes ont une SECONDE classe, `cls-2`
+(le croissant et l'étoile, pleins) : elle est déclarée APLAT
+(`CLASSES_APLAT`), et le drapeau n'a aucune classe — tout aplat. Pendant l'écriture, TOUT devient un trait :
+on suit le contour d'un aplat à la plume, et l'encre le remplit derrière. Un
+export qui arriverait avec une autre classe est **dénoncé en console**.
+
+⚠️ **L'ÉCRITURE VA DU PLUS GRAND TRACÉ AU PLUS PETIT**, et non dans l'ordre du
+fichier (celui d'Illustrator ne dit rien) ni du bas vers le haut (on ne voyait
+alors, pendant quatre dixièmes de seconde, que les trois miettes d'encre du
+pied de la boîte). Par la surface, le dessin se fait comme une main le ferait :
+le cadre, le champ blanc, le numéro, les taches.
+
+⚠️ **RIEN N'EST UN `left: …%` — C'EST LA LEÇON DU MUR, ENCORE.** La
+photographie est en `contain` : ses bords suivent le RAPPORT de la fenêtre. Le
+module mesure donc la BANDE LIBRE de chaque côté — du bord de la fenêtre
+(`marge`) au crâne (`garde`, en fraction de la largeur RENDUE de la
+photographie) — et y centre le groupe. Quand la bande se resserre (un 4/3, un
+téléphone), les boîtes RAPETISSENT ensemble plutôt que de mordre sur le crâne
+ou de sortir du cadre. Vérifié à cinq formats, du 16/9 au portrait.
+
+⚠️ **LE TRAIT NE SUIT PAS L'ÉCHELLE DU DESSIN** (`vector-effect:
+non-scaling-stroke`, `--boite-trait` en pixels d'écran). Les tracés font 2
+unités dans une vue de ~200 : une petite boîte les rendrait à un demi-pixel, et
+son dessin s'effacerait. Même parti que les traits d'appel des cartels.
+
+⚠️ **LA COUCHE DES BOÎTES EST HORS DE `.vitrine`, ET C'EST NÉCESSAIRE.** Celle
+du décor est `aria-hidden` et `pointer-events: none` — deux photographies et un
+canevas, rien à toucher — quand les deux grandes boîtes sont de VRAIS boutons,
+cliquables et atteignables au clavier. Elles vivent donc à côté, en z 32 :
+au-DESSUS du canevas de la torche (z 30, qui les noierait — elles sont à la
+périphérie) et SOUS le voile d'extinction (z 35, qui doit les couvrir quand on
+s'en va).
+
+⚠️ **LE TEMPS MORT EST LE DÉFAUT À NE PAS REFAIRE.** `boites.volAt` doit tomber
+AVANT la fin du retrait : les petites sortent de DESSOUS la grande pendant
+qu'elle se referme. Réglé plus tard, on voyait la grande disparaître, puis trois
+dixièmes de seconde d'écran vide, puis les petites arriver — trois gestes au
+lieu d'un. Et l'opacité du retrait TIENT pendant que l'échelle tombe (0,92 à
+mi-course) : sans cela le geste n'est plus qu'un fondu, et l'on ne voit pas la
+boîte se refermer.
+
+⚠️ **LA MESURE DES 469 TRACÉS SE FAIT DERRIÈRE LE NOIR.** Les ordonner demande
+autant d'appels à `getBBox` — une image de 84 ms, mesurée, au moment précis où
+la torche s'ouvre. Faite au montage (`construire`), elle tombe avec le décodage
+des photographies, où elle ne se voit pas. Coût final : 60 i/s pendant
+l'écriture, 56 i/s pendant l'éclatement, **zéro animation vivante au repos**
+(`poser()` rend chaque dessin à sa feuille de style).
+
+**7 ter. L'INHUMATION — le sous-chapitre 3 rejoue l'entrée du chapitre 1.**
+Cliquer le « 3 » éteint la lumière, comme le « 2 ». On rallume sur la vitrine
+des crânes (`inhumation.avant`), torche fixe et serrée, et l'on n'y fait
+qu'ÉCOUTER : quelques secondes de silence (`voixApresMs`), puis la voix
+d'Alicia et, un souffle après, « Passer ». La voix finie — ou passée —, la
+photographie BASCULE sur la vitrine au buste (`inhumation.apres`) : la
+nouvelle monte en dézoomant (1,12 → 1), l'ancienne s'éloigne en s'effaçant
+(→ 1,10), la torche s'élargit (`torche.apres`). C'est le geste de
+`Chapitre1Scene._transitionIntroToBase`, à l'identique. Alors seulement la
+flèche revient, la boussole avec elle. Moteur : `chp5-opening.js` (bloc
+« L'INHUMATION »), sur la même mécanique que la vitrine.
+
+⚠️ **PAS DE FLÈCHE NI DE BOUSSOLE PENDANT LA VOIX — ET AUCUN CODE NE LES
+CACHE.** C'est `occupe()` qui le fait : tant que `placeGeste` court (attente,
+aller, bascule), le premier plan est occupé et la scène tient la flèche
+éclipsée. Le lieu n'est POSÉ (`placePosee`) qu'au bout de la bascule. Ne pas
+« optimiser » en posant le lieu dès que la voix commence : l'interface
+reviendrait par-dessus elle.
+
+⚠️ **« PASSER » EST REDIT ICI, PAS EMPRUNTÉ.** `#skip-btn` vit dans `#app`,
+donc enterré sous `#chapitre5-root` (z 500) — la même raison qui a donné à la
+vitrine son canevas de torche et sa `.legende`. Même dessin (cadre tracé en
+pixels réels, mot qui paraît ensuite, or et grossissement au survol), même
+taille (celle des flèches, `taillePasser`). C'est un vrai `<button>` ; entré
+au clavier, le focus l'attend (le cartel du « 3 », devenu `inert`, l'a lâché
+sur `body`).
+
+⚠️ **LA VOIX EST UN `new Audio()` DU MOTEUR, VIDÉE À CHAQUE FIN** — passée,
+finie, retour, départ du chapitre (`viderVoix` : pause, source retirée,
+`load()`). Elle est coupée NET au « Passer », comme au chapitre 1
+(`stopPhrenoSound`). Si elle ne se lit pas (fichier manquant, décodage), on
+bascule directement, en le disant en console : la voix n'est pas une
+condition pour arriver.
+
+⚠️ **UNE SEULE TORCHE À LA FOIS, PAR UN SEUL CHEMIN** (`creerTorche`). La
+vitrine et l'inhumation ont chacune leur canevas, dans leur couche, mais la
+même variable `torche` : elles ne coexistent jamais, et `salleCachee`,
+`refreshLayout` et `destroy` n'ont ainsi qu'un objet à connaître.
+
+⚠️ **`inhumation.apres` FAIT 794 × 612 px** (une image extraite d'un film) :
+en plein écran elle est agrandie ~1,8 fois et se voit molle. Une prise plus
+grande la remplace sans rien changer d'autre.
+
+**7 quater. LA RANGÉE — quatre tombes et un drapeau, sur la vitrine au
+buste.** La bascule faite, l'image tombe dans une certaine OBSCURITÉ (un voile
+noir sous la torche, `inhumation.obscurite`), et une rangée s'écrit devant le
+buste, à la plume dorée : tombe, tombe, DRAPEAU, tombe, tombe. C'est le module
+des boîtes (`chp5-boites.js`), avec une autre composition (`inhumation.tombes`)
+et LES MÊMES CADENCES (`geste`, commun aux deux lieux).
+ · **Ouverte d'emblée** : le côté ne déclare pas de `grande` — rien à
+   éclater, les cinq dessins s'écrivent dès l'arrivée, depuis le MILIEU (le
+   drapeau d'abord) vers les deux bouts.
+ · **Les quatre tombes** (A, B, C, D) ouvrent chacune leur pièce dans la
+   fenêtre habituelle — trois prises de son, un film.
+ · **Le drapeau n'ouvre pas la fenêtre.** Il garde son dessin et son titre
+   (« Inhumer symboliquement le corps de Soliman al-Halabi au musée ? ») et
+   déclare `planche: true` : au clic, les CINQ dessins se dé-écrivent (le
+   geste de sortie du lieu), la planche `inhumation.fond` monte PLEIN ÉCRAN
+   — l'obscurité et la torche se retirent à sa vitesse, on la LIT —, une croix
+   paraît en haut à droite, et la seconde voix d'Alicia se joue, sans
+   sinusoïde : c'est la planche qu'on regarde. Son `credit` (« A.,
+   étudiante ») s'écrit en bas, sur une étiquette sombre, TANT QU'ELLE PARLE.
+   Voix finie, croix ou Échap : la planche redescend, la voix est VIDÉE, et
+   la rangée se réécrit (`tombes.monter()`) ; le focus revient au drapeau une
+   fois réécrit. `salut: 'flotter'` : il se déploie depuis sa hampe en
+   s'écrivant.
+
+⚠️ **LE PANORAMA — ICI, `cover` ET NON `contain`, ET C'EST VOULU.** À
+l'inverse de la vitrine du « 2 », la vitrine au buste et la planche
+DÉBORDENT l'écran : aucune bande noire. Chacune vit dans un CADRE à ses
+proportions (`.inhumation-cadre`), qui couvre la fenêtre et la dépasse encore
+de `inhumation.panorama.debord` ; la main le fait glisser — elle à droite, on
+voit la droite de l'image ; elle en bas, le bas —, lissé à chaque image
+(`panorama.suivi`), et l'image revient au centre quand la main s'en va.
+ · ⚠️ **La portée est TOUT le débord, pas un degré fixe** : une amplitude fixe
+   laisserait hors d'atteinte ce que la couverture rogne (le texte du bas de
+   la planche en 16/10, le début de ses lignes en 4/3).
+ · ⚠️ **Le glissement vit sur le CADRE, les gestes sur l'IMAGE** (bascule,
+   montée de la planche) : deux `transform` sur le même élément s'écraseraient.
+ · Le moteur lit les proportions sur l'image DÉCODÉE (`naturalWidth`) : rien à
+   tenir d'accord dans la config si une image est remplacée.
+ · Sous « mouvement réduit », la boucle ne tourne pas : image couvrante, au
+   centre, immobile. Au repos, plus rien ne s'écrit (seuil d'arrivée).
+ · ⚠️ La vitrine au buste ne fait que 794 px : couvrante et débordante, elle
+   est agrandie davantage — et plus floue. Une prise plus grande la sauverait.
+ · La vitrine des crânes (`avant`), pendant la première voix, reste entière et
+   immobile.
+
+⚠️ **LA PLANCHE EST UN PREMIER PLAN** (`occupe()` la compte) : la flèche et
+la boussole s'effacent devant elle, comme devant une pièce. Le moteur la
+tient seul (`ouvrirPlanche` / `fermerPlanche`) — la fenêtre n'en sait rien —,
+et la referme d'autorité (`fermerPlanche(false)`, sans réécrire la rangée)
+quand on quitte le lieu ou le chapitre. ⚠️ Les transitions de la planche, de
+l'obscurité et de la torche sont sur leurs règles de BASE : posées sur
+`.inhumation-inhume` seule, elles disparaîtraient avec la classe et tout
+reviendrait d'un coup. ⚠️ **Sur la planche claire, les titres dorés du coin
+haut-gauche se lisent mal** (ils passent sur la photographie des côtes) : même
+problème que le panneau de la porte, non traité ici.
+
+⚠️ **LA RANGÉE EST PLACÉE, PAS CALCULÉE EN GRILLE.** Chaque dessin a sa
+`place` au repère `'centre'` (le milieu de la fenêtre), un écart `x` en
+largeurs de tombe et une hauteur `y` en %. Bornes vérifiées en 16/10 et en
+4/3 : entre la flèche (bas-gauche) et le plein écran (bas-droite), au-dessus du
+titre de survol (bas, 3,5 %). ⚠️ Un rang de pièces PLACÉES n'entre pas dans le
+calcul de taille (il réduisait toute la composition à mesure qu'on rapprochait
+les tombes du centre : des tombes de 28 px en 4/3), et une pièce placée ne lit
+ni `ecart` ni `interligne` — la composition de l'inhumation ne les déclare
+donc pas.
+
+⚠️ **LE MODULE NE LIT PLUS LA CONFIG, ON LUI DONNE CE QU'IL DISPOSE**
+(`composition`, `cadences`, `photo`). Les deux instances — vitrine et
+inhumation — vivent dans deux couches (`#chp5-boites`, `#chp5-tombes`) et
+gardent chacune ce qu'on y a ouvert (la teinte bronze des pièces lues).
+
+⚠️ **LE SALUT** (`salut`, facultatif, PAR PIÈCE) se joue dans `dessiner`,
+avec l'écriture : un geste de compositeur (une transformation), qui s'achève —
+rien ne vit au repos. ⚠️ Une tombe a eu une LUEUR en fin d'écriture (un
+cercle doré qui pulsait) : **retirée à la demande de l'auteur**, ne pas la
+remettre.
+
+⚠️ **CE QUI A ÉTÉ ESSAYÉ, ET RETIRÉ** (septembre 2026) — pour ne pas y revenir
+sans le vouloir : une GRANDE tombe qui s'ouvrait sur les quatre autres, et un
+drapeau qui, levé, faisait monter la planche et partir la voix hors de toute
+fenêtre ; les deux S'ALTERNAIENT (ouvrir l'un reformait l'autre, les tombes
+rentrant dans la grande). L'auteur a choisi d'ouvrir directement sur les
+tombes : l'alternance, le repli, la grande collée au bord et le titre de
+survol des grandes ont été retirés du module avec leur code. Puis le drapeau a
+ouvert sa voix DANS LA FENÊTRE, la planche montant derrière sous un voile
+allégé (un `voile` par pièce, et la pièce transmise à `onEtat`) : remplacé
+par la planche plein écran, et ces deux mécanismes retirés avec lui.
+
+**8. LE SOUS-TITRE CÈDE SA PLACE, IL NE SE DOUBLE PAS.** Entrer dans un
+sous-chapitre n'ajoute pas une troisième ligne sous « Espace collaboratif » :
+« Le devenir du corps… » s'efface et « Dans les réserves… » vient à SA place,
+sur la même ligne. Le niveau 3 de `Title` reste donc inutilisé au chapitre 5.
+
+⚠️ **EN DEUX TEMPS, ET C'EST OBLIGATOIRE** (`_relayerSousTitre`). `Title._poser`
+écrit le nouveau texte IMMÉDIATEMENT puis pose la classe : appelé pendant que
+l'ancien s'efface, il ferait muter les mots au milieu de leur propre
+disparition. On laisse donc jouer la sortie CSS (1,1 s de fondu après 0,3 s de
+retard) avant de poser le suivant — le relais tient largement dans la durée
+d'un passage.
+
+⚠️ **SI UNE SCÈNE SE MET UN JOUR À ÉCRIRE LE NIVEAU 3, il faudra l'ajouter à la
+liste des éléments remontés en z 600** (style.css, `body.chpX-active`). Le
+défaut ne se verrait NULLE PART ailleurs qu'à l'écran : `showPart()` pose bien
+son texte et sa classe, l'élément a bien une boîte — il est simplement enterré
+sous le chapitre (z 15 contre 500).
+
+**9. L'AMBIANCE SONORE — une bande-son par lieu** (octobre 2026). La
+photographie a la sienne (`ambiance-ouverture.mp3`), chaque sous-chapitre la
+sienne (`ambiance-porte`, `-vitrine`, `-inhumation`), dans `chp5-medias/`.
+À l'entrée, un LONG SILENCE (`ambiance.silenceMs`, compté depuis la levée du
+rideau), puis la photographie monte en un fondu lent (`premiereEntreeMs`).
+Tout ce qui PARLE au premier plan l'éteint jusqu'au silence, et elle revient
+quand il se retire — LÀ OÙ ON L'AVAIT LAISSÉE, pas au début du morceau.
+Moteur : `chp5-ambiance.js` ; réglages : `chp5-config.js` → `ambiance` (⑪).
+
+⚠️ **ELLE SUIT LE PREMIER PLAN, DEPUIS LE MÊME APPEL.** `notifyForeground()`
+— qui éclipse la flèche et la boussole — appelle aussi `accorderAmbiance()`,
+qui RECALCULE de l'état ce qu'on doit entendre (`ambianceVoulue()`) et le dit
+au module (`ambiance.vouloir(nom | null)`). Il n'y a donc aucun second
+déclencheur à tenir d'accord : tout ce qui fait partir la flèche passe déjà
+par là (témoignage, pièce, planche, voix d'Alicia, passage d'un lieu à
+l'autre). `vouloir()` est IDEMPOTENT — on peut le rappeler à chaque
+événement, la dernière intention gagne. C'est la leçon du chapitre 3
+(`ambDesired`) : une piste pilotée par ordres successifs (« allume »,
+« éteins ») finit par les recevoir dans le désordre. Ne pas ajouter d'appel
+direct ailleurs.
+ · **Ce qui l'éteint** : un témoignage qui JOUE (en pause, elle revient) ;
+   une pièce qui a un son — prise de son ou film, même à l'arrêt sur son
+   affiche (`visionneuse.estSonore()`) ; la voix d'Alicia (le « 3 » n'est
+   posé qu'après elle) ; la planche du drapeau ; tout passage (`placeGeste`).
+ · ⚠️ **Ce qui NE l'éteint PAS** : un texte (PDF) ou la carte mentale. Ils
+   occupent le premier plan — la flèche s'efface — mais on les LIT : c'est
+   pourquoi `ambianceVoulue()` n'est pas `occupe()`.
+ · **Vers un sous-chapitre** : la photographie se tait AU CLIC, la bande-son
+   du lieu ne monte qu'à l'ARRIVÉE (`placePosee`), avec la flèche. Au retour,
+   l'inverse. Celle du lieu se charge pendant le passage (`precharger`).
+ · **Quitter le chapitre** — flèche, carte, n'importe quelle destination :
+   `leave()` l'éteint au rythme du fondu au noir (`exitMs`), `destroy()`
+   arrête et vide ses lecteurs.
+
+⚠️ **LUE EN FLUX, PAS DÉCODÉE — C'EST UNE MESURE.** La première version
+décodait chaque fichier (`decodeAudioData`) pour boucler à l'échantillon
+près : 69 s de stéréo font 26 Mo de PCM, et leur arrivée coûtait des images de
+**180 à 270 ms**, mesurées au banc pendant que la caméra respire (le banc de
+non-régression est tombé à 40 i/s). Chaque piste est donc lue par DEUX
+`<audio>` qui se relaient, branchés dans le graphe du site
+(`createMediaElementSource`) : rien à décoder, quelques centaines de Ko en
+mémoire — ce qui compte aussi sur un téléphone. Ne pas revenir aux tampons
+décodés pour « gagner en précision » : une couture de trois secondes n'a pas
+besoin de l'échantillon.
+
+⚠️ **LES FONDUS SONT DES `GainNode`, JAMAIS `element.volume`** : Safari sur
+iPhone IGNORE `volume` — un fondu y serait une coupure sèche. Le contexte
+est celui de l'`AudioManager`, transmis par `startChapitre5({ audio })` ;
+sans lui, le chapitre se joue muet en le disant en console.
+
+⚠️ **CE NE SONT PAS DES PISTES DE L'AUDIOMANAGER.** `enforceSilence` ne les
+connaît pas : ce sont `leave()` et `destroy()` qui en répondent —
+`destroy()` est appelé dans le `finally` de `exit()` comme dans l'échec
+d'entrée. ⚠️ Après `leave()`, `destroy()` arrête les lecteurs SUR-LE-CHAMP
+(leur gain est déjà à zéro) : la frontière vient juste après, et son filet
+(qui met en pause tout `<audio>` encore en lecture) le DÉNONCERAIT en
+console. Chaque lecteur est VIDÉ à l'arrêt (source retirée, `load()`), comme
+toute pièce du chapitre.
+
+⚠️ **LES FICHIERS NE BOUCLENT PAS D'EUX-MÊMES** : ils commencent sur un
+souffle (0,8 s de silence en tête pour la photographie) et finissent en
+fondu. Bouclés par `loop = true`, on entendrait un creux à chaque tour. Les
+deux lecteurs se relaient donc en se CHEVAUCHANT (`croiseMs`) : l'un repart
+du début en montant pendant que l'autre s'éteint sur sa fin. Une minuterie
+déclenche la couture ; ⚠️ et si le lecteur actif arrive AU BOUT sans qu'elle
+ait eu lieu (minuterie retardée dans un onglet caché, durée mal annoncée par
+l'en-tête du fichier), sa fin déclenche la couture sur-le-champ
+(`onended`) — sans ce filet la piste se tairait pour de bon. ⚠️ Le fichier de
+la photographie a ses PROPRES coupures d'un dixième de seconde (5,3 s,
+6,8 s, 8,4 s…) : c'est sa rythmique, pas un défaut de boucle.
+
+⚠️ **LES GAINS ÉGALISENT DES FICHIERS QUI NE SONT PAS MIXÉS ENSEMBLE** (de
+−20 à −33 dB en moyenne) autour de −30 dB, le niveau des boucles du site.
+Celle du « 3 » est la plus douce, d'où un gain de 1,4 (au-delà de 1 : on
+amplifie, sa crête reste à −6,6 dB). Remplacer un fichier, c'est revoir son
+gain.
+
+⚠️ **LE TÉMOIN `data-ambiance`** sur `#chapitre5-root` dit l'intention
+courante (`ouverture`, `porte`…, ou vide pour le silence). Le banc d'essai le
+lit, et il ÉCOUTE vraiment : une sonde branchée sur la destination du
+contexte mesure le niveau (silence de l'entrée, extinction sous un
+témoignage, couture de boucle, départ par la carte). ⚠️ La couture se teste
+sur une VRAIE découpe de 8 s (`tools/bench/fixtures/ambiance-courte.mp3`,
+la commande pour la refaire est dans le banc) — pas sur des octets tronqués :
+un `<audio>` croit la durée de l'en-tête, et un fichier coupé annoncerait
+encore 69 s.
+
+**10. LA CARTE — chaque sous-chapitre est un point** (octobre 2026). Sous le
+point V, trois points : `chp5-porte`, `chp5-vitrine`, `chp5-inhumation`,
+nommés par leur LIEU (`cartels.sousChapitres[].lieu`), et c'est le nom du lieu
+qui voyage (`part: 'vitrine'`), pas le rang du cartel — réordonner les cartels
+ne doit pas déplacer la carte. Libellés : `config.js` → `MAP.labels`.
+ · **Depuis une autre scène** — `enter({ part })` : on entre DIRECTEMENT dans
+   le lieu. Ni introduction ni photographie : le noir (`#chp5-nuit`) est posé
+   AVANT la levée du rideau, l'introduction est posée dans son état final
+   (comme sous « mouvement réduit »), et le lieu s'ouvre depuis ce noir. Le
+   sous-titre du lieu s'écrit d'emblée ; la flèche ne paraît qu'à l'arrivée
+   (`onIntroComplete` n'est pas appelé). Jouer cinq secondes d'intro pour la
+   quitter aussitôt, c'était le défaut des bougies du chapitre 2.
+ · **Depuis le chapitre** — `jumpWithin({ part })` → `goToChapitre5Part(rang
+   | null)`. ⚠️ **UNE INTENTION, PAS UN ORDRE** (`vise` dans le moteur) : elle
+   n'interrompt aucun geste, c'est la fin du geste (lieu posé, salle rendue,
+   fin d'intro) qui la reprend (`poursuivre()`). La dernière demande gagne.
+ · ⚠️ **D'UN SOUS-CHAPITRE À L'AUTRE, ON PASSE PAR LE NOIR**, jamais par la
+   photographie : la vitrine et l'inhumation s'éteignent comme au retour mais
+   le noir RESTE ; la porte ne se rouvre pas sur la salle, le noir tombe sur
+   son panneau (`porte.noirMs`). Et la porte, ouverte DEPUIS le noir, est posée
+   fermée dessous et le noir se lève sur elle (`porte.leveMs`) — on ne voit
+   pas reculer une salle qu'on ne voit pas. Le sous-titre va droit de l'un à
+   l'autre : `closePart` annonce la DESTINATION, et la scène ne relaie pas un
+   texte par lui-même (`_relayerSousTitre`).
+ · Le point courant et la mémoire suivent l'ARRIVÉE (`journey:place`, émis par
+   `_setPart(…, 'arrivee')`). ⚠️ Un lieu qui n'a pas pu s'ouvrir rend la
+   photographie avec une arrivée `null` après un départ vers lui : la scène se
+   recale alors (sous-titre, nom de la flèche) — sinon la flèche croirait
+   ramener d'un sous-chapitre où l'on n'est pas, et ne ferait plus rien.
+ · ⚠️ `ArrowBase.show()` remet le nom d'origine de la flèche : la scène le
+   repose après chaque `show()` (`_nommerFleche`).
+
 ## Test de non-régression (après toute modification)
 
 **D'abord l'automate** — il couvre en trois minutes ce que l'œil ne peut pas
@@ -1030,6 +1913,7 @@ compter (fluidité, fuites, tabulation, console) :
 node tools/bench/serve.mjs &                 # laisser tourner
 npm run bench -- --self-test                 # sort en erreur si régression
 npm run audit:config                         # clés de config sans lecteur
+npm run bench:chapter5                       # V, audio, plein écran, carte, tactile
 ```
 
 Il vérifie : 60 i/s sur chaque scène, aucun arbre détaché supplémentaire entre
@@ -1041,7 +1925,7 @@ faire échouer la campagne.
 **Ensuite l'œil** — l'automate ne voit pas si c'est BEAU.
 Parcours sur serveur local, console ouverte (zéro erreur attendue) :
 1. Accueil (Playfair/Inter) → vitrine → phrénologie (documents + loupe).
-2. Collaboration : 5 cercles (I-IV ouvrent un chapitre, V à venir), survols, titres.
+2. Collaboration : 5 cercles (I-V ouvrent un chapitre), survols, titres.
 3. **Chapitre 1** : intro sonore (+skip), 9 survols du crâne, 2-3 médias,
    sortie (citation typée).
 4. **Chapitre 2** : bougies, les 3 sous-parties (Invisibilisation : vidéo +
@@ -1057,21 +1941,170 @@ Parcours sur serveur local, console ouverte (zéro erreur attendue) :
    (bulles à rebours, fissure qui se referme, lumière qui tombe). Vérifier
    que le bouton plein écran (bas-droite, sur le papier) est bien SOMBRE et
    la flèche (bas-gauche, sur la photo) bien BLANCHE.
-7. **Chaque chapitre : entrer/sortir ×2** (le pattern factory doit rejouer
+7. **Chapitre 5** : noir → la photographie monte, la caméra s'approche, les
+   cinq traits jaillissent du squelette, les cercles se dessinent. Survoler
+   chaque chiffre : il DOIT devenir une flèche vers la droite, et l'intitulé
+   du sous-chapitre paraître **sans jamais mordre sur le jour de la fenêtre**.
+   ⚠️ **Vérifier à trois formats au moins — 16/9, 3/2 et 4/3 —** : c'est le
+   rapport de la fenêtre, pas sa largeur, qui déplace le mur (cf. « Le
+   chapitre 5 »). Écouter les deux témoignages : la flèche de retour et la
+   boussole s'éclipsent ensemble, un second clic coupe, l'autre témoignage
+   prend la main. Vérifier enfin que les cinq points d'ancrage sont bien SUR
+   un os, en zoomant.
+   Puis **le « 1 »** : la salle s'éloigne, se trouble et BLANCHIT, les deux
+   battants entrent par les côtés et se rejoignent au centre (on doit voir la
+   porte presque entière, du blanc à gauche et à droite), une seconde de pose,
+   puis la caméra pousse sur « Anthropologie biologique ». Aux trois formats,
+   le panneau doit rester ENTIER et s'arrêter SOUS les titres — qui sont dorés,
+   donc illisibles sur lui. Vérifier au passage que le sous-titre a bien CÉDÉ
+   sa place (« Dans les réserves… » à l'endroit même où était « Le devenir du
+   corps… », jamais les deux ensemble). La flèche revient et ramène à la
+   photographie ; un second retour quitte le chapitre.
+   Puis **le « 2 »** : tout s'éteint, et la lumière revient ailleurs — une
+   torche fixe ouvre sur la boîte où le crâne attend, étiquetée « objet à
+   l'étude », photographie ENTIÈRE avec du noir à gauche et à droite.
+   Le crâne est ENTIER (la souris n'y fait rien). Vérifier que le passage est
+   bien NOIR de bout en bout (jamais de décor qui change à vue), et qu'au
+   retour la photographie revient sans à-coup.
+   Puis **l'inventaire** : pendant que la torche s'ouvre, une boîte d'archive
+   S'ÉCRIT de chaque côté du crâne — à la plume dorée d'abord, du plus grand
+   trait au plus petit, l'encre séchant en blanc derrière. Les survoler : or et
+   grossissement. En cliquer une : elle doit se REFERMER SUR ELLE-MÊME (on la
+   voit rapetisser, pas seulement s'effacer), une onde dorée part de son
+   centre, et les petites s'élancent AVANT qu'elle ait disparu — jamais
+   d'écran vide entre les deux gestes. Sept à gauche (2 · 1 · 4), deux à
+   droite. Re-cliquer ne referme rien. ⚠️ **Aux trois formats**, vérifier
+   qu'aucune boîte ne mord sur le crâne ni ne sort du cadre : sur un écran
+   étroit elles doivent RAPETISSER, pas se chevaucher.
+   Puis **les pièces** : survoler chaque petite boîte — son titre (et lui
+   seul, jamais « D1 » ou « C2 ») s'écrit en bas de l'écran. En cliquer une :
+   un rectangle BLANC se trace d'abord, VIDE, et la pièce n'y paraît qu'une
+   fois le trait presque refermé ; le titre dessous, la croix en haut à
+   droite. Une vidéo s'ouvre sur son affiche ; un texte prend la largeur et
+   reste SOUS la colonne de titres ; une prise de son se lance seule, avec le
+   cercle et la sinusoïde vivante du chapitre 1. Vérifier que la
+   flèche et la boussole S'EFFACENT pendant ce temps, que la vidéo ne démarre
+   pas toute seule, et que les deux textes (loi de 2023, UNESCO 1978) se
+   LISENT bien dans le cadre. Les trois sorties doivent fonctionner : la
+   croix, Échap, et le clic hors du cadre.
+   **Le crâne s'efface** : à chaque pièce REFERMÉE, il recule d'un pas en
+   fondu, et la boîte ouverte prend la teinte bronze des pièces lues (plus
+   sombre que l'or du survol : les deux ne doivent pas se confondre). Une
+   vidéo ou une prise de son allée jusqu'au bout referme d'elle-même sa
+   fenêtre. Les deux prises de son affichent « Témoignage C., lycéenne ». La
+   troisième boîte de la ligne D1 ouvre la **carte mentale** (quelques
+   secondes de chargement : c'est une application). Toutes les pièces vues,
+   le crâne a disparu : il ne reste que la boîte vide.
+   Enfin **la sortie** : cliquer la flèche de retour. Les boîtes doivent se
+   DÉ-ÉCRIRE, des plus lointaines aux plus proches du centre, et le noir ne
+   tomber qu'ensuite — à aucun moment on ne doit voir des boîtes blanches et
+   intactes sur une photographie déjà éteinte. Rouvrir le « 2 » : on retrouve
+   les DEUX grandes boîtes, et tout se rejoue — mais le crâne reste à demi
+   parti, et les pièces lues gardent leur teinte.
+   Puis **le « 3 »** : noir, puis la vitrine des crânes sous une torche fixe
+   et serrée. ⚠️ **Ni flèche ni boussole** tant que la voix n'a pas fini.
+   Quelques secondes de silence, la voix d'Alicia, et « Passer » en bas au
+   centre (cadre qui se trace, or au survol). Le laisser aller une fois
+   jusqu'au bout, et le cliquer une autre fois : dans les deux cas la vitrine
+   au buste monte en dézoomant pendant que les crânes s'éloignent, la lumière
+   s'élargit, PUIS la flèche revient. Puis l'image s'ASSOMBRIT, et une RANGÉE
+   s'écrit devant le buste à la plume dorée — quatre tombes et, au milieu, le
+   drapeau, qui s'écrit le premier et se déploie depuis sa hampe ; aucune
+   lueur ne pulse à la fin. Chaque titre s'écrit en bas au survol. Ouvrir une
+   tombe : sa pièce dans la fenêtre habituelle. Ouvrir le drapeau : les cinq
+   dessins se dé-écrivent, la planche « L'inhumation symbolique » monte PLEIN
+   ÉCRAN et lisible, une croix en haut à droite, la voix d'Alicia SANS
+   sinusoïde, et « A., étudiante » en bas tant qu'elle parle ; la flèche et
+   la boussole s'effacent. À la croix, à Échap ou à la fin de la voix : la
+   planche redescend et la rangée se réécrit. La vitrine au buste et la
+   planche n'ont AUCUNE bande noire : promener la souris aux quatre coins
+   doit faire glisser l'image, doucement, jusqu'à ses bords (le texte du bas
+   de la planche doit se lire). Aux trois formats, la rangée doit tenir entre
+   la flèche et le plein écran, au-dessus du titre de survol. La flèche ramène
+   à la photographie ; les dessins se dé-écrivent d'abord, et l'on ne doit
+   plus rien entendre.
+   Enfin **l'ambiance sonore**, au casque : en entrant, un long silence
+   (~9 s), puis la bande-son de la photographie monte lentement. Lancer un
+   témoignage la fait taire ; le mettre en pause la ramène, là où elle en
+   était. Cliquer un chiffre : elle se tait au clic, et celle du lieu ne monte
+   qu'avec le retour de la flèche — jamais deux bandes-son ensemble, jamais
+   de musique sous la voix d'Alicia, sous un film ou une prise de son, ni sous
+   la planche ; un TEXTE, lui, se lit avec elle. Laisser tourner une minute
+   au moins sur la photographie : la boucle doit repartir sans creux ni
+   « clic ». Quitter par la carte au milieu d'un fondu : elle doit s'éteindre
+   avec le noir, et l'espace collaboratif arriver avec sa seule musique.
+   Enfin **la carte** : depuis l'espace collaboratif, cliquer un des trois
+   points sous le V — on doit arriver dans le lieu SANS voir la photographie
+   ni l'introduction, sous le bon sous-titre. De là, sauter vers un autre
+   sous-chapitre : le passage reste NOIR, la salle ne reparaît pas, et le
+   sous-titre va droit de l'un à l'autre. Puis quitter par la carte vers une
+   scène qui change de titre (l'accueil) : « Espace collaboratif » ne doit PAS
+   se réécrire avant de partir, et le titre d'arrivée doit finir ENTIER.
+8. **Chaque chapitre : entrer/sortir ×2** (le pattern factory doit rejouer
    à l'identique, sans fuite d'état ni son résiduel).
-8. **Curseur, à la souris** : natif partout (flèche de l'OS), main sur tout
+9. **Curseur, à la souris** : natif partout (flèche de l'OS), main sur tout
    ce qui est cliquable (boutons documents, cercles romains, flèches,
    hotspots du chapitre 1, bulles du chapitre 4, pop-up de la carte…), à
    AUCUN moment le halo doré dessiné ne doit apparaître. Console vide.
-9. **Clavier, sans toucher la souris** : au chargement le focus est sur
-   « Cliquez pour commencer » ; Entrée démarre. Puis Tab parcourt flèche,
-   boutons documents, barre de navigation, plein écran — chacun avec un halo
-   doré VISIBLE, et Entrée/Espace l'active. Aucun focus ne doit se perdre sur
-   un élément invisible.
+10. **Clavier, sans toucher la souris** : au chargement le focus est sur
+    « Cliquez pour commencer » ; Entrée démarre. Puis Tab parcourt flèche,
+    boutons documents, barre de navigation, plein écran — chacun avec un halo
+    doré VISIBLE, et Entrée/Espace l'active. Aucun focus ne doit se perdre sur
+    un élément invisible.
 
 ## Notes de déploiement
 
-- Poids : ~375 Mo, dont 281 Mo de masters mp4 + 74 Mo de variantes mobiles
+- **LES PIÈCES DU CHAPITRE 5 ONT ÉTÉ RÉ-ENCODÉES, ET LEURS ORIGINAUX SONT HORS
+  DU DÉPÔT.** Elles étaient arrivées en vrac à la racine de `Chapitre5/`, avec
+  espaces, accents et apostrophes dans les noms, et pesaient **525 Mo** — dont
+  deux vidéos au-delà de la limite de GitHub (178 et 123 Mo : le `push`
+  aurait échoué). Rangées dans `chp5-medias/`, en minuscules et tirets
+  (`d1-…`, `d2-…`, `d3-…`, `c1-…`, `c2-…`), elles pèsent **128 Mo** :
+  vidéos en H.264 CRF 22 preset slow (la norme d'un master ici), sauf
+  `d3-naturalisation.mp4`, déjà sous 1,3 Mb/s, simplement remuxée ; prises de
+  son passées de WAV à MP3 VBR ~190 kb/s comme les autres sons du site ; PDF
+  copiés tels quels. **Les originaux ne sont pas perdus** : ils ont été
+  déplacés, pas supprimés, dans `../originaux-chapitre5/` — à côté du dépôt,
+  donc hors de git. À archiver ailleurs par l'auteur.
+- **Chaque vidéo de pièce a son AFFICHE**, même nom en `.jpg` (1280 px,
+  20–130 Ko). Quatre des cinq films s'ouvrent sur un long fondu au noir. Les
+  instants retenus sont les plus parlants de chaque film — l'article L115-6,
+  la gravure de l'assassinat de Kléber, le carton-titre, le collage aux fils
+  rouges, « POUR la restitution » — et **JAMAIS un plan de la classe** : les
+  visages y sont floutés image par image, et une affiche ne doit pas parier
+  sur la qualité de ce floutage. Pour en refaire une :
+  `ffmpeg -ss <t> -i d1-….mp4 -frames:v 1 -vf "scale=1280:-2:flags=lanczos" -q:v 3 d1-….jpg`
+  (t = 20,9 · 23,5 · 10,7 · 8,0 · 16,8 s, dans l'ordre D1, D2, naturalisation,
+  nœud, réparation).
+- **Le sous-chapitre 3 a été rangé à son arrivée** : les trois fichiers déposés
+  à la racine de `Chapitre5/` avec des espaces dans le nom (`cranes-MH.JPG`,
+  `vitrine MH.jpg`, `Alicia 1.mp3`) sont devenus
+  `chp5-images/chpt-5-P3-cranes.jpg`, `chpt-5-P3-vitrine.jpg` et
+  `chp5-medias/inhumation-alicia-1.mp3` — simplement déplacés, pas
+  ré-encodés (0,29 + 0,28 + 0,86 Mo : rien à gagner).
+  Le second lot (la tombe et le drapeau) aussi : les trois prises A, B, C et
+  la seconde voix d'Alicia, déplacées telles quelles (`a-antigone-creon-…`,
+  `b-que-faire-du-corps`, `c-antigone-bauchau`, `inhumation-alicia-2`) ;
+  le film D, lui, **faisait 222 Mo** (1080p à 18 Mb/s — le push aurait
+  échoué) : ré-encodé en H.264 CRF 22 preset slow, 43 Mo, audio copié, avec
+  son affiche (t = 62 s, le tombeau peint dans l'herbe) et sa variante
+  mobile. La planche `Inhumation.bmp` (112 Mo) est devenue
+  `chpt-5-P3-inhumation.jpg` (0,64 Mo, 46,2 dB). Les deux masters sont dans
+  `../originaux-chapitre5/`, avec les autres.
+- **Les quatre bandes-son du chapitre 5** sont arrivées à la racine de
+  `Chapitre5/` (`Opening-sound-ambiance.mp3`, `P1-…`, `P2-…`, `P3-…`) et ont
+  été déplacées telles quelles dans `chp5-medias/`, nommées par le lieu
+  qu'elles accompagnent : `ambiance-ouverture`, `-porte`, `-vitrine`,
+  `-inhumation` (4,5 Mo à elles quatre — rien à gagner à les ré-encoder).
+- **Les images du chapitre 5 ont leurs masters ET leurs JPEG servis.** Les
+  quatre `.png` d'origine (battants de la porte, vitrine pleine et vide) pèsent
+  34 Mo ; ce que le visiteur télécharge, ce sont les `.jpg` — 0,93 Mo, soit
+  −97 %, à 46–48 dB de PSNR. S'y ajoutent deux masters que rien ne référence
+  (`chpt-5-P1.png`, la porte entière, et `chpt-5-P2-gauche.png`) : **50 Mo de
+  PNG dorment donc dans le dépôt** pour 0,93 Mo servis. Ils ne coûtent rien au
+  visiteur — rien ne les demande — mais tout au dépôt et au déploiement. Les
+  sortir de là est une décision d'auteur : ce sont les originaux.
+- Poids : ~380 Mo, dont 281 Mo de masters mp4 + 74 Mo de variantes mobiles
   (limite GitHub : 100 Mo/fichier — le plus gros master fait ~23 Mo, OK).
   **`npm run videos` fabrique les variantes** dans `*/mobile/`, sans jamais
   toucher aux masters (voir « Vidéos : allégées sur mobile »). Elles SONT

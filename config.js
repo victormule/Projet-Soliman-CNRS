@@ -274,7 +274,7 @@ window.CONFIG = {
       // Contenu
       // « À Propos » a migré dans la colonne des boutons documents.
       labels:  ['Carnet de Recherche', 'Collaboration avec de jeunes citoyens'],
-      actions: [null, 'collab'],  // 'collab' = aller Collaboration
+      actions: ['carnet', 'collab'],  // 'carnet' = scène carnet · 'collab' = aller Collaboration
     },
 
     timing: {
@@ -328,8 +328,8 @@ window.CONFIG = {
 
       // Contenu
       labels:       ['I', 'II', 'III', 'IV', 'V'],
-      hover_titles: ['Les interpétations du geste de Soliman al-Halabi', 'L’héritage colonial du musée', 'Le Général Jean-Baptiste Kléber', 'Une histoire complexe', 'Le devenir du corps de Soliman al-Halabi (à venir)'],
-      actions:      ['chapitre1', 'chapitre2', 'chapitre3', 'chapitre4', null],
+      hover_titles: ['Les interpétations du geste de Soliman al-Halabi', 'L’héritage colonial du musée', 'Le Général Jean-Baptiste Kléber', 'Une histoire complexe', 'Le devenir du corps de Soliman al-Halabi'],
+      actions:      ['chapitre1', 'chapitre2', 'chapitre3', 'chapitre4', 'chapitre5'],
     },
 
     audio: {
@@ -344,6 +344,51 @@ window.CONFIG = {
   },
 
 
+
+
+/* ══════════════════════════════════════════════════════════════════
+   CARNET — le carnet de recherche, ouvert depuis la barre de la phrénologie
+   ──────────────────────────────────────────────────────────────────
+   Fond noir, et un grand rectangle blanc qui se TRACE, puis le carnet
+   (hypotheses.org) qui paraît dedans : le geste des documents de la
+   phrénologie (DocumentOverlay), en plus large — c'est une page qu'on lit.
+
+   CHRONOLOGIE (ms depuis enter()) :
+      400 → le rectangle commence à se tracer             (cadre.trace_at)
+   ~1380 → le carnet paraît dedans, aux 7/10 du trait     (cadre.trace_ms)
+     2000 → la flèche de retour se dessine                (arrow.appear_at)
+
+   ⚠️ LE SITE DOIT ACCEPTER D'ÊTRE ENCADRÉ. hypotheses.org ne pose aujourd'hui
+   ni X-Frame-Options ni frame-ancestors (vérifié en octobre 2026). Si le cadre
+   devient un jour vide, c'est là-bas que ça se décide — le lien sous le cadre
+   reste le filet.
+   ══════════════════════════════════════════════════════════════════ */
+
+  CARNET: {
+    url:   'https://solimanhalab.hypotheses.org/',
+    titre: 'Carnet de recherche — Soliman al-Halabi (hypotheses.org)',  // nom accessible du cadre
+    lien:  'Ouvrir le carnet dans un nouvel onglet',
+
+    cadre: {
+      // ── Place (fractions du viewport) ─────────────────────────────────
+      // Le cadre prend la LARGEUR, centré. En haut, il s'arrête sous la
+      // colonne de titres et la boussole (qui descendent jusqu'à ~12 %) ; en
+      // bas, au-dessus de la flèche et du plein écran — c'est dans cette
+      // bande, entre les deux, que s'écrit le lien.
+      largeur:   0.84,
+      haut:      0.14,
+      bas_marge: 18,      // px entre le bas du cadre et le haut de la flèche
+
+      trace_at:  400,     // ms depuis enter() : le trait part
+      trace_ms: 1400,     // durée du tracé ; le carnet paraît aux 7/10
+      sortie_ms: 700,     // le carnet s'efface et le cadre se dé-trace
+    },
+
+    arrow: {
+      appear_at:     2000,   // ms depuis enter()
+      draw_duration: 2100,   // la navigation s'ouvre une fois la flèche dessinée
+    },
+  },
 
 
 /* (La section CHAPITRE3 vivait ici, pour un seul réglage : le sous-titre. Il a
@@ -515,6 +560,8 @@ window.CONFIG = {
     // Quelle scène affiche lequel des deux se déclare dans la table LIEUX
     // d'app.js — un seul endroit, appliqué dans le noir de la frontière.
     collab: 'Espace collaboratif',
+    // Le titre que porte la scène du carnet de recherche (ligne `carnet` de LIEUX).
+    carnet: 'Carnet de recherche',
     // La CADENCE est dans TIMING (title_start, title_char_delay) et la COULEUR
     // dans FONTS.title.color. Ce bloc portait des doublons (couleur, char_delay,
     // start_delay) que personne ne lisait : régler la couleur ici n'avait aucun
@@ -615,9 +662,8 @@ window.CONFIG = {
    qu'aucune flèche n'invite à partir, on ne propose pas de raccourci.
 
    Un point (et la route qui y mène) ne se dessine QUE si l'on y est allé.
-   Deux destinations ne sont pas encore ouvertes — le « Carnet de recherche »
-   et le cercle V — et elles n'ont donc besoin d'aucun cas particulier : on ne
-   peut pas les visiter, elles ne se dessineront pas.
+   Toutes les destinations sont ouvertes depuis octobre 2026 (le « Carnet de
+   recherche » a été la dernière).
 
    La GÉOMÉTRIE (position des points, tracé des routes) n'est pas ici : c'est
    un DESSIN, pas un réglage. Elle vit dans src/ui/CompassMap.js, transcrite
@@ -694,8 +740,10 @@ window.CONFIG = {
 
     // ── LIBELLÉS DES POINTS ───────────────────────────────────────────
     // Ce que dit l'infobulle au survol. Les identifiants sont ceux des
-    // scènes (SceneManager) ; les trois derniers sont les sous-parties du
-    // chapitre 2, nommées comme leurs crânes.
+    // scènes (SceneManager), puis les sous-parties du chapitre 2, nommées
+    // comme leurs crânes, et les sous-chapitres du 5, nommés par leur LIEU
+    // (`cartels.sousChapitres[].lieu` dans chp5-config.js). Les libellés
+    // sont ceux de la carte : ils peuvent différer des cartels.
     labels: {
       vitrine:       'Accueil',
       phrenologie:   'A propos',
@@ -705,10 +753,13 @@ window.CONFIG = {
       chapitre2:     'II · L’héritage colonial du musée',
       chapitre3:     'III · Le Général Jean-Baptiste Kléber',
       chapitre4:     'IV · Une histoire complexe',
-      cercle5:       'V · Le devenir du corps de Soliman al-Halabi' ,
+      chapitre5:     'V · Le devenir du corps de Soliman al-Halabi',
       'chp2-136':    'Taire le passé',
       'chp2-137':    'Une peine démesurée',
       'chp2-138':    'La violence et ses traces',
+      'chp5-porte':      'Dans les réserves du Musée de l’Homme',
+      'chp5-vitrine':    'Restituer les restes osseux de Soliman al-Halabi ?',
+      'chp5-inhumation': 'Inhumer la dépouille de Soliman al-Halabi ?',
     },
   },
 
@@ -872,5 +923,4 @@ window.CONFIG.LAYOUT = {
     return Math.round(Math.min(340, btn + margin));
   },
 };
-
 

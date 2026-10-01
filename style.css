@@ -1252,15 +1252,25 @@ body.invisibilisation-media #chapitre-part-title {
 /* Le titre « Espace collaboratif », le sous-titre du chapitre et le bouton
    plein écran sont en z 15 : sans cette remontée ils resteraient ENTERRÉS sous
    #chapitre3-root (z 500). On les fait flotter au-dessus, exactement comme
-   body.chp2-active le fait pour le chapitre 2. #chapitre-part-title n'est pas
-   listé : le chapitre 3 n'a pas de sous-parties (tier 3 inutilisé).
+   body.chp2-active le fait pour le chapitre 2.
    #chapter-quote et #skip-btn restent inertes sans contenu (opacité 0 /
-   pointer-events none) : aucun effet de bord. */
+   pointer-events none) : aucun effet de bord.
+
+   ⚠️ #chapitre-part-title N'Y EST PAS, et ce n'est un oubli pour aucun des
+   deux : le chapitre 3 n'a pas de sous-parties, et le 5 fait CÉDER son
+   sous-titre plutôt que d'écrire une troisième ligne (cf. Chapitre5Scene).
+   Le jour où une scène se met à écrire le niveau 3, il faudra l'ajouter ici —
+   et l'oubli ne se verrait NULLE PART ailleurs qu'à l'écran : showPart() pose
+   bien son texte et sa classe, l'élément a bien une boîte, il est simplement
+   enterré sous le chapitre (z 15 contre 500). */
 body.chp3-active #site-title,
 body.chp3-active #chapitre-subtitle,
 body.chp3-active #fs-btn,
 body.chp3-active #chapter-quote,
-body.chp3-active #skip-btn {
+body.chp3-active #skip-btn,
+body.chp5-active #site-title,
+body.chp5-active #chapitre-subtitle,
+body.chp5-active #fs-btn {
   z-index: 600;
 }
 
@@ -1850,6 +1860,73 @@ body.peine-aim #cursor.aim-hot {
   .doc-ov-text p,
   .doc-ov-caption { transform: none; transition-duration: 400ms; }
   .doc-ov-rect    { transition: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CARNET DE RECHERCHE — scène « carnet » (src/scenes/CarnetScene.js)
+   ──────────────────────────────────────────────────────────────────
+   Le rectangle reprend `.doc-ov-rect` (même trait que les documents) ;
+   le cadre est placé et dimensionné EN JS (config.js → CARNET.cadre).
+   z 7 comme #doc-overlay : sous la flèche (10), les titres et le plein
+   écran (15), la boussole (16).
+   ══════════════════════════════════════════════════════════════════ */
+#carnet-root {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+.carnet-cadre {
+  position: absolute;
+  pointer-events: auto;
+}
+
+/* Le site paraît DANS le cadre déjà tracé (classe .in, aux 7/10 du trait),
+   en retrait d'un pixel pour ne pas recouvrir le filet. */
+.carnet-site {
+  position: absolute;
+  inset: 1px;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  border: 0;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 1200ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Le lien de secours, dans la bande du bas entre la flèche et le plein
+   écran — le style du lien « Source » des documents. */
+.carnet-lien {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  color: rgba(210, 175, 90, 0.92);
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.55rem, 0.78vw, 0.78rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(210, 175, 90, 0.3);
+  padding-bottom: 3px;
+  opacity: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 1200ms ease 300ms, color 0.35s ease, border-color 0.35s ease;
+}
+.carnet-lien:hover,
+.carnet-lien:focus-visible { color: rgba(255, 230, 150, 1); border-color: rgba(255, 220, 120, 0.85); }
+
+#carnet-root.in .carnet-site,
+#carnet-root.in .carnet-lien { opacity: 1; }
+
+/* La sortie : le site s'efface avec le dé-tracé (CARNET.cadre.sortie_ms). */
+#carnet-root:not(.in) .carnet-site,
+#carnet-root:not(.in) .carnet-lien { transition-duration: 600ms; transition-delay: 0ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  #carnet-root .doc-ov-rect { transition: none !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -2719,7 +2796,8 @@ body.peine-aim #cursor.aim-hot {
 
 body.chp2-active #compass-map,
 body.chp3-active #compass-map,
-body.chp4-active #compass-map {
+body.chp4-active #compass-map,
+body.chp5-active #compass-map {
   z-index: 600;
 }
 

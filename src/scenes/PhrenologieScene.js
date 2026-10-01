@@ -261,6 +261,7 @@ export class PhrenologieScene extends Scene {
          */
         const navCallbacks = C.navbar.actions.map((action) => () => {
           if (action === 'collab') this.leaveTo('collaboration');
+          if (action === 'carnet') this.leaveTo('carnet');
         });
 
         this.navBar.show(navCallbacks);

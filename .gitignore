@@ -1,5 +1,6 @@
 # ── Dépendances ──────────────────────────────────────────────
 node_modules/
+.chrome-test/
 
 # ── Fichiers système ─────────────────────────────────────────
 Thumbs.db

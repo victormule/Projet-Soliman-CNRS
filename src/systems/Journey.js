@@ -7,7 +7,10 @@
  * ⚠️ DEUX MÉMOIRES, JAMAIS RECOPIÉES L'UNE DANS L'AUTRE.
  *
  *   · les SCÈNES (vitrine, phrénologie, collaboration, chapitres) → ici,
- *     sous la clé `soliman.journey.v1` ;
+ *     sous la clé `soliman.journey.v1` — et les trois SOUS-CHAPITRES DU
+ *     CHAPITRE 5 (`chp5-porte`, `chp5-vitrine`, `chp5-inhumation`), qui n'ont
+ *     pas d'autre mémoire : ils s'ouvrent sans ordre ni verrou, il n'y a rien
+ *     d'autre à retenir que « on y est allé » ;
  *   · les SOUS-PARTIES DU CHAPITRE 2 → chp2-progress.js, tel quel. Ce module
  *     existe déjà, il est persisté, éprouvé, et c'est LUI qui décide du
  *     déverrouillage des crânes. En recopier l'état ici créerait une seconde
@@ -75,6 +78,9 @@ function _ecrire(etat) {
  */
 export function visit(id) {
   if (!id) return false;
+  // Les sous-parties du chapitre 2 ont leur mémoire (chp2-progress) : on ne
+  // l'écrit pas ici en double — c'est le défaut que ce module s'interdit.
+  if (CHP2_NODES[id]) return false;
   const etat = _lire();
   if (etat.visited[id]) return false;
   etat.visited[id] = true;

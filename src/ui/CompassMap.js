@@ -32,75 +32,91 @@
  *   config.js → MAP : l'interrupteur (`active`), la réserve à l'ordinateur,
  *   les libellés d'infobulle, les cadences, la mise en place.
  *   ICI : la GÉOMÉTRIE — c'est un dessin, pas un réglage. Elle est transcrite
- *   de map.svg (viewBox 295×295), dont une copie est versionnée dans
- *   images/carte-source.svg.
+ *   de l'export versionné dans images/carte-source.svg (viewBox 287 × 294,99).
+ *   Après tout ré-export, la retranscrire : voir l'avertissement sur ROUTES.
  */
 
 import { bus } from '../core/EventBus.js';
 import { applyGoldenHover } from '../utils/helpers.js';
-import { makeActivatable, markDecorative } from '../utils/a11y.js';
+import { makeActivatable } from '../utils/a11y.js';
 import { isVisited } from '../systems/Journey.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GÉOMÉTRIE — transcrite de map.svg (viewBox 0 0 295 295)
+   GÉOMÉTRIE — transcrite de images/carte-source.svg (viewBox 0 0 287 294.99)
    ───────────────────────────────────────────────────────────────────────────
-   Les rayons encodent la hiérarchie, comme dans le dessin : 13 pour le tronc
-   commun, 11 pour les chapitres, 9 pour les sous-parties.
+   Les rayons encodent la hiérarchie, comme dans le dessin : 15,66 pour la
+   phrénologie — le CARREFOUR, d'où partent le carnet, l'espace collaboratif
+   et, par lui, les chapitres —, 13 pour le reste du tronc commun, 11 pour les
+   chapitres, 9 pour les sous-parties.
 
-   `to` = la scène où mène le point. `null` = destination pas encore ouverte
-   (le Carnet de recherche, le cercle V) : elle ne peut donc jamais être
-   visitée, donc jamais dessinée — aucun cas particulier à écrire.
-   `part` = sous-partie à ouvrir en arrivant (chapitre 2 seulement).
+   `to` = la scène où mène le point. `null` = destination pas encore ouverte :
+   elle ne peut jamais être visitée, donc jamais dessinée — aucun cas
+   particulier à écrire. (Il n'y en a plus : le Carnet de recherche, le
+   dernier, est ouvert depuis octobre 2026.)
+   `part` = le lieu à ouvrir en arrivant : une sous-partie du chapitre 2, un
+   sous-chapitre du 5 (le NOM de son lieu, `cartels.sousChapitres[].lieu` dans
+   chp5-config.js — pas son rang : réordonner les cartels ne doit pas déplacer
+   la carte).
 ═══════════════════════════════════════════════════════════════════════════ */
 
-const VB       = 287;              // le dessin est carré à 0,02 près
-const VB_BOX   = '0 0 287 286.98'; // le viewBox exact de l'export
-const CADRE_RX = 8.61;             // rayon des coins, tel qu'exporté
+/* ⚠️ LE DESSIN N'EST PAS CARRÉ (287 × 294,99) : tout ce qui en déduit une
+   taille — le panneau, son cadre, la légende dessous — lit la LARGEUR et la
+   HAUTEUR séparément. */
+const VB       = 287;                // largeur du dessin
+const VB_H     = 294.99;             // hauteur du dessin
+const VB_BOX   = `0 0 ${VB} ${VB_H}`;// le viewBox exact de l'export
+const CADRE    = { x: 1, y: 1, w: 285, h: 292.99, rx: 8.61, ry: 8.85 }; // tel qu'exporté
 
 /* Le point du DESSIN qui vient se poser sur le centre de la boussole : le coin
-   libre, en haut à gauche, avant la vitrine. C'est lui qui accroche la carte à
-   la boussole (voir _buildPanel) — la seule coordonnée du fichier qui ne vienne
-   pas de l'export. */
-const ANCRE = { x: 48, y: 45 };
+   libre, en haut à gauche, à hauteur de la vitrine. C'est lui qui accroche la
+   carte à la boussole (voir _buildPanel) — la seule coordonnée du fichier qui
+   ne vienne pas de l'export. */
+const ANCRE = { x: 51, y: 44.46 };
 
 const NODES = [
-  { id: 'vitrine',       x:  99.34, y:  45,     r: 13,   to: 'vitrine'       },
-  { id: 'phrenologie',   x:  99.34, y: 101,     r: 13,   to: 'phrenologie'   },
-  { id: 'carnet',        x:  47.34, y: 156,     r: 13,   to: null            },
-  { id: 'collaboration', x: 150.34, y: 156,     r: 13,   to: 'collaboration' },
-  { id: 'chapitre1',     x: 201.36, y:  61.46,  r: 10.98, to: 'chapitre1'    },
-  { id: 'chapitre2',     x: 201.38, y: 107.44,  r: 10.98, to: 'chapitre2'    },
-  { id: 'chapitre3',     x: 201.38, y: 156.44,  r: 10.98, to: 'chapitre3'    },
-  { id: 'chapitre4',     x: 201.38, y: 205.44,  r: 10.98, to: 'chapitre4'    },
-  { id: 'cercle5',       x: 201.38, y: 251.44,  r: 10.98, to: null           },
-  { id: 'chp2-136',      x: 239.29, y:  80.13,  r:  9.13, to: 'chapitre2', part: 'invisibilisation' },
-  { id: 'chp2-137',      x: 239.14, y: 107.28,  r:  9.13, to: 'chapitre2', part: 'peine-demesuree'  },
-  { id: 'chp2-138',      x: 239.14, y: 134.28,  r:  9.13, to: 'chapitre2', part: 'cartel'           },
+  { id: 'vitrine',       x: 102.34, y:  44.46,  r: 13,    to: 'vitrine'       },
+  { id: 'phrenologie',   x: 102.34, y: 139,     r: 15.66, to: 'phrenologie'   },
+  { id: 'carnet',        x:  50.34, y: 139,     r: 13,    to: 'carnet'        },
+  { id: 'collaboration', x: 153.34, y: 139,     r: 13,    to: 'collaboration' },
+  { id: 'chapitre1',     x: 204.36, y:  44.46,  r: 10.98, to: 'chapitre1'    },
+  { id: 'chapitre2',     x: 204.38, y:  90.44,  r: 10.98, to: 'chapitre2'    },
+  { id: 'chapitre3',     x: 204.38, y: 139.44,  r: 10.98, to: 'chapitre3'    },
+  { id: 'chapitre4',     x: 204.38, y: 188.44,  r: 10.98, to: 'chapitre4'    },
+  { id: 'chapitre5',     x: 204.38, y: 234.44,  r: 10.98, to: 'chapitre5'    },
+  { id: 'chp2-136',      x: 242.29, y:  63.13,  r:  9.13, to: 'chapitre2', part: 'invisibilisation' },
+  { id: 'chp2-137',      x: 242.14, y:  90.28,  r:  9.13, to: 'chapitre2', part: 'peine-demesuree'  },
+  { id: 'chp2-138',      x: 242.14, y: 117.28,  r:  9.13, to: 'chapitre2', part: 'cartel'           },
+  { id: 'chp5-porte',      x: 242.33, y: 206.51, r: 9.13, to: 'chapitre5', part: 'porte'      },
+  { id: 'chp5-vitrine',    x: 242.18, y: 233.66, r: 9.13, to: 'chapitre5', part: 'vitrine'    },
+  { id: 'chp5-inhumation', x: 242.18, y: 260.66, r: 9.13, to: 'chapitre5', part: 'inhumation' },
 ];
 
 /* Une route se trace quand son point d'ARRIVÉE (`node`) est visité.
    ─────────────────────────────────────────────────────────────────────────────
    ⚠️ TOUTES SONT ÉCRITES DU TRONC VERS LE POINT, et c'est ce qui compte : le
    trait se dessine dans le sens de son `d`. L'export les donne dans les deux
-   sens et applique un translate(-28,-17.02) sur les courbes ; celles-là ont été
-   retournées et le décalage résorbé dans les coordonnées, pour que le tracé
-   parte toujours de là d'où l'on vient.
+   sens et applique un translate (aujourd'hui -153.92,-277.21) sur les courbes ;
+   celles-là ont été retournées et le décalage résorbé dans les coordonnées,
+   pour que le tracé parte toujours de là d'où l'on vient.
 
-   ⚠️ Le tronc vertical qui descend de la phrénologie appartient à la route de
-   l'espace collaboratif : c'est la seule des deux branches du T qui soit
-   atteignable (le Carnet de recherche n'existe pas encore). */
+   La phrénologie est un carrefour : le carnet (à gauche) et l'espace
+   collaboratif (à droite) partent chacun de SON bord, par un trait à eux —
+   aucun tronçon n'est partagé entre deux routes. */
 const ROUTES = [
-  { node: 'phrenologie',   d: 'M99.34,58 V88'                                                       },
-  { node: 'collaboration', d: 'M99.34,114 V156 H137.34'                                             },
-  { node: 'carnet',        d: 'M99.34,156 H60.34'                                                   },
-  { node: 'chapitre1',     d: 'M150.34,143.39 V69.6 A8.62,8.62 0 0 1 158.96,60.98 H190.4'           },
-  { node: 'chapitre2',     d: 'M150.34,142.98 V118.8 A11.82,11.82 0 0 1 162.16,106.98 H190.4'       },
-  { node: 'chapitre3',     d: 'M163.34,156 H190.34'                                                 },
-  { node: 'chapitre4',     d: 'M150.34,168.98 V193.18 A11.82,11.82 0 0 0 162.16,204.98 H190.4'      },
-  { node: 'cercle5',       d: 'M150.34,168.98 V242.38 A8.62,8.62 0 0 0 158.96,250.98 H190.34'       },
-  { node: 'chp2-136',      d: 'M201.34,96.44 V88.28 A8.31,8.31 0 0 1 209.64,79.98 H230.16'          },
-  { node: 'chp2-137',      d: 'M212.34,107 H230.34'                                                 },
-  { node: 'chp2-138',      d: 'M201.34,118.42 V126.7 A8.31,8.31 0 0 0 209.64,135 H230'              },
+  { node: 'phrenologie',   d: 'M102.34,57.46 V122.98'                                                },
+  { node: 'carnet',        d: 'M86.68,139 H63.34'                                                    },
+  { node: 'collaboration', d: 'M118,139 H140.34'                                                     },
+  { node: 'chapitre1',     d: 'M153.38,126.39 V52.6 A8.62,8.62 0 0 1 162,43.98 H193.4'               },
+  { node: 'chapitre2',     d: 'M153.34,125.97 V101.79 A11.82,11.82 0 0 1 165.16,89.98 H193.4'        },
+  { node: 'chapitre3',     d: 'M166.34,139 H193.34'                                                  },
+  { node: 'chapitre4',     d: 'M153.34,151.98 V176.18 A11.82,11.82 0 0 0 165.16,187.98 H193.4'       },
+  { node: 'chapitre5',     d: 'M153.34,151.98 V225.38 A8.61,8.61 0 0 0 161.98,233.98 H193.38'        },
+  { node: 'chp2-136',      d: 'M204.34,79.44 V71.28 A8.31,8.31 0 0 1 212.64,62.98 H233.16'           },
+  { node: 'chp2-137',      d: 'M215.34,90 H233.34'                                                   },
+  { node: 'chp2-138',      d: 'M204.34,101.42 V109.7 A8.3,8.3 0 0 0 212.64,118 H233'                 },
+  { node: 'chp5-porte',      d: 'M204.38,222.79 V214.67 A8.32,8.32 0 0 1 212.68,206.36 H233.2'       },
+  { node: 'chp5-vitrine',    d: 'M215.38,233.38 H233.38'                                             },
+  { node: 'chp5-inhumation', d: 'M204.38,244.79 V253.06 A8.32,8.32 0 0 0 212.68,261.37 H233.08'      },
 ];
 
 /* Ordre de dessin : on suit le parcours, du premier écran vers les feuilles. */
@@ -687,7 +703,8 @@ export class CompassMap {
   /* ── La carte ─────────────────────────────────────────────────────────── */
 
   _buildPanel(k, S, instantane) {
-    const cote = Math.round(this.C.panel_scale * S);
+    const cote    = Math.round(this.C.panel_scale * S);
+    const hauteur = Math.round(cote * VB_H / VB);
 
     const panel = document.createElement('div');
     panel.className = 'cm-panel';
@@ -697,14 +714,17 @@ export class CompassMap {
     panel.style.left  = Math.round(S / 2 - ANCRE.x * k) + 'px';
     panel.style.top   = Math.round(S / 2 - ANCRE.y * k) + 'px';
     panel.style.width  = cote + 'px';
-    panel.style.height = cote + 'px';
+    panel.style.height = hauteur + 'px';
 
     const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('viewBox', VB_BOX);
     svg.setAttribute('width', cote);
-    svg.setAttribute('height', cote);
+    svg.setAttribute('height', hauteur);
     svg.setAttribute('overflow', 'visible');
-    markDecorative(svg);
+    // Le panneau contient des destinations interactives : aria-hidden sur le
+    // SVG masquerait aussi tous leurs libellés aux technologies d'assistance.
+    svg.setAttribute('role', 'group');
+    svg.setAttribute('aria-label', 'Lieux du parcours');
 
     /* Cadre. Son fond se règle dans config.js (MAP.fond_opacite) : à 5 % la
        scène reste pleinement visible sous la carte, qui n'est plus un panneau
@@ -714,7 +734,7 @@ export class CompassMap {
     if (opacite == null) console.warn('[CompassMap] MAP.fond_opacite absent : fond transparent.');
     const cadre = document.createElementNS(NS, 'rect');
     Object.entries({
-      x: 1, y: 1, width: VB - 2, height: VB - 2.02, rx: CADRE_RX,
+      x: CADRE.x, y: CADRE.y, width: CADRE.w, height: CADRE.h, rx: CADRE.rx, ry: CADRE.ry,
       fill: `rgba(8,7,6,${opacite ?? 0})`, stroke: TRAIT_MAT, 'stroke-width': 1.6,
       pathLength: 1, 'stroke-dasharray': 1, 'stroke-dashoffset': instantane ? 0 : 1,
     }).forEach(([k2, v]) => cadre.setAttribute(k2, v));
@@ -839,8 +859,14 @@ export class CompassMap {
       e.stopPropagation();                 // ne pas replier la carte
       if (ici()) { this._fold(); return; } // on y est déjà : la carte se referme
       if (!n.to) return;                   // destination pas encore ouverte
-      this._fold();
+      /* LE SAUT D'ABORD, LE REPLI ENSUITE. Le saut fait partir la flèche (et la
+         boussole, qui se replie alors d'elle-même) ; il dit aussi aux titres ce
+         que la destination garde (Title.partir). Replier d'abord, c'était
+         programmer le retour des titres avant que personne ait pu dire qu'on
+         s'en allait. Le _fold() qui suit n'a plus rien à faire s'il a déjà eu
+         lieu — il est idempotent. */
       this._onJump?.(n.to, n.part ?? null);
+      this._fold();
     });
 
     makeActivatable(g, { label: libelle ? `Aller à : ${libelle}` : 'Point du parcours' });
@@ -876,11 +902,12 @@ export class CompassMap {
          survol. Sous le cadre, l'œil revient toujours au même endroit.
        (Le point survolé ne sert donc plus au placement : la légende est fixe.
         C'est ce qui a permis de retirer `n` et `k` de la signature.) */
-    const cote = parseFloat(panel.style.width);
+    const cote    = parseFloat(panel.style.width);
+    const hauteur = parseFloat(panel.style.height);
 
     tip.style.right = 'auto';
     tip.style.left  = Math.round(parseFloat(panel.style.left)) + 'px';
-    tip.style.top   = Math.round(parseFloat(panel.style.top) + cote + 14) + 'px';
+    tip.style.top   = Math.round(parseFloat(panel.style.top) + hauteur + 14) + 'px';
     tip.style.width = Math.round(cote) + 'px';
 
     tip.style.transition = `opacity ${this.C.tooltip_fade}ms ease, transform ${this.C.tooltip_fade}ms cubic-bezier(0.25,0.46,0.45,0.94)`;

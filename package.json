@@ -15,6 +15,7 @@
     "serve": "node tools/bench/serve.mjs",
     "bench": "node tools/bench/regression.mjs",
     "bench:self-test": "node tools/bench/regression.mjs --self-test",
+    "bench:chapter5": "node tools/bench/chapter5.mjs",
     "audit:config": "node audit-config.js",
     "videos:dry": "node tools/compress-videos.mjs --dry",
     "videos": "node tools/compress-videos.mjs"

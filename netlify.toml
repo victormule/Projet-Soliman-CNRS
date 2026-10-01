@@ -153,6 +153,14 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
 
+# ⚠ Le .jpg n'était pas déclaré — il n'y en avait qu'un, celui du chapitre 4,
+# et il partait donc sans cache. Le chapitre 5 en apporte un second (sa
+# photographie d'ouverture, 305 Ko, rechargée à chaque visite du chapitre).
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
 [[headers]]
   for = "/*.mp4"
   [headers.values]

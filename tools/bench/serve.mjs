@@ -24,6 +24,10 @@ const MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4',
   '.ttf': 'font/ttf', '.otf': 'font/otf', '.vtt': 'text/vtt', '.srt': 'text/plain',
+  // Les deux documents du chapitre 5 (loi de 2023, recommandation UNESCO) : sans
+  // ce type, le navigateur TÉLÉCHARGE le fichier au lieu de l'afficher dans le
+  // cadre — et la fenêtre de la vitrine reste vide, sans une erreur nulle part.
+  '.pdf': 'application/pdf',
 };
 
 http.createServer((req, res) => {

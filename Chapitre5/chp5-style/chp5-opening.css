@@ -1,0 +1,1551 @@
+
+#chapitre5-root {
+  font-family: Arial, Helvetica, sans-serif;
+  --gold: #d8b75d;
+  --gold-soft: rgba(216,183,93,.76);
+  --white: rgba(255,255,255,.94);
+  --white-soft: rgba(255,255,255,.62);
+  --line: rgba(255,255,255,.58);
+  /* La teinte d'une pièce déjà consultée (cf. `.boite--vue`). */
+  --bronze: #a8814c;
+}
+#chapitre5-root .stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+  cursor: default;
+}
+
+/* -----------------------------------------------------------
+   IMAGE
+   -----------------------------------------------------------
+   object-fit: cover = aucune bordure noire, jamais déformée.
+   L'image peut être légèrement tronquée selon le ratio écran.
+*/
+#chapitre5-root .camera {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+#chapitre5-root .background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: 50% 50%;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  will-change: filter;
+  filter: blur(.9px);
+}
+
+/* -----------------------------------------------------------
+   LIGNES ANATOMIQUES
+*/
+#chapitre5-root .leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: visible;
+  /* Le fondu de l'entrée dans un sous-chapitre (cf. .hors-salle) ; au repos
+     rien n'écrit cette opacité, la transition ne joue donc jamais seule. */
+  transition: opacity .55s ease;
+}
+#chapitre5-root .leader {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 2.4 7;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  animation: chp5-dashIdle 11s linear infinite;
+  transition: stroke .32s ease, opacity .32s ease;
+}
+#chapitre5-root .leader-start {
+  fill: rgba(255,255,255,.84);
+  transition: fill .3s ease, transform .3s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+#chapitre5-root .leader.hover,
+#chapitre5-root .leader.playing {
+  stroke: var(--gold);
+  animation-duration: 1.6s;
+}
+#chapitre5-root .leader-start.hover,
+#chapitre5-root .leader-start.playing {
+  fill: var(--gold);
+  transform: scale(1.35);
+}
+
+@keyframes chp5-dashIdle {
+  to { stroke-dashoffset: -56; }
+}
+
+/* Masque de révélation : il permet aux pointillés de jaillir depuis
+   leur point d'ancrage au lieu d'apparaître d'un seul coup. */
+#chapitre5-root .leader-reveal {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 8;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Écran noir d'entrée. */
+#chapitre5-root .intro-black {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: #000;
+  opacity: 1;
+  pointer-events: none;
+  will-change: opacity;
+}
+#chapitre5-root .stage.intro-fade .intro-black {
+  opacity: 0;
+  transition: opacity var(--chp5-intro-fade) cubic-bezier(.22,.61,.36,1);
+}
+
+/* -----------------------------------------------------------
+   LA PORTE — sous-chapitre 1
+   -----------------------------------------------------------
+   Deux battants superposés dans une même boîte (`.porte-cadre`), dont le
+   moteur écrit la taille et la place : le canevas des deux PNG est le même,
+   leurs transparences sont complémentaires, ils refont donc l'image entière
+   sans qu'aucun cadrage ait à être accordé ici.
+
+   ⚠️ AUCUNE GÉOMÉTRIE EN CSS, ET C'EST LA MÊME RAISON QUE POUR LE MUR : la
+   place du panneau « Anthropologie biologique » dans la fenêtre dépend du
+   RAPPORT de l'écran, pas de sa largeur. Tout est calculé une fois par
+   redimensionnement (renderPorte) et posé en `transform` — ce que le
+   compositeur joue sans repeindre.
+
+   ⚠️ `visibility: hidden` plutôt qu'un simple `opacity: 0` : tant que la
+   porte n'est pas appelée, elle ne doit rien coûter, et deux images de cette
+   taille sous une couche transparente se paieraient à chaque image. */
+#chapitre5-root .porte {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  visibility: hidden;
+  pointer-events: none;
+}
+#chapitre5-root .stage.porte-en-jeu .porte { visibility: visible; }
+/* ⚠️ PAS DE COULEUR ICI : elle vient de `porte.fond` (chp5-config), posée par
+   le moteur. C'est un choix d'auteur — la salle disparaît dans cette
+   couleur-là et c'est elle qu'on voit de part et d'autre de la porte. */
+#chapitre5-root .porte-voile {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  will-change: opacity;
+}
+#chapitre5-root .porte-cadre {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+#chapitre5-root .porte-battant {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+}
+
+/* Un sous-chapitre en jeu, les cartels et leurs traits s'effacent : on quitte
+   la salle, la carte des repères n'a plus lieu d'être. Le moteur les rend
+   `inert` dans le même geste — l'opacité seule laisserait le clavier y
+   entrer.
+   ⚠️ TROIS CLASSES, TROIS CHOSES DIFFÉRENTES, et c'est voulu :
+   `hors-salle` est posée DÈS LE CLIC (les cartels s'effacent tout de suite),
+   `porte-en-jeu`, `vitrine-en-jeu` et `inhumation-en-jeu` ne le sont qu'au
+   moment où leur décor doit paraître — pour la vitrine et l'inhumation,
+   seulement une fois le noir complet. */
+#chapitre5-root .stage.hors-salle .callout,
+#chapitre5-root .stage.hors-salle .leaders {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------
+   LA VITRINE — sous-chapitre 2
+   -----------------------------------------------------------
+   Deux prises de la même photographie, superposées et cadrées à l'identique.
+   Seule l'opacité de la seconde bouge, et c'est le compositeur qui la joue.
+
+   ⚠️ `contain` ET NON `cover` : la photographie est en 1,42 et la fenêtre
+   presque toujours plus large — la rogner verticalement mangeait le haut de
+   la boîte et le sol. On la montre donc ENTIÈRE, et le noir tombe à gauche et
+   à droite (à l'écran plus étroit qu'elle, il tomberait en haut et en bas).
+   C'est aussi ce qui garde le crâne au centre de la fenêtre, là où la torche
+   est fixée.
+
+   ⚠️ LE CANEVAS DE LA TORCHE EST ICI, PAS DANS LE TRONC COMMUN. Celui du site
+   (#overlay-canvas) vit dans #app à z 1, et #chapitre5-root est un contexte
+   d'empilement à z 500 : vu d'ici, il est enterré. Même raison, même remède
+   qu'à « Une peine démesurée » (chapitre 2) — un canevas à nous, et le MÊME
+   système de torche, pas un second. */
+#chapitre5-root .vitrine {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  visibility: hidden;
+  pointer-events: none;
+  background: #000;
+}
+#chapitre5-root .stage.vitrine-en-jeu .vitrine { visibility: visible; }
+#chapitre5-root .vitrine-vue {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* La prise PLEINE est au-dessus, la vide dessous : c'est la pleine qui
+   s'efface, d'un pas à chaque pièce consultée (le moteur pose son opacité et
+   la durée du fondu, `restitution.effacementMs`). */
+#chapitre5-root .vitrine-plein {
+  will-change: opacity;
+}
+#chapitre5-root .vitrine-torche {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------
+   L'INHUMATION — sous-chapitre 3
+   -----------------------------------------------------------
+   Le même décor que la vitrine — photographie entière (`contain`), torche
+   fixe sur son propre canevas — mais DEUX photographies qui se succèdent :
+   la vitrine des crânes pendant la voix, la vitrine au buste ensuite.
+
+   LA BASCULE est celle de l'entrée du chapitre 1 : la seconde monte en
+   DÉZOOMANT (1,12 → 1) pendant que la première s'éloigne en s'effaçant
+   (1 → 1,10). Le moteur ne pose qu'une classe et la durée
+   (`--inhumation-bascule`, `inhumation.basculeMs`) ; le compositeur joue
+   le reste. */
+#chapitre5-root .inhumation {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  visibility: hidden;
+  pointer-events: none;
+  background: #000;
+  overflow: hidden;
+}
+#chapitre5-root .stage.inhumation-en-jeu .inhumation { visibility: visible; }
+#chapitre5-root .inhumation-vue {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* LE PANORAMA — la vitrine au buste et la planche DÉBORDENT l'écran : pas de
+   bande noire. Chacune vit dans un cadre à SES proportions, plus grand que la
+   fenêtre, que le moteur pose (taille, place) et fait glisser sous la main
+   (`transform`, joué par le compositeur). L'image remplit son cadre sans
+   rien rogner : tout ce qui dépasse de l'écran reste atteignable à la main —
+   le texte du bas de la planche y compris. */
+#chapitre5-root .inhumation-cadre {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+#chapitre5-root .inhumation-cadre .inhumation-vue { object-fit: cover; }
+/* ⚠️ LES PROMESSES AU COMPOSITEUR SEULEMENT QUAND LE LIEU EST EN JEU. Posées
+   en permanence, elles réservent des couches pour une scène cachée pendant
+   tout le reste du chapitre — l'ouverture de la photographie comprise. */
+#chapitre5-root .stage.inhumation-en-jeu .inhumation-cadre { will-change: transform; }
+#chapitre5-root .stage.inhumation-en-jeu .inhumation-vue { will-change: opacity, transform; }
+
+#chapitre5-root .inhumation-apres {
+  opacity: 0;
+  transform: scale(1.12);
+}
+#chapitre5-root .stage.inhumation-bascule .inhumation-apres {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--inhumation-bascule) cubic-bezier(.25,.46,.45,.94) 80ms,
+    transform var(--inhumation-bascule) cubic-bezier(.25,.46,.45,.94);
+}
+#chapitre5-root .stage.inhumation-bascule .inhumation-avant {
+  opacity: 0;
+  transform: scale(1.10);
+  transition:
+    opacity calc(var(--inhumation-bascule) * .85) cubic-bezier(.42,0,.78,1),
+    transform var(--inhumation-bascule) cubic-bezier(.25,.46,.45,.94);
+}
+/* LA PLANCHE DU DRAPEAU — « L'inhumation symbolique ». Elle monte PAR-DESSUS
+   la vitrine au buste (plus large qu'elle, elle la couvre entière), avec le
+   même léger dézoom que la bascule. Durée : `inhumation.fondMs`.
+   ⚠️ LA TRANSITION EST SUR LA RÈGLE DE BASE, pas sur l'état : la tombe
+   rouverte fait REDESCENDRE la planche, et une transition posée sur
+   `.inhumation-inhume` seule disparaîtrait avec la classe — la planche
+   s'éteindrait d'un coup. */
+#chapitre5-root .inhumation-fond {
+  opacity: 0;
+  transform: scale(1.06);
+  transition:
+    opacity var(--inhumation-fond) cubic-bezier(.25,.46,.45,.94),
+    transform var(--inhumation-fond) cubic-bezier(.25,.46,.45,.94);
+}
+#chapitre5-root .stage.inhumation-inhume .inhumation-fond {
+  opacity: 1;
+  transform: scale(1);
+}
+/* L'OBSCURITÉ — un voile noir sur les photographies, SOUS la torche : il
+   tombe avec la bascule (`inhumation.obscurite`), et c'est lui qui détache
+   la tombe et le drapeau, blancs, des bords de l'image. */
+#chapitre5-root .inhumation-ombre {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+#chapitre5-root .stage.inhumation-bascule .inhumation-ombre {
+  opacity: var(--inhumation-obscurite);
+  transition: opacity var(--inhumation-bascule) ease;
+}
+#chapitre5-root .inhumation-torche {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transition: opacity var(--inhumation-fond) ease;
+}
+
+/* LA PLANCHE, PLEIN ÉCRAN — ni obscurité ni torche : on la LIT. L'une et
+   l'autre se retirent à la vitesse où elle monte, et reviennent avec la
+   vitrine au buste quand elle redescend. */
+#chapitre5-root .stage.inhumation-inhume .inhumation-torche { opacity: 0; }
+#chapitre5-root .stage.inhumation-bascule.inhumation-inhume .inhumation-ombre {
+  opacity: 0;
+  transition: opacity var(--inhumation-fond) ease;
+}
+
+/* SA CROIX — le dessin de celle des pièces (.doc-croix), à la même place. */
+#chapitre5-root .planche-croix {
+  position: absolute;
+  top: max(2.4vh, 16px);
+  right: max(2.4vw, 18px);
+  z-index: 33;
+  width: clamp(38px, 3.1vw, 46px);
+  height: clamp(38px, 3.1vw, 46px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 50%;
+  background: rgba(10,11,14,.42);
+  color: var(--white);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(.85);
+  transition: opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1), border-color .3s ease, color .3s ease;
+}
+#chapitre5-root .planche-croix[hidden] { display: none; }
+#chapitre5-root .planche-croix.planche-croix--visible { opacity: 1; transform: scale(1); }
+#chapitre5-root .planche-croix:hover,
+#chapitre5-root .planche-croix:focus-visible { color: var(--gold); border-color: var(--gold); }
+#chapitre5-root .planche-croix svg { width: 44%; height: 44%; display: block; }
+#chapitre5-root .planche-croix line { stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+
+/* SON CRÉDIT — la typographie du titre de survol (.legende), à sa place, sur
+   une étiquette SOMBRE : il tombe sur une page claire couverte de texte, où
+   le blanc à halo noir se mêlerait aux lignes (même remède, et même raison,
+   que la légende du chapitre 4). */
+#chapitre5-root .planche-credit {
+  position: absolute;
+  right: 0;
+  bottom: 3.5%;
+  left: 0;
+  z-index: 33;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .5s cubic-bezier(.25,.46,.45,.94), transform .5s cubic-bezier(.25,.46,.45,.94);
+}
+#chapitre5-root .planche-credit.planche-credit--visible { opacity: 1; transform: translateY(0); }
+#chapitre5-root .planche-credit span {
+  display: inline-block;
+  padding: .3em .9em;
+  border-radius: 2px;
+  background: rgba(8, 8, 8, .78);
+  font-family: Baskerville, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-style: italic;
+  font-size: clamp(13px, 1.35vw, 20px);
+  letter-spacing: .015em;
+  color: rgba(255,255,255,.88);
+}
+
+/* « PASSER » — le bouton de l'entrée du chapitre 1 (#skip-btn, style.css),
+   au même dessin : un cadre qui se trace, le mot qui paraît ensuite, l'or et
+   un léger grossissement au survol. Sa taille est celle des flèches du site ;
+   le moteur la pose en ligne, avec le périmètre du cadre.
+   z 33 : au-dessus du canevas de la torche (30), SOUS le voile d'extinction
+   (35) qui doit le couvrir si l'on s'en va. */
+#chapitre5-root .passer {
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  z-index: 33;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity .6s ease;
+}
+#chapitre5-root .passer[hidden] { display: none; }
+#chapitre5-root .passer.passer--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#chapitre5-root .passer-cadre {
+  display: block;
+  transform-origin: center;
+  transition: transform .55s cubic-bezier(.25,.46,.45,.94);
+}
+#chapitre5-root .passer:hover .passer-cadre,
+#chapitre5-root .passer:focus-visible .passer-cadre {
+  transform: scaleX(1.08) scaleY(1.12);
+}
+#chapitre5-root .passer svg {
+  display: block;
+  overflow: visible;
+}
+#chapitre5-root .passer rect {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 0.8;
+  transition:
+    stroke-dashoffset .9s cubic-bezier(.4,0,.2,1),
+    stroke .3s ease,
+    filter .3s ease;
+}
+#chapitre5-root .passer text {
+  fill: currentColor;
+  opacity: 0;
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  transition: opacity .4s ease .85s, fill .3s ease;
+}
+#chapitre5-root .passer.passer--trace rect { stroke-dashoffset: 0; }
+#chapitre5-root .passer.passer--trace text { opacity: 1; }
+#chapitre5-root .passer:hover,
+#chapitre5-root .passer:focus-visible { color: rgba(255, 220, 120, 1); }
+#chapitre5-root .passer:hover rect,
+#chapitre5-root .passer:focus-visible rect {
+  stroke: rgba(255, 230, 130, .95);
+  filter: drop-shadow(0 0 7px rgba(255,210,80,.80)) drop-shadow(0 0 20px rgba(255,170,30,.50));
+}
+
+/* -----------------------------------------------------------
+   LES BOÎTES — l'inventaire de la vitrine
+   -----------------------------------------------------------
+   Deux grandes boîtes d'archive de part et d'autre du crâne, chacune ouvrant
+   sur les petites qu'elle contient. Les dessins sont des SVG inlinés par le
+   module (chp5-boites.js) : c'est la seule façon d'écrire leurs tracés l'un
+   après l'autre et de changer leur couleur au survol.
+
+   ⚠️ z 32 : AU-DESSUS DU CANEVAS DE LA TORCHE (dans `.vitrine`, à 30), qui
+   les noierait — elles sont à la périphérie, là où il fait nuit — et SOUS le
+   voile d'extinction (`.nuit`, à 35), qui doit les couvrir quand on s'en va.
+
+   ⚠️ `visibility` ET NON `display` : le module mesure les boîtes englobantes
+   de 469 tracés pour savoir dans quel ordre les écrire (du bas vers le haut),
+   et `display: none` rendrait ces mesures nulles — les dessins s'écriraient
+   dans l'ordre arbitraire de l'export Illustrator. */
+#chapitre5-root .boites {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  visibility: hidden;
+  pointer-events: none;
+}
+#chapitre5-root .boites.boites--en-jeu { visibility: visible; }
+
+#chapitre5-root .boite {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--white);
+}
+#chapitre5-root .boite--absente { visibility: hidden; }
+
+/* TOUTES LES BOÎTES SE TOUCHENT — la grande ouvre son inventaire, chaque
+   petite ouvre SA pièce. Aucune ne devient cliquable avant d'être écrite
+   (`boite--prete`) : ouvrir une boîte encore en vol n'aurait pas de sens, et
+   son nom n'aurait eu le temps de paraître pour personne. */
+#chapitre5-root .boite {
+  pointer-events: none;
+  cursor: pointer;
+}
+#chapitre5-root .boite.boite--prete { pointer-events: auto; }
+#chapitre5-root .boite--grande[disabled] { pointer-events: none; }
+
+#chapitre5-root .boite-vol {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  transition: transform .42s cubic-bezier(.16,.84,.26,1);
+}
+/* ⚠️ PAS D'OMBRE PORTÉE ICI, ET C'EST UNE PRÉCAUTION. Un `drop-shadow` se
+   recalcule à chaque repeint — or ces dessins se repeignent soixante fois par
+   seconde pendant qu'ils s'écrivent, l'un d'eux comptant 172 tracés. Le fond
+   est de toute façon la nuit de la vitrine : l'ombre n'y détacherait rien.
+   (C'est la leçon du chapitre 4 : rien d'animé ne doit toucher un tracé
+   complexe à travers un filtre.) */
+#chapitre5-root .boite-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  color: inherit;
+  /* LE SÉCHAGE — la plume écrit en or, l'encre devient blanche une fois posée.
+     Le survol, lui, reprend l'or TOUT DE SUITE : c'est la même couleur, mais
+     pas le même geste, d'où deux durées pour une seule propriété. */
+  transition: color var(--boite-sechage) ease;
+}
+#chapitre5-root .boite-art.plume { color: var(--gold); }
+/* UNE PIÈCE DÉJÀ CONSULTÉE GARDE UNE TEINTE — un bronze, l'encre qui a
+   servi. ⚠️ Plus sombre et plus terne que l'or du survol, À DESSEIN : une
+   boîte lue qu'on survole doit encore changer de couleur, sinon on ne sait
+   plus si l'on touche une boîte ou si on l'a déjà ouverte. */
+#chapitre5-root .boite--vue { color: var(--bronze); }
+/* ⚠️ PAS D'`outline: none` ICI. Les cartels du chapitre remplacent le halo du
+   site par leur propre cercle doré ; une boîte, elle, n'a rien de tel — lui
+   retirer la bague, c'était laisser un bouton focusable sans aucune marque au
+   clavier (l'or et le grossissement sont la marque du SURVOL, et la souris
+   n'apprend rien à qui tabule). Le halo commun de style.css reste donc. */
+#chapitre5-root .boite.boite--prete:hover .boite-art,
+#chapitre5-root .boite.boite--prete:focus-visible .boite-art {
+  color: var(--gold);
+  transition-duration: .3s;
+}
+#chapitre5-root .boite--grande.boite--prete:hover .boite-vol,
+#chapitre5-root .boite--grande.boite--prete:focus-visible .boite-vol {
+  transform: scale(1.08);
+}
+/* Une petite boîte se soulève un peu plus : le même huitième de sa taille se
+   voit moins, et c'est elle qui porte une pièce à ouvrir. */
+#chapitre5-root .boite--petite.boite--prete:hover .boite-vol,
+#chapitre5-root .boite--petite.boite--prete:focus-visible .boite-vol {
+  transform: scale(1.13);
+}
+
+/* ⚠️ L'ÉPAISSEUR DU TRAIT NE SUIT PAS L'ÉCHELLE DU DESSIN
+   (`vector-effect: non-scaling-stroke`, `--boite-trait` en pixels d'écran,
+   posé par le module). Les tracés font 2 unités dans une vue de ~200 : une
+   petite boîte les rendrait à un demi-pixel, et son dessin s'effacerait.
+   C'est le parti déjà pris par les traits d'appel des cartels. */
+#chapitre5-root .boite-art path {
+  vector-effect: non-scaling-stroke;
+}
+#chapitre5-root .boite-art .bt {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--boite-trait);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#chapitre5-root .boite-art .bf {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* PENDANT L'ÉCRITURE, TOUT EST UN TRAIT — les aplats compris : on suit leur
+   CONTOUR à la plume, et l'encre les remplit derrière (le module anime leur
+   `fill-opacity`, qui part de 0 par le remplissage arrière de l'animation).
+   `stroke-dasharray: 100` répond au `pathLength="100"` posé sur chaque tracé :
+   l'unité de l'écriture est le centième de tracé, quelle que soit sa longueur. */
+#chapitre5-root .boite-art.trace .bf {
+  stroke: currentColor;
+  stroke-width: calc(var(--boite-trait) * .72);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#chapitre5-root .boite-art.trace path {
+  stroke-dasharray: 100;
+}
+
+/* L'ONDE — ce qui part du centre d'une boîte qui s'ouvre et emporte les
+   petites avec elle. UN élément, UNE transformation : le compositeur la joue
+   sans rien repeindre. Sa taille de repos est sa portée (posée par le
+   module), l'échelle n'a donc qu'à monter jusqu'à 1. */
+#chapitre5-root .boite-onde {
+  position: absolute;
+  display: block;
+  visibility: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+  background: radial-gradient(closest-side,
+    rgba(216,183,93,.62) 0%,
+    rgba(216,183,93,.16) 34%,
+    rgba(232,205,135,.46) 60%,
+    rgba(216,183,93,.10) 70%,
+    rgba(216,183,93,0) 78%);
+}
+#chapitre5-root .boite-onde--en-jeu { visibility: visible; }
+
+/* -----------------------------------------------------------
+   LE NOM DE LA PIÈCE — au survol d'une petite boîte
+   -----------------------------------------------------------
+   Le titre de survol du tronc commun (#hover-title), redit ici : celui-là vit
+   dans #app, donc ENTERRÉ sous la scène du chapitre (z 500) — la même raison
+   qui a valu à la torche de la vitrine son propre canevas et à la fenêtre des
+   pièces son propre cadre. Même geste, même place, même filet sous le texte. */
+/* ⚠️ PLUS BAS QUE LE TITRE DE SURVOL DU TRONC COMMUN (3,5 % et non 7 %) : à
+   7 %, le nom tombait en plein sur le cartel blanc « objet à l'étude » posé
+   au pied de la boîte, dans la photographie. La composition suit l'IMAGE,
+   pas la feuille de style qu'on imite. */
+#chapitre5-root .legende {
+  position: absolute;
+  right: 0;
+  bottom: 3.5%;
+  left: 0;
+  z-index: 33;
+  padding: 0 12%;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity .5s cubic-bezier(.25,.46,.45,.94),
+    transform .5s cubic-bezier(.25,.46,.45,.94);
+}
+#chapitre5-root .legende.legende--visible { opacity: 1; transform: translateY(0); }
+#chapitre5-root .legende span {
+  font-family: Baskerville, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-style: italic;
+  font-size: clamp(13px, 1.35vw, 20px);
+  letter-spacing: .015em;
+  color: rgba(255,255,255,.88);
+  text-shadow: 0 0 40px rgba(0,0,0,1), 0 0 18px rgba(0,0,0,.98), 0 3px 8px rgba(0,0,0,.9);
+}
+#chapitre5-root .legende::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: 1px;
+  margin: .55em auto 0;
+  opacity: 0;
+  background: var(--gold-soft);
+  transition: width .8s cubic-bezier(.25,.46,.45,.94) .25s, opacity .3s ease;
+}
+#chapitre5-root .legende.legende--visible::after {
+  width: clamp(70px, 14vw, 220px);
+  opacity: 1;
+}
+
+/* -----------------------------------------------------------
+   LA FENÊTRE DES PIÈCES — ce qu'une petite boîte ouvre
+   -----------------------------------------------------------
+   Le geste des documents de la phrénologie et du lecteur du chapitre 1 : un
+   voile passe sur la vitrine, un RECTANGLE BLANC se trace, et la pièce ne
+   paraît que dedans, une fois le trait presque refermé. Le titre dessous, une
+   croix en haut à droite.
+
+   ⚠️ z 34 : au-DESSUS des boîtes (32) et de leur légende (33), et SOUS le
+   voile d'extinction (35) — quand on s'en va, le noir doit la couvrir comme
+   il couvre tout le reste. La flèche et la boussole, elles, s'effacent d'une
+   autre façon : par `onListen`, puisqu'une pièce ouverte EST un média au
+   premier plan (cf. `occupe` dans chp5-opening.js).
+
+   ⚠️ `visibility` ET NON `display` : le cadre mesure la pièce pour prendre son
+   format, et une boîte à `display: none` n'a pas de dimensions. */
+#chapitre5-root .doc {
+  position: absolute;
+  inset: 0;
+  z-index: 34;
+  visibility: hidden;
+  pointer-events: none;
+}
+#chapitre5-root .doc.doc--en-jeu { visibility: visible; pointer-events: auto; }
+
+#chapitre5-root .doc-voile {
+  position: absolute;
+  inset: 0;
+  background: #05060a;
+  opacity: 0;
+  transition: opacity var(--doc-ferme) ease;
+}
+#chapitre5-root .doc.doc--ouvert .doc-voile {
+  opacity: var(--doc-voile);
+  transition: opacity var(--doc-ouvre) ease;
+}
+
+#chapitre5-root .doc-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 2.2vh, 24px);
+  padding: max(6vh, 64px) 4vw max(5vh, 46px);
+}
+
+#chapitre5-root .doc-cadre {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0;
+  max-width: 100%;
+}
+
+/* D'ABORD LE TRAIT, ENSUITE LA PIÈCE — c'est le geste des documents de la
+   phrénologie et du lecteur du chapitre 1. Le rectangle blanc se trace sur le
+   voile (le moteur pose son viewBox et son périmètre en PIXELS : jamais de
+   `pathLength` avec `non-scaling-stroke`, cf. DocumentOverlay), et la pièce ne
+   paraît qu'aux sept dixièmes de son tour (`--doc-revele`). */
+#chapitre5-root .doc-trait {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+#chapitre5-root .doc-trait rect {
+  fill: none;
+  stroke: var(--doc-trait);
+  stroke-width: 1;
+  opacity: 0;
+  transition: opacity var(--doc-ferme) ease;
+}
+#chapitre5-root .doc.doc--ouvert .doc-trait rect { opacity: 1; transition: none; }
+
+#chapitre5-root .doc-piece {
+  position: absolute;
+  inset: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity var(--doc-ferme) ease;
+}
+#chapitre5-root .doc.doc--ouvert .doc-piece {
+  opacity: 1;
+  transition: opacity var(--doc-ouvre) ease var(--doc-revele);
+}
+
+/* ⚠️ AUCUNE HAUTEUR N'EST ÉCRITE SUR UN `<audio>` — il n'y en a d'ailleurs
+   plus dans le cadre (la prise de son a son lecteur dessiné), mais la règle
+   reste vraie : la hauteur d'un `<audio controls>` vient de la feuille du
+   NAVIGATEUR, et la moindre `height` d'auteur, `auto` comprise, la fait
+   tomber à zéro (mesuré : 0 px contre 54). */
+#chapitre5-root video.doc-media,
+#chapitre5-root iframe.doc-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+  color-scheme: dark;
+}
+/* Un texte se lit sur du papier, pas sur du noir. */
+#chapitre5-root .doc-piece[data-genre="texte"] iframe.doc-media { background: #f4f1ea; }
+
+/* LA PRISE DE SON — le lecteur du chapitre 1, redit ici : un cercle tracé
+   avec son triangle à gauche, la sinusoïde vivante à droite, et (seul ajout)
+   une ligne d'avancement à peine visible qu'on peut cliquer. Les couleurs
+   viennent de CONFIG.PLAYER, comme là-bas. */
+#chapitre5-root .doc-son {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 4%;
+  gap: 4%;
+}
+#chapitre5-root .doc-son-bouton {
+  flex: 0 0 auto;
+  height: 58%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--doc-bouton);
+  cursor: pointer;
+}
+#chapitre5-root .doc-son-bouton svg { display: block; width: 100%; height: 100%; overflow: visible; }
+#chapitre5-root .doc-son-cercle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 290;
+  stroke-dashoffset: 290;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+#chapitre5-root .doc.doc--ouvert .doc-son-cercle {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset .6s cubic-bezier(.4,0,.2,1) var(--doc-revele);
+}
+#chapitre5-root .doc-son-lire,
+#chapitre5-root .doc-son-pause { fill: currentColor; transition: opacity .2s ease; }
+#chapitre5-root .doc-son-pause { opacity: 0; }
+#chapitre5-root .doc-son--joue .doc-son-lire { opacity: 0; }
+#chapitre5-root .doc-son--joue .doc-son-pause { opacity: 1; }
+#chapitre5-root .doc-son-bouton:hover,
+#chapitre5-root .doc-son-bouton:focus-visible {
+  color: var(--doc-bouton-survol);
+  filter: drop-shadow(0 0 6px rgba(255,210,80,.6));
+}
+#chapitre5-root .doc-son-courbe {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 62%;
+}
+#chapitre5-root .doc-son-avance {
+  position: absolute;
+  right: 4%;
+  bottom: 14%;
+  left: 4%;
+  height: 9px;
+  cursor: pointer;
+}
+#chapitre5-root .doc-son-avance::before,
+#chapitre5-root .doc-son-avance span {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 1px;
+}
+#chapitre5-root .doc-son-avance::before { background: rgba(255,255,255,.14); }
+#chapitre5-root .doc-son-avance span {
+  background: rgba(255,255,255,.55);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+/* Le repli d'un texte que le navigateur refuserait d'afficher en ligne : une
+   ligne discrète SOUS le titre, dans le cartel — jamais sur la page. */
+#chapitre5-root .doc-repli {
+  display: inline-block;
+  margin-top: .8em;
+  color: var(--white-soft);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(8px, .66vw, 10px);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255,255,255,.22);
+  padding-bottom: 2px;
+  transition: color .3s ease, border-color .3s ease;
+}
+#chapitre5-root .doc-repli[hidden] { display: none; }
+#chapitre5-root .doc-repli:hover,
+#chapitre5-root .doc-repli:focus-visible { color: var(--gold); border-color: var(--gold); }
+
+/* LE CARTEL : le titre seul. Le code du dossier (D1, C2…) est un repère de
+   rangement, il ne s'affiche pas. */
+#chapitre5-root .doc-cartel {
+  flex: 0 0 auto;
+  max-width: min(92vw, 720px);
+  text-align: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--doc-ferme) ease, transform var(--doc-ferme) ease;
+}
+#chapitre5-root .doc.doc--ouvert .doc-cartel {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--doc-ouvre) ease var(--doc-revele),
+    transform var(--doc-ouvre) cubic-bezier(.16,.84,.26,1) var(--doc-revele);
+}
+#chapitre5-root .doc-titre {
+  display: block;
+  color: var(--white);
+  font-family: Baskerville, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-style: italic;
+  font-size: clamp(13px, 1.3vw, 19px);
+  line-height: 1.24;
+  text-wrap: balance;
+}
+
+/* LA CROIX — en haut à droite, comme au chapitre 3. C'est l'une des TROIS
+   sorties (croix, clic au-dehors, Échap) : on n'enferme personne. */
+#chapitre5-root .doc-croix {
+  position: absolute;
+  top: max(2.4vh, 16px);
+  right: max(2.4vw, 18px);
+  z-index: 3;
+  width: clamp(38px, 3.1vw, 46px);
+  height: clamp(38px, 3.1vw, 46px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 50%;
+  background: rgba(10,11,14,.42);
+  color: var(--white);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(.85);
+  transition:
+    opacity var(--doc-ferme) ease,
+    transform var(--doc-ferme) cubic-bezier(.2,.7,.2,1),
+    border-color .3s ease, color .3s ease;
+}
+#chapitre5-root .doc.doc--ouvert .doc-croix {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--doc-ouvre) ease var(--doc-ouvre),
+    transform var(--doc-ouvre) cubic-bezier(.2,.7,.2,1) var(--doc-ouvre),
+    border-color .3s ease, color .3s ease;
+}
+#chapitre5-root .doc-croix:hover,
+#chapitre5-root .doc-croix:focus-visible { color: var(--gold); border-color: var(--gold); }
+#chapitre5-root .doc-croix svg { width: 44%; height: 44%; display: block; }
+#chapitre5-root .doc-croix line { stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+
+/* L'EXTINCTION — le noir qui couvre tout le temps qu'on change de lieu.
+   Au-dessus des deux décors, sous le rideau d'entrée. */
+#chapitre5-root .nuit {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+/* Tant que l'explosion d'information n'a pas eu lieu, les points
+   d'ancrage et les commandes restent invisibles. */
+#chapitre5-root .stage.intro-running .leader-start {
+  opacity: 0;
+}
+#chapitre5-root .stage.intro-running .target,
+#chapitre5-root .stage.intro-running .nav-link {
+  pointer-events: none;
+}
+
+/* Les bordures CSS sont remplacées visuellement par un cercle SVG,
+   ce qui permet de réellement "dessiner" le cercle. */
+#chapitre5-root .nav-circle,
+#chapitre5-root .circle-button {
+  border-color: transparent !important;
+}
+#chapitre5-root .circle-trace {
+  position: absolute !important;
+  inset: -1px !important;
+  width: calc(100% + 2px) !important;
+  height: calc(100% + 2px) !important;
+  overflow: visible !important;
+  pointer-events: none;
+  z-index: 0;
+}
+#chapitre5-root .circle-trace circle {
+  fill: none;
+  stroke: rgba(255,255,255,.74);
+  stroke-width: 1.65;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke .28s ease;
+}
+#chapitre5-root .circle-button .circle-trace circle {
+  stroke: rgba(255,255,255,.68);
+}
+#chapitre5-root .nav-circle:hover .circle-trace circle,
+#chapitre5-root .nav-link:focus-visible .circle-trace circle,
+#chapitre5-root .circle-button:hover .circle-trace circle,
+#chapitre5-root .circle-button:focus-visible .circle-trace circle,
+#chapitre5-root .audio-callout.playing .circle-trace circle {
+  stroke: var(--gold);
+}
+
+/* Chiffres, flèches et pictogrammes apparaissent juste après
+   le tracé du cercle. */
+#chapitre5-root .stage.intro-running .nav-number,
+#chapitre5-root .stage.intro-running .nav-arrow,
+#chapitre5-root .stage.intro-running .circle-button > svg:not(.circle-trace),
+#chapitre5-root .stage.intro-running .audio-ring {
+  opacity: 0 !important;
+}
+/* ⚠️ `backwards` ET NON `both` : une animation qui remplit vers l'avant garde
+   la main sur `opacity` et `transform` POUR TOUJOURS — elles battent toute
+   déclaration ordinaire. Le chiffre ne pouvait donc plus ni rapetisser ni
+   pivoter en cédant la place à la flèche (seul `visibility`, que les
+   keyframes ne touchent pas, passait encore). En n'habillant que l'AVANT,
+   l'animation rend l'élément à ses règles de base en finissant — lesquelles
+   décrivent exactement son état d'arrivée : rien ne bouge au repos, et le
+   geste de survol se joue en entier. */
+#chapitre5-root .stage.intro-symbols .nav-number,
+#chapitre5-root .stage.intro-symbols .circle-button > svg:not(.circle-trace) {
+  animation: chp5-introSymbol .44s cubic-bezier(.16,.84,.26,1) backwards;
+}
+
+@keyframes chp5-introSymbol {
+  from {
+    opacity: 0;
+    transform: scale(.72);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* -----------------------------------------------------------
+   CALLOUTS
+*/
+#chapitre5-root .callout {
+  --move-x: 0px;
+  --move-y: 0px;
+  --idle-rot: 0deg;
+  position: absolute;
+  z-index: 5;
+  color: var(--white);
+  transform:
+    translate3d(var(--move-x), var(--move-y), 0)
+    rotate(var(--idle-rot));
+  transform-origin: center;
+  will-change: transform;
+  text-shadow: 0 1px 7px rgba(0,0,0,.85);
+  /* Idem : ne sert qu'à l'entrée dans un sous-chapitre (cf. .hors-salle). */
+  transition: opacity .55s ease;
+}
+#chapitre5-root .callout-inner,
+#chapitre5-root .nav-link {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, .85vw, 13px);
+}
+#chapitre5-root .callout.right .callout-inner,
+#chapitre5-root .callout.right .nav-link {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+#chapitre5-root .callout-copy,
+#chapitre5-root .nav-copy {
+  min-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  filter: blur(3px);
+  transform: translate3d(-9px, 0, 0);
+  transition:
+    opacity .38s ease,
+    visibility 0s linear .38s,
+    filter .42s ease,
+    transform .48s cubic-bezier(.16,.84,.26,1);
+  will-change: opacity, transform, filter;
+}
+#chapitre5-root .callout.right .callout-copy,
+#chapitre5-root .callout.right .nav-copy {
+  transform: translate3d(9px, 0, 0);
+}
+
+/*
+  Les informations n'apparaissent que lorsque le cercle lui-même
+  est survolé / focusé. Le reste du cartel ne constitue donc pas
+  une zone de survol invisible.
+*/
+#chapitre5-root .circle-button:hover + .callout-copy,
+#chapitre5-root .circle-button:focus-visible + .callout-copy,
+#chapitre5-root .nav-circle:hover + .nav-copy,
+#chapitre5-root .nav-link:focus-visible .nav-copy,
+#chapitre5-root .audio-callout.revealed .callout-copy,
+#chapitre5-root .nav-callout.revealed .nav-copy {
+  opacity: 1;
+  visibility: visible;
+  filter: blur(0);
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity .28s ease,
+    visibility 0s linear 0s,
+    filter .34s ease,
+    transform .42s cubic-bezier(.16,.84,.26,1);
+}
+#chapitre5-root .eyebrow {
+  display: block;
+  margin-bottom: .36em;
+  color: var(--white-soft);
+  font-size: clamp(6px, .55vw, 8.5px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  transition: color .28s ease, letter-spacing .38s ease;
+}
+#chapitre5-root .title {
+  display: block;
+  max-width: 19em;
+  color: var(--white);
+  font-family: Baskerville, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: clamp(11px, 1.02vw, 16px);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: .012em;
+  transition: color .28s ease, letter-spacing .38s ease, text-shadow .3s ease;
+}
+#chapitre5-root .credit {
+  display: block;
+  margin-top: .32em;
+  color: var(--white-soft);
+  font-family: Baskerville, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: clamp(7px, .62vw, 9.5px);
+  font-style: italic;
+  line-height: 1.2;
+  transition: color .28s ease;
+}
+#chapitre5-root .nav-link {
+  color: inherit;
+  text-decoration: none;
+}
+#chapitre5-root .nav-link:focus-visible,
+#chapitre5-root .circle-button:focus-visible {
+  outline: none;
+}
+
+/* -----------------------------------------------------------
+   CERCLES / FLÈCHES / PLAY
+*/
+#chapitre5-root .circle-button,
+#chapitre5-root .nav-circle {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: rgba(255,255,255,.94);
+  transition:
+    color .3s ease,
+    border-color .3s ease,
+    background .3s ease,
+    box-shadow .35s ease,
+    transform .38s cubic-bezier(.16,.84,.26,1);
+}
+
+/* Navigation : grand cercle fin, volontairement spatial. */
+#chapitre5-root .nav-circle {
+  width: clamp(48px, 4.7vw, 62px);
+  height: clamp(48px, 4.7vw, 62px);
+  border: 1px solid rgba(255,255,255,.72);
+  background: rgba(0,0,0,.035);
+  text-decoration: none;
+}
+#chapitre5-root .nav-circle > svg {
+  width: 57%;
+  height: 57%;
+  overflow: visible;
+}
+#chapitre5-root .nav-number,
+#chapitre5-root .nav-arrow {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  will-change: opacity, transform;
+}
+#chapitre5-root .nav-number {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-family: Baskerville, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: clamp(17px, 1.55vw, 22px);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1;
+  color: currentColor;
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1) rotate(0deg);
+  transition:
+    opacity .12s ease .12s,
+    transform .30s cubic-bezier(.16,.84,.26,1) .12s,
+    visibility 0s linear 0s;
+}
+#chapitre5-root .nav-arrow {
+  width: 57%;
+  height: 57%;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-4px) scale(.82);
+  transition:
+    opacity .12s ease 0s,
+    transform .30s cubic-bezier(.16,.84,.26,1) 0s,
+    visibility 0s linear .12s;
+}
+
+/* Le chiffre et la flèche se remplacent, sans fondu croisé :
+   aucun instant où les deux symboles sont visibles ensemble. */
+#chapitre5-root .nav-circle:hover .nav-number,
+#chapitre5-root .nav-link:focus-visible .nav-number {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(.78) rotate(-8deg);
+  transition:
+    opacity .12s ease 0s,
+    transform .30s cubic-bezier(.16,.84,.26,1) 0s,
+    visibility 0s linear .12s;
+}
+#chapitre5-root .nav-circle:hover .nav-arrow,
+#chapitre5-root .nav-link:focus-visible .nav-arrow {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0) scale(1);
+  transition:
+    opacity .12s ease .12s,
+    transform .30s cubic-bezier(.16,.84,.26,1) .12s,
+    visibility 0s linear 0s;
+}
+
+/* Audio : commande nettement plus petite et plus dense. */
+#chapitre5-root .circle-button {
+  width: clamp(30px, 2.7vw, 37px);
+  height: clamp(30px, 2.7vw, 37px);
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.72);
+  background: rgba(0,0,0,.08);
+  cursor: pointer;
+  backdrop-filter: blur(1px);
+}
+#chapitre5-root .circle-button svg {
+  width: 48%;
+  height: 48%;
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
+#chapitre5-root .arrow {
+  transform-origin: center;
+  transition: transform .4s cubic-bezier(.16,.84,.26,1);
+}
+#chapitre5-root .icon-pause { display: none; }
+#chapitre5-root .circle-button.playing .icon-play { display: none; }
+#chapitre5-root .circle-button.playing .icon-pause { display: block; }
+
+/* Le disque doré autour du bouton audio pulse très légèrement. */
+#chapitre5-root .audio-ring {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+#chapitre5-root .audio-callout.playing .audio-ring {
+  animation: chp5-audioRing 1.9s ease-out infinite;
+}
+
+@keyframes chp5-audioRing {
+  0%   { transform: scale(1); opacity: .5; }
+  72%  { transform: scale(1.46); opacity: 0; }
+  100% { transform: scale(1.46); opacity: 0; }
+}
+
+/* HOVER = doré, conformément à l'UI de référence. */
+#chapitre5-root .circle-button:hover + .callout-copy .eyebrow,
+#chapitre5-root .circle-button:hover + .callout-copy .title,
+#chapitre5-root .circle-button:hover + .callout-copy .credit,
+#chapitre5-root .circle-button:focus-visible + .callout-copy .eyebrow,
+#chapitre5-root .circle-button:focus-visible + .callout-copy .title,
+#chapitre5-root .circle-button:focus-visible + .callout-copy .credit,
+#chapitre5-root .nav-circle:hover + .nav-copy .eyebrow,
+#chapitre5-root .nav-circle:hover + .nav-copy .title,
+#chapitre5-root .nav-link:focus-visible .nav-copy .eyebrow,
+#chapitre5-root .nav-link:focus-visible .nav-copy .title,
+#chapitre5-root .audio-callout.revealed .callout-copy .eyebrow,
+#chapitre5-root .audio-callout.revealed .callout-copy .title,
+#chapitre5-root .audio-callout.revealed .callout-copy .credit,
+#chapitre5-root .nav-callout.revealed .nav-copy .eyebrow,
+#chapitre5-root .nav-callout.revealed .nav-copy .title {
+  color: var(--gold);
+}
+#chapitre5-root .circle-button:hover + .callout-copy .title,
+#chapitre5-root .circle-button:focus-visible + .callout-copy .title,
+#chapitre5-root .nav-circle:hover + .nav-copy .title,
+#chapitre5-root .nav-link:focus-visible .nav-copy .title,
+#chapitre5-root .audio-callout.revealed .callout-copy .title,
+#chapitre5-root .nav-callout.revealed .nav-copy .title {
+  letter-spacing: .022em;
+  text-shadow: 0 0 18px rgba(216,183,93,.13), 0 1px 7px rgba(0,0,0,.9);
+}
+#chapitre5-root .circle-button:hover + .callout-copy .eyebrow,
+#chapitre5-root .circle-button:focus-visible + .callout-copy .eyebrow,
+#chapitre5-root .nav-circle:hover + .nav-copy .eyebrow,
+#chapitre5-root .nav-link:focus-visible .nav-copy .eyebrow,
+#chapitre5-root .audio-callout.revealed .callout-copy .eyebrow,
+#chapitre5-root .nav-callout.revealed .nav-copy .eyebrow {
+  letter-spacing: .34em;
+}
+#chapitre5-root .nav-circle:hover,
+#chapitre5-root .nav-link:focus-visible .nav-circle {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(216,183,93,.025);
+  box-shadow:
+    0 0 0 1px rgba(216,183,93,.07),
+    0 0 28px rgba(216,183,93,.10);
+  transform: scale(1.055);
+}
+#chapitre5-root .circle-button:hover,
+#chapitre5-root .circle-button:focus-visible,
+#chapitre5-root .audio-callout.playing .circle-button {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(0,0,0,.10);
+  box-shadow:
+    0 0 0 1px rgba(216,183,93,.07),
+    0 0 20px rgba(216,183,93,.12);
+  transform: scale(1.07);
+}
+
+/* -----------------------------------------------------------
+   AUDIO
+*/
+#chapitre5-root .audio-meta {
+  display: flex;
+  align-items: center;
+  gap: .48em;
+  margin-top: .38em;
+  color: rgba(255,255,255,.43);
+  font-size: clamp(6px, .54vw, 8px);
+  letter-spacing: .1em;
+  font-variant-numeric: tabular-nums;
+  transition: color .28s ease;
+}
+#chapitre5-root .right .audio-meta {
+  justify-content: flex-end;
+}
+#chapitre5-root .circle-button:hover + .callout-copy .audio-meta,
+#chapitre5-root .circle-button:focus-visible + .callout-copy .audio-meta,
+#chapitre5-root .audio-callout.revealed .callout-copy .audio-meta {
+  color: var(--gold-soft);
+}
+#chapitre5-root .wave {
+  width: 24px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+#chapitre5-root .wave i {
+  width: 1px;
+  height: 28%;
+  display: block;
+  background: currentColor;
+  transform-origin: center;
+  opacity: .65;
+}
+#chapitre5-root .audio-callout.playing .wave i:nth-child(1) { animation: chp5-wave .64s ease-in-out infinite; }
+#chapitre5-root .audio-callout.playing .wave i:nth-child(2) { animation: chp5-wave .79s ease-in-out -.17s infinite; }
+#chapitre5-root .audio-callout.playing .wave i:nth-child(3) { animation: chp5-wave .55s ease-in-out -.05s infinite; }
+#chapitre5-root .audio-callout.playing .wave i:nth-child(4) { animation: chp5-wave .72s ease-in-out -.29s infinite; }
+#chapitre5-root .audio-callout.playing .wave i:nth-child(5) { animation: chp5-wave .59s ease-in-out -.11s infinite; }
+
+@keyframes chp5-wave {
+  0%,100% { transform: scaleY(.5); opacity: .5; }
+  50% { transform: scaleY(2.2); opacity: 1; }
+}
+
+/* -----------------------------------------------------------
+   COMPOSITION
+   Les positions sont dans la fenêtre, mais les lignes restent
+   physiquement attachées au squelette recadré par object-fit:cover.
+*/
+/* LES TROIS CARTELS DE GAUCHE S'ARRÊTENT AU MUR, PAS À UN POURCENTAGE.
+   ──────────────────────────────────────────────────────────────────────────
+   `--chp5-mur` est publié par le moteur (chp5-opening → publishMur) : c'est
+   le bord gauche du dormant, PROJETÉ, donc la lisière du jour. Les trois
+   cartels y posent leur bord droit et poussent leur cercle d'autant plus près
+   du squelette que leur texte tient en peu de place — c'est la LARGEUR, et
+   elle seule, qui décale les trois cercles les uns par rapport aux autres.
+
+   ⚠️ POURQUOI PAS UN `left` EN POURCENTAGE. La place du mur à l'écran ne suit
+   pas la largeur de la fenêtre mais son RAPPORT (48,6 % en 16/9, 43,5 % en
+   3/2, 36,7 % en 4/3). Un pourcentage juste sur un portable 16/9 jetait le
+   libellé en plein jour sur un 4/3 ; calé sur le 4/3, il tenait les cercles
+   très loin du corps partout ailleurs. Le repli 47 % ne sert qu'à l'instant
+   d'avant le premier resize().
+
+   ⚠️ Le retrait laisse passer la DÉRIVE de la caméra (±6 px) : le mur est
+   publié une fois par redimensionnement, avec la caméra de base. */
+#chapitre5-root .nav-callout {
+  left: auto;
+  right: calc(100% - var(--chp5-mur, 47%) + clamp(8px, .9vw, 16px));
+}
+#chapitre5-root #chp5-nav-1 { top: 17.0%; width: 24.5%; }
+#chapitre5-root #chp5-nav-2 { top: 43.0%; width: 27.0%; }
+#chapitre5-root #chp5-nav-3 { top: 70.8%; width: 23.0%; }
+#chapitre5-root #chp5-audio-1 { left: 69.2%; top: 21.0%; width: 21%; }
+#chapitre5-root #chp5-audio-2 { left: 68.4%; top: 55.5%; width: 22%; }
+
+/* Format plus étroit : on resserre sans casser la composition. */
+@media (max-width: 1100px) {
+#chapitre5-root .title {
+    font-size: clamp(10.5px, 1.18vw, 15px);
+    max-width: 18em;
+  }
+#chapitre5-root .eyebrow {
+    font-size: clamp(5.8px, .62vw, 8px);
+  }
+  /* Le mur tient le bord droit ; il ne reste que la largeur à reprendre,
+     le texte étant ici plus gros par rapport à l'écran. */
+#chapitre5-root #chp5-nav-1 { top: 17%; width: 26%; }
+#chapitre5-root #chp5-nav-2 { top: 43%; width: 28%; }
+#chapitre5-root #chp5-nav-3 { top: 70.5%; width: 24.5%; }
+#chapitre5-root #chp5-audio-1 { left: 68.0%; top: 21%; width: 22%; }
+#chapitre5-root #chp5-audio-2 { left: 67.1%; top: 56%; width: 23%; }
+}
+
+/* Portrait / tablette : le squelette est recentré par le JS.
+   Les commandes restent latérales, mais se rapprochent du centre utile. */
+@media (max-aspect-ratio: 1/1) {
+  /* ⚠️ ICI LE MUR NE VEUT PLUS RIEN DIRE : en portrait la fenêtre déborde du
+     cadre (mesuré à 12,5 % de l'écran en 0,69, hors champ sur un téléphone),
+     il n'y a plus de pan de mur où poser un texte. La composition reprend
+     donc la main en `left`, et `right` doit revenir à sa valeur neutre. */
+#chapitre5-root .nav-callout { right: auto; }
+#chapitre5-root #chp5-nav-1 { left: 7.6%; top: 17%; width: 35%; }
+#chapitre5-root #chp5-nav-2 { left: 6.6%; top: 43%; width: 36%; }
+#chapitre5-root #chp5-nav-3 { left: 8.7%; top: 71%; width: 34%; }
+#chapitre5-root #chp5-audio-1 { left: 63.5%; top: 22%; width: 31%; }
+#chapitre5-root #chp5-audio-2 { left: 62.6%; top: 57%; width: 32%; }
+#chapitre5-root .nav-circle {
+    width: clamp(44px, 6.2vw, 54px);
+    height: clamp(44px, 6.2vw, 54px);
+  }
+#chapitre5-root .circle-button {
+    width: clamp(29px, 4.3vw, 34px);
+    height: clamp(29px, 4.3vw, 34px);
+  }
+#chapitre5-root .title {
+    font-size: clamp(10px, 1.75vw, 14px);
+    max-width: 17em;
+  }
+#chapitre5-root .credit {
+    font-size: clamp(7px, 1.05vw, 9px);
+  }
+}
+
+/* Téléphone : une seule information est ouverte à la fois au toucher.
+   Les cercles restent bien séparés du squelette et des bords. */
+@media (max-width: 600px) {
+#chapitre5-root .nav-callout { right: auto; }
+#chapitre5-root #chp5-nav-1 { left: 7.5vw; top: 16%; width: 40vw; }
+#chapitre5-root #chp5-nav-2 { left: 6.5vw; top: 43%; width: 41vw; }
+#chapitre5-root #chp5-nav-3 { left: 8.5vw; top: 72%; width: 39vw; }
+#chapitre5-root #chp5-audio-1 { left: 59.5vw; top: 23%; width: 35vw; }
+#chapitre5-root #chp5-audio-2 { left: 58.5vw; top: 57%; width: 36vw; }
+#chapitre5-root .nav-circle {
+    width: 43px;
+    height: 43px;
+  }
+#chapitre5-root .circle-button {
+    width: 30px;
+    height: 30px;
+  }
+#chapitre5-root .title {
+    font-size: clamp(10px, 3.1vw, 12.5px);
+    max-width: 15em;
+    line-height: 1.13;
+  }
+#chapitre5-root .eyebrow {
+    font-size: 6px;
+    letter-spacing: .22em;
+  }
+#chapitre5-root .credit {
+    font-size: 7.5px;
+  }
+#chapitre5-root .audio-meta {
+    font-size: 6.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+#chapitre5-root *,
+#chapitre5-root *::before,
+#chapitre5-root *::after {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+
+/* Les contrôles communs restent hors du root, à z 600. */
+#chapitre5-root #chp5-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+#chapitre5-root .nav-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+}
+/* Un sous-chapitre à venir révèle son intitulé — et le chiffre devient tout de
+   même la flèche : c'est le geste de survol du chapitre, pas une promesse de
+   lien. Le CURSEUR, lui, dit la vérité : `default` tant que la sous-partie
+   n'existe pas, `pointer` dès qu'elle ouvre (le « 1 », aujourd'hui, qui porte
+   `data-part` au lieu d'`aria-disabled`). */
+#chapitre5-root .nav-link[aria-disabled="true"] { cursor: default; }
+/* (Les trois portent `data-part` depuis l'ouverture de l'inhumation ; la règle
+   au-dessus reste pour le jour où un cartel à venir s'ajouterait.) */
+#chapitre5-root .nav-link[data-part] { cursor: pointer; }
+@supports (height: 100svh) {
+  body.is-touch #chapitre5-root { height: 100svh; }
+}
